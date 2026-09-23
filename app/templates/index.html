@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NKUST · 校園郵件助手</title><link rel="stylesheet" href="/static/css/dashboard.css">
+<script src="/static/js/dashboard.js" defer></script></head>
+<body>
+<a class="skip-link" href="#workspace">跳至公告列表</a>
+<aside class="sidebar"><a class="brand" href="/"><span class="logo">N</span><span>NKUST<span class="brand-sub">校園郵件助手</span></span></a>
+<div class="nav-label">工作空間</div><nav aria-label="公告篩選">
+<button data-view="all" class="nav-button active" aria-pressed="true"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M3 9h18M9 9v12"/></svg><span>全部公告</span></button>
+<button data-view="today" class="nav-button" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 11h18M8 15h3"/></svg><span>今日收到</span></button>
+<button data-view="deadline" class="nav-button" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>即將截止</span></button>
+<button data-view="action" class="nav-button" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m7 12 3 3 7-7"/></svg><span>需要處理</span></button>
+<div class="nav-label">探索機會</div>
+<button data-view="tech" class="nav-button" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg><span>AI／科技</span></button>
+<button data-view="jobs" class="nav-button" aria-pressed="false"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V3h8v4M3 12a20 20 0 0 0 18 0M12 11v4"/></svg><span>就業／實習</span></button></nav>
+<div class="sidebar-foot"><span class="dot"></span> 本機工作空間<br><small>資料儲存於此裝置 · Gmail 唯讀</small></div></aside>
+<main><header><div><div class="eyebrow">NKUST / MAIL ASSISTANT</div><h1>校園通知工作台</h1><p class="subtitle">集中管理校園公告，掌握待辦事項與重要期限。</p></div><div class="date-block" id="today-date">—</div></header>
+<section class="stats" aria-label="通知統計">
+<button class="stat" data-view="today"><span>今日收到</span><strong id="today-count">—</strong><small>則校園公告</small></button>
+<button class="stat" data-view="action"><span>需要處理</span><strong id="action-count">—</strong><small id="action-note">等待資料</small></button>
+<button class="stat urgent" data-view="deadline"><span>即將截止</span><strong id="deadline-count">—</strong><small>今天起 7 天內</small></button>
+<div class="stat"><span>已整理公告</span><strong id="total-count">—</strong><small>保留原始內容，隨時查看</small></div></section>
+<section class="workspace" id="workspace" tabindex="-1"><div class="section-top"><div><div class="eyebrow">公告收件匣</div><h2 id="view-title">全部公告</h2></div><div class="sync-tools"><label for="sync-limit">同步最近</label><select id="sync-limit"><option value="5">5 封</option><option value="20">20 封</option><option value="50">50 封</option><option value="100">100 封</option></select><button id="sync" class="primary">同步 Gmail</button></div></div>
+<p id="sync-status" class="sync-status" role="status" aria-live="polite">載入中…</p>
+<section class="ai-panel" aria-label="AI 公告整理"><div><strong class="ai-title"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5Z"/></svg>AI 公告整理<span class="feature-label">iAI</span></strong><p id="ai-status" role="status" aria-live="polite">讀取分析狀態…</p><p class="ai-disclosure">分析會將公告文字傳送至 iAI，每次最多 5 則。摘要與行動判斷請搭配原文確認。</p></div><div class="ai-tools"><button id="analyze" class="primary" disabled>分析 5 則</button><button id="retry-ai" disabled>重試失敗項目</button></div><p id="ai-message" role="status" aria-live="polite"></p></section>
+<div class="filters"><form id="search-form" role="search"><label class="sr-only" for="search">搜尋主旨或單位</label><input type="search" id="search" placeholder="搜尋主旨或寄件單位…" maxlength="100"><button type="submit">搜尋</button><button type="button" id="clear-search" hidden>清除</button></form><label class="sr-only" for="category">公告分類</label><select id="category"><option value="">所有分類</option><option>課程</option><option>選課</option><option>獎學金</option><option>競賽</option><option>講座</option><option>活動</option><option>證照</option><option>TOEIC</option><option>實習</option><option>徵才</option><option>交換學生</option><option>行政通知</option><option>其他</option></select></div>
+<p class="filter-note">分類篩選也包含尚未分類公告的主旨關鍵字；原始郵件性質保留在每則公告中。</p>
+<div class="list-heading"><span id="results-count" aria-live="polite">正在讀取公告</span><span>依收件時間排序</span></div>
+<div id="error" class="error" role="alert" hidden></div><div id="announcements" class="announcements" aria-busy="true"></div>
+<footer class="pagination"><button id="prev" disabled>← 上一頁</button><span id="page-label">第 1 頁</span><button id="next" disabled>下一頁 →</button></footer></section>
+<div class="page-foot">NKUST Mail Assistant <span>／</span> 國立高雄科技大學</div></main>
+<dialog id="detail" aria-labelledby="detail-title"><div class="dialog-top"><span class="eyebrow">公告原文</span><button id="close-detail" aria-label="關閉公告">✕</button></div><h2 id="detail-title"></h2><p id="detail-meta"></p><section id="detail-ai" class="detail-ai"></section><p id="detail-dates"></p><pre id="detail-text"></pre><a id="detail-link" target="_blank" rel="noopener noreferrer" hidden>前往公告頁面 ↗</a></dialog>
+<template id="web-controls"><section class="detail-ai"><strong>網頁補充內容</strong><p>只擷取這則公告的連結；按下分析後，郵件原文與網頁內容會一起送至 iAI。</p><div class="ai-tools"><button id="scrape-one">擷取網頁</button><button id="analyze-one">分析這則公告</button></div><p id="web-message" role="status" aria-live="polite"></p><pre id="web-text" hidden></pre></section></template>
+</body></html>
