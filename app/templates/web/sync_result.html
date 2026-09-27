@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+{% include 'pwa_head.html' %}
 <title>同步結果 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
-<body><main class="panel"><p class="brand">NKUST Mail Assistant</p>
+<body><main class="panel"><p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。同步需要連線，請連線後重試。</p><p class="brand">NKUST Mail Assistant</p>
 <h1>同步結果</h1>
 {% if error %}
 <p role="alert">{% if error == 'SYNC_BUSY' %}已有同步進行中或本次作業已逾時，請稍後重試。{% elif error == 'GMAIL_REAUTHORIZE' %}Google 授權已失效，請重新連結帳號。{% else %}目前無法連線，請稍後重試。{% endif %}</p>

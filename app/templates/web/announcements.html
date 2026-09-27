@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+{% include 'pwa_head.html' %}
 <title>我的公告 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
-<body><main class="panel wide"><p class="brand">NKUST Mail Assistant</p>
+<body><main class="panel wide"><p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。請連線後再查看公告。</p><p class="brand">NKUST Mail Assistant</p>
 <nav aria-label="主要導覽"><a href="/dashboard">儀表板</a><a href="/announcements" aria-current="page">我的公告</a><a href="/settings">帳號設定</a></nav>
 <h1>我的公告</h1><p class="muted">只顯示 {{ user.email }} 的公告。</p>
 <form method="get" action="/announcements" class="filters">

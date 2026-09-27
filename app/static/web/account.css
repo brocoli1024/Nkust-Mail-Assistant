@@ -15,6 +15,7 @@ nav a { display:inline-flex; align-items:center; min-height:44px; text-underline
 .secondary { background:var(--surface); color:var(--blue); }
 .muted,.email { color:var(--muted); }
 .notice { background:var(--background); border-left:4px solid var(--blue); padding:1rem; }
+[hidden] { display:none !important; }
 .wide { width:min(64rem,calc(100% - 2rem)); }
 .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(8rem,1fr)); gap:1rem; }
 .stats a { padding:1rem; border:1px solid var(--border); border-radius:.5rem; }

@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -81,6 +81,19 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         app.include_router(announcements_router)
         app.mount('/assets', StaticFiles(directory=ROOT / 'app/static/web'), name='web-assets')
 
+        @app.get('/manifest.webmanifest', include_in_schema=False)
+        def web_manifest():
+            return FileResponse(ROOT / 'app/static/web/manifest.webmanifest',
+                                media_type='application/manifest+json')
+
+        @app.get('/sw.js', include_in_schema=False)
+        def service_worker():
+            return FileResponse(ROOT / 'app/static/web/sw.js', media_type='application/javascript')
+
+        @app.get('/offline', include_in_schema=False)
+        def offline_notice():
+            return FileResponse(ROOT / 'app/static/web/offline.html', media_type='text/html')
+
     @app.get('/')
     def root(request: Request):
         if session_enabled:
@@ -117,7 +130,11 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             'same-origin' if request.url.path in ('/dashboard', '/settings') else 'no-referrer'
         )
         response.headers['X-Content-Type-Options'] = 'nosniff'
-        response.headers['Content-Security-Policy'] = "default-src 'none'; style-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'none'; script-src 'self'; worker-src 'self'; connect-src 'self'; "
+            "manifest-src 'self'; img-src 'self'; style-src 'self'; "
+            "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
+        )
         return response
 
     access_logger = logging.getLogger('uvicorn.access')

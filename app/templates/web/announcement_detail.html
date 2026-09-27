@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+{% include 'pwa_head.html' %}
 <title>公告內容 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
-<body><main class="panel wide"><p class="brand">NKUST Mail Assistant</p>
+<body><main class="panel wide"><p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。請連線後再查看公告。</p><p class="brand">NKUST Mail Assistant</p>
 <nav aria-label="主要導覽"><a href="/announcements">返回公告清單</a><a href="/dashboard">儀表板</a></nav>
 <h1>{{ item.title }}</h1><p>{{ item.department }} · {{ item.category or '未分類' }}</p>
 <dl><dt>收到時間（台灣）</dt><dd>{{ item.received_at }}</dd>

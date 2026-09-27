@@ -1,8 +1,10 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+{% include 'pwa_head.html' %}
 <title>{{ title }} · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
 <body><main class="panel">
+<p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。請連線後再查看公告。</p>
 <p class="brand">NKUST Mail Assistant</p>
 <nav aria-label="主要導覽"><a href="/dashboard" {% if not settings %}aria-current="page"{% endif %}>校園公告</a><a href="/settings" {% if settings %}aria-current="page"{% endif %}>帳號設定</a></nav>
 <h1>{{ title }}</h1>
@@ -10,6 +12,8 @@
 <p class="email">{{ user.email }}</p>
 {% if settings %}
 <p>登出只會結束這台瀏覽器的登入狀態，不會撤銷 Google 授權。</p>
+<h2>安裝到手機</h2>
+<p>在瀏覽器選單選「加到主畫面」。安裝後仍需網路才能查看公告；離線時只會顯示連線提示，不提供郵件或公告內容。</p>
 {% else %}
 <div class="stats">
 <a href="/announcements?view=today">今日收到 <strong>{{ counts.today }}</strong></a>

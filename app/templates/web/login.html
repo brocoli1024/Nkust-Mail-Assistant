@@ -1,8 +1,10 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+{% include 'pwa_head.html' %}
 <title>登入 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
 <body><main class="panel">
+<p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。登入與同步需要連線，請連線後重試。</p>
 <p class="brand">NKUST Mail Assistant</p>
 <h1>你的校園公告助手</h1>
 {% if logged_out %}<p class="notice" role="status">已登出。這台瀏覽器的登入狀態已清除。</p>{% endif %}
