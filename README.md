@@ -1,5 +1,9 @@
 # NKUST 校園郵件智慧助手
 
+> **多人版進度：Phase 9 部署準備。** `app.web:app` 已提供登入、登出、依帳號同步及公告清單／詳細頁。安全回歸已執行；PostgreSQL 實機、正式主機及 Google OAuth 對外發布仍未驗證，尚未上線。請見 [Phase 6 公告](docs/multi-user-phase6.md)、[Phase 7 安全測試](docs/multi-user-phase7.md)、[Phase 8 資料庫遷移準備](docs/multi-user-phase8.md) 與 [Phase 9 部署手冊](docs/multi-user-phase9.md)。唯讀部署前檢查：`python -m app.deployment_check`（本機 SQLite／HTTP 會被判定不符合正式設定）。
+>
+> **以下原有章節描述單人本機版 `app.main:app`，不可直接套用於多人公開服務。** 多人 OAuth／Session／同步設定請見 [Phase 2](docs/multi-user-phase2.md)、[Phase 3](docs/multi-user-phase3.md)、[Phase 5](docs/multi-user-phase5.md)。
+
 將 Gmail 中的高科大校園通知拆成可搜尋的公告，在本機查看原文、活動日期與截止日；可選擇使用 iAI 產生摘要，或擷取公告連結補充內容。
 
 **第一次使用：先完成第 1 章的離線測試，再設定 Gmail。AI 是選用功能。**

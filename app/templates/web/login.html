@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登入 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
+<body><main class="panel">
+<p class="brand">NKUST Mail Assistant</p>
+<h1>你的校園公告助手</h1>
+{% if logged_out %}<p class="notice" role="status">已登出。這台瀏覽器的登入狀態已清除。</p>{% endif %}
+<p>使用自己的 Google 帳號登入，連結 Gmail 唯讀授權。</p>
+<a class="button" href="/auth/google">使用 Google 登入</a>
+<p class="muted">僅讀取 Gmail，不會寄信、刪信或修改郵件。登入不會自動同步信件。</p>
+</main></body></html>

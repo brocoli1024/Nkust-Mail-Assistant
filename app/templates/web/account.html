@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
+<body><main class="panel">
+<p class="brand">NKUST Mail Assistant</p>
+<nav aria-label="主要導覽"><a href="/dashboard" {% if not settings %}aria-current="page"{% endif %}>校園公告</a><a href="/settings" {% if settings %}aria-current="page"{% endif %}>帳號設定</a></nav>
+<h1>{{ title }}</h1>
+<p>你好，{{ user.display_name or user.email }}。</p>
+<p class="email">{{ user.email }}</p>
+{% if settings %}
+<p>登出只會結束這台瀏覽器的登入狀態，不會撤銷 Google 授權。</p>
+{% else %}
+<div class="stats">
+<a href="/announcements?view=today">今日收到 <strong>{{ counts.today }}</strong></a>
+<a href="/announcements?view=deadline">即將截止 <strong>{{ counts.deadline }}</strong></a>
+<a href="/announcements?view=action">需要處理 <strong>{{ counts.action }}</strong></a>
+</div>
+<p class="muted">日期以台灣時間計算；即將截止為今天起 7 天（含今天）。需要處理僅計入已標記的公告，未判定者不計入。</p>
+<a class="button secondary" href="/announcements">查看全部 {{ counts.all }} 則公告</a>
+{% if not counts.all %}<p class="notice">還沒有公告。按下同步按鈕，匯入自己的校園通知。</p>{% endif %}
+<form method="post" action="/sync">
+<input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="limit" value="5">
+<button class="button" type="submit">同步最近 5 封校園通知</button>
+</form>
+{% endif %}
+<form method="post" action="/logout">
+<input type="hidden" name="csrf_token" value="{{ csrf }}">
+<button class="button secondary" type="submit">登出</button>
+</form>
+</main></body></html>

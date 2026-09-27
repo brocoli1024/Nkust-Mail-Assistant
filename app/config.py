@@ -22,6 +22,7 @@ class Settings:
     ai_model: str = ''
     ai_timeout_seconds: int = 90
     scrape_allowed_hosts: tuple[str, ...] = ('officemail.nkust.edu.tw',)
+    database_url: str = field(default='', repr=False)
 
     @classmethod
     def load(cls, env_file: Path | None = None):
@@ -40,4 +41,5 @@ class Settings:
                    values.get('AI_BASE_URL') or cls.ai_base_url,
                    values.get('AI_API_KEY') or '', values.get('AI_MODEL') or '',
                    int(values.get('AI_TIMEOUT_SECONDS') or 90),
-                   tuple(h.strip().lower() for h in (values.get('SCRAPE_ALLOWED_HOSTS') or 'officemail.nkust.edu.tw').split(',') if h.strip()))
+                   tuple(h.strip().lower() for h in (values.get('SCRAPE_ALLOWED_HOSTS') or 'officemail.nkust.edu.tw').split(',') if h.strip()),
+                   values.get('DATABASE_URL') or '')
