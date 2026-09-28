@@ -19,7 +19,7 @@ const cache = {
 };
 const caches = {
   open: async () => cache,
-  keys: async () => ['nkust-public-v2'],
+  keys: async () => ['nkust-public-v3'],
   delete: async () => true,
   match: cache.match,
 };
@@ -53,7 +53,7 @@ const request = (url, method = 'GET', mode = 'navigate') =>
 (async () => {
   await dispatch('install');
   assert.deepEqual(added.sort(), [
-    '/offline', '/assets/account.css', '/assets/fonts/Manrope.ttf', '/assets/icon.svg', '/assets/icon-192.png',
+    '/offline', '/assets/account.css?v=editorial-1', '/assets/fonts/Manrope.ttf', '/assets/icon.svg', '/assets/icon-192.png',
     '/assets/icon-512.png', '/assets/apple-touch-icon.png',
   ].sort());
   assert.equal(cached.size, 7);
@@ -72,5 +72,5 @@ const request = (url, method = 'GET', mode = 'navigate') =>
   assert.equal(offline.kind, 'public');
   assert.equal(offline.url, '/offline');
   assert.equal(cached.size, 7);
-  assert.equal((await dispatch('fetch', request('/assets/account.css', 'GET', 'no-cors'))).kind, 'public');
+  assert.equal((await dispatch('fetch', request('/assets/account.css?v=editorial-1', 'GET', 'no-cors'))).kind, 'public');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -28,6 +28,7 @@ def test_manifest_offline_notice_and_icons(web):
     assert offline.status_code == 200
     assert '目前沒有網路' in offline.text
     assert '郵件與公告內容' in offline.text
+    assert 'account.css?v=editorial-1' in offline.text
     assert client.get('/assets/icon.svg').status_code == 200
     assert client.get('/assets/fonts/Manrope.ttf').status_code == 200
 
@@ -49,6 +50,7 @@ def test_pwa_assets_and_account_pages_keep_private_headers(web):
     assert login_page.status_code == 200
     assert 'href="/manifest.webmanifest"' in login_page.text
     assert 'src="/assets/pwa.js"' in login_page.text
+    assert 'account.css?v=editorial-1' in login_page.text
     assert login_page.headers['cache-control'] == 'no-store'
     csp = login_page.headers['content-security-policy']
     for directive in ("script-src 'self'", "worker-src 'self'", "connect-src 'self'",

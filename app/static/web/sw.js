@@ -1,7 +1,7 @@
-const CACHE_NAME = 'nkust-public-v2';
+const CACHE_NAME = 'nkust-public-v3';
 const PUBLIC_FILES = [
   '/offline',
-  '/assets/account.css',
+  '/assets/account.css?v=editorial-1',
   '/assets/fonts/Manrope.ttf',
   '/assets/icon.svg',
   '/assets/icon-192.png',
@@ -46,7 +46,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  if (PUBLIC_FILES.includes(url.pathname)) {
+  if (PUBLIC_FILES.includes(url.pathname + url.search)) {
     event.respondWith(caches.match(request).then(cached => cached || fetch(request)));
   }
 });
