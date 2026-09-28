@@ -1,14 +1,26 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-{% include 'pwa_head.html' %}
-<title>登入 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
-<body><main class="panel">
-<p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。登入與同步需要連線，請連線後重試。</p>
-<p class="brand">NKUST Mail Assistant</p>
-<h1>你的校園公告助手</h1>
-{% if logged_out %}<p class="notice" role="status">已登出。這台瀏覽器的登入狀態已清除。</p>{% endif %}
-<p>使用自己的 Google 帳號登入，連結 Gmail 唯讀授權。</p>
-<a class="button" href="/auth/google">使用 Google 登入</a>
-<p class="muted">僅讀取 Gmail，不會寄信、刪信或修改郵件。登入不會自動同步信件。</p>
-</main></body></html>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}
+  <title>登入 · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css">
+</head>
+<body><div class="site-shell">
+  {% include 'site_header.html' %}
+  <main id="main-content" class="auth-layout">
+    <section class="auth-hero" aria-labelledby="login-title">
+      <p class="eyebrow">YOUR CAMPUS, IN FOCUS</p>
+      <h1 id="login-title">你的校園公告助手。</h1>
+      <p>重要通知、截止日期和待處理事項，打開就能看清楚。</p>
+    </section>
+    <div class="auth-card-wrap"><section class="auth-card" aria-labelledby="connect-title">
+      <h2 id="connect-title">開始整理你的通知</h2>
+      <p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。登入與同步需要連線，請連線後重試。</p>
+      {% if logged_out %}<p class="notice" role="status">已登出。這台瀏覽器的登入狀態已清除。</p>{% endif %}
+      <p>使用自己的 Google 帳號登入，連結 Gmail 唯讀授權。</p>
+      <a class="button" href="/auth/google">使用 Google 登入</a>
+      <p class="muted">僅讀取 Gmail，不會寄信、刪信或修改郵件。登入不會自動同步信件。</p>
+    </section></div>
+  </main>
+</div></body></html>

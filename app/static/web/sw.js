@@ -1,7 +1,9 @@
-const CACHE_NAME = 'nkust-public-v1';
+const CACHE_NAME = 'nkust-public-v2';
 const PUBLIC_FILES = [
   '/offline',
   '/assets/account.css',
+  '/assets/fonts/Manrope.ttf',
+  '/assets/icon.svg',
   '/assets/icon-192.png',
   '/assets/icon-512.png',
   '/assets/apple-touch-icon.png'

@@ -19,7 +19,7 @@ const cache = {
 };
 const caches = {
   open: async () => cache,
-  keys: async () => ['nkust-public-v1'],
+  keys: async () => ['nkust-public-v2'],
   delete: async () => true,
   match: cache.match,
 };
@@ -53,15 +53,15 @@ const request = (url, method = 'GET', mode = 'navigate') =>
 (async () => {
   await dispatch('install');
   assert.deepEqual(added.sort(), [
-    '/offline', '/assets/account.css', '/assets/icon-192.png',
+    '/offline', '/assets/account.css', '/assets/fonts/Manrope.ttf', '/assets/icon.svg', '/assets/icon-192.png',
     '/assets/icon-512.png', '/assets/apple-touch-icon.png',
   ].sort());
-  assert.equal(cached.size, 5);
+  assert.equal(cached.size, 7);
 
   for (const url of ['/dashboard', '/settings', '/announcements', '/announcements/123']) {
     const response = await dispatch('fetch', request(url));
     assert.equal(response.kind, 'network');
-    assert.equal(cached.size, 5);
+    assert.equal(cached.size, 7);
   }
   assert.equal(await dispatch('fetch', request('/auth/google/callback?code=secret')), undefined);
   assert.equal(await dispatch('fetch', request('/sync', 'POST')), undefined);
@@ -71,6 +71,6 @@ const request = (url, method = 'GET', mode = 'navigate') =>
   const offline = await dispatch('fetch', request('/dashboard'));
   assert.equal(offline.kind, 'public');
   assert.equal(offline.url, '/offline');
-  assert.equal(cached.size, 5);
+  assert.equal(cached.size, 7);
   assert.equal((await dispatch('fetch', request('/assets/account.css', 'GET', 'no-cors'))).kind, 'public');
 })().catch(error => { console.error(error); process.exitCode = 1; });

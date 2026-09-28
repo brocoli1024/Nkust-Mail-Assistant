@@ -13,7 +13,7 @@ Make the deployed website installable on a phone while keeping Gmail messages, a
 
 ## Privacy boundary
 
-The service worker precaches only `/offline`, the public stylesheet, and three public icons. Account pages use the network and show the offline notice if unavailable. The worker ignores OAuth callbacks, API calls, and POST requests. The server continues to send `Cache-Control: no-store` on all responses.
+The service worker precaches only `/offline`, the public stylesheet and font, and four public icons. Account pages use the network and show the offline notice if unavailable. The worker ignores OAuth callbacks, API calls, and POST requests. The server continues to send `Cache-Control: no-store` on all responses.
 
 No push notifications, background synchronization, or offline copies of private content are included.
 

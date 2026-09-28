@@ -1,17 +1,32 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-{% include 'pwa_head.html' %}
-<title>公告內容 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
-<body><main class="panel wide"><p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。請連線後再查看公告。</p><p class="brand">NKUST Mail Assistant</p>
-<nav aria-label="主要導覽"><a href="/announcements">返回公告清單</a><a href="/dashboard">儀表板</a></nav>
-<h1>{{ item.title }}</h1><p>{{ item.department }} · {{ item.category or '未分類' }}</p>
-<dl><dt>收到時間（台灣）</dt><dd>{{ item.received_at }}</dd>
-<dt>原始分類</dt><dd>{{ item.source_category }}</dd>
-<dt>活動日期</dt><dd>{{ item.event_date or '未提供' }}</dd>
-<dt>截止日期</dt><dd>{{ item.deadline or '未提供' }}</dd>
-<dt>需要處理</dt><dd>{{ '是' if item.requires_action == true else ('否' if item.requires_action == false else '尚未判定') }}</dd></dl>
-{% if item.date_inferred %}<p class="notice">日期年份為推定，請以原文為準。</p>{% endif %}
-{% if item.summary %}<h2>摘要</h2><p>{{ item.summary }}</p>{% endif %}
-<h2>公告原文</h2><div class="original">{{ item.original_text }}</div>
-{% if item.url %}<a class="button secondary" href="{{ item.url }}" rel="noopener noreferrer" target="_blank">開啟公告連結（另開分頁）</a>{% endif %}
-</main></body></html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}
+  <title>公告內容 · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css">
+</head>
+<body><div class="site-shell">
+  {% set active_page = 'announcements' %}
+  {% include 'site_header.html' %}
+  <main id="main-content" class="page-content">
+    <p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。請連線後再查看公告。</p>
+    <section class="hero compact" aria-labelledby="page-title">
+      <div><p class="eyebrow">ANNOUNCEMENT DETAIL</p><h1 id="page-title">{{ item.title }}</h1><p>{{ item.department }} · {{ item.category or '未分類' }}</p></div>
+    </section>
+    <section class="detail-card" aria-label="公告資訊">
+      <dl class="detail-grid">
+        <div><dt>收到時間（台灣）</dt><dd>{{ item.received_at }}</dd></div>
+        <div><dt>原始分類</dt><dd>{{ item.source_category }}</dd></div>
+        <div><dt>活動日期</dt><dd>{{ item.event_date or '未提供' }}</dd></div>
+        <div><dt>截止日期</dt><dd>{{ item.deadline or '未提供' }}</dd></div>
+        <div><dt>需要處理</dt><dd>{{ '是' if item.requires_action == true else ('否' if item.requires_action == false else '尚未判定') }}</dd></div>
+      </dl>
+      {% if item.date_inferred %}<p class="notice">日期年份為推定，請以原文為準。</p>{% endif %}
+    </section>
+    {% if item.summary %}<section class="detail-section" aria-labelledby="summary-title"><h2 id="summary-title">摘要</h2><p>{{ item.summary }}</p></section>{% endif %}
+    <section class="detail-section" aria-labelledby="original-title"><h2 id="original-title">公告原文</h2><div class="original">{{ item.original_text }}</div></section>
+    {% if item.url %}<p><a class="button secondary" href="{{ item.url }}" rel="noopener noreferrer" target="_blank">開啟公告連結（另開分頁）</a></p>{% endif %}
+    <p><a class="text-link" href="/announcements">返回公告清單</a></p>
+  </main>
+</div></body></html>

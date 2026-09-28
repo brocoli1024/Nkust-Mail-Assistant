@@ -1,15 +1,33 @@
 <!doctype html>
-<html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-{% include 'pwa_head.html' %}
-<title>同步結果 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
-<body><main class="panel"><p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。同步需要連線，請連線後重試。</p><p class="brand">NKUST Mail Assistant</p>
-<h1>同步結果</h1>
-{% if error %}
-<p role="alert">{% if error == 'SYNC_BUSY' %}已有同步進行中或本次作業已逾時，請稍後重試。{% elif error == 'GMAIL_REAUTHORIZE' %}Google 授權已失效，請重新連結帳號。{% else %}目前無法連線，請稍後重試。{% endif %}</p>
-{% else %}
-<p class="notice">{% if result.emails_failed %}部分郵件未能處理，成功的公告已保存。{% else %}本次同步完成。{% endif %}</p>
-<dl><dt>找到郵件</dt><dd>{{ result.emails_found }}</dd><dt>成功處理</dt><dd>{{ result.emails_processed }}</dd><dt>略過已處理郵件</dt><dd>{{ result.emails_skipped }}</dd><dt>處理失敗</dt><dd>{{ result.emails_failed }}</dd><dt>建立公告</dt><dd>{{ result.announcements_created }}</dd></dl>
-{% endif %}
-{% if error == 'GMAIL_REAUTHORIZE' or (result and result.reauthorization_required) %}<a class="button" href="/auth/google">重新連結 Google</a>{% endif %}
-<p><a href="/dashboard">返回校園公告</a></p>
-</main></body></html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}
+  <title>同步結果 · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css">
+</head>
+<body><div class="site-shell">
+  {% include 'site_header.html' %}
+  <main id="main-content" class="page-content narrow">
+    <p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。同步需要連線，請連線後重試。</p>
+    <section class="hero compact" aria-labelledby="page-title">
+      <div><p class="eyebrow">MAIL SYNC</p><h1 id="page-title">同步結果</h1><p>這次的郵件處理情況，都整理在這裡。</p></div>
+    </section>
+    <section class="result-card" aria-label="同步狀態">
+      {% if error %}
+      <p role="alert">{% if error == 'SYNC_BUSY' %}已有同步進行中或本次作業已逾時，請稍後重試。{% elif error == 'GMAIL_REAUTHORIZE' %}Google 授權已失效，請重新連結帳號。{% else %}目前無法連線，請稍後重試。{% endif %}</p>
+      {% else %}
+      <p class="notice">{% if result.emails_failed %}部分郵件未能處理，成功的公告已保存。{% else %}本次同步完成。{% endif %}</p>
+      <dl class="result-grid">
+        <div><dt>找到郵件</dt><dd>{{ result.emails_found }}</dd></div>
+        <div><dt>成功處理</dt><dd>{{ result.emails_processed }}</dd></div>
+        <div><dt>略過已處理郵件</dt><dd>{{ result.emails_skipped }}</dd></div>
+        <div><dt>處理失敗</dt><dd>{{ result.emails_failed }}</dd></div>
+        <div><dt>建立公告</dt><dd>{{ result.announcements_created }}</dd></div>
+      </dl>
+      {% endif %}
+      {% if error == 'GMAIL_REAUTHORIZE' or (result and result.reauthorization_required) %}<a class="button" href="/auth/google">重新連結 Google</a>{% endif %}
+      <p><a class="text-link dark" href="/dashboard">返回校園公告</a></p>
+    </section>
+  </main>
+</div></body></html>

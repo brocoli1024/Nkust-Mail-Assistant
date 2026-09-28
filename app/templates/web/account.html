@@ -1,35 +1,61 @@
 <!doctype html>
 <html lang="zh-Hant">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-{% include 'pwa_head.html' %}
-<title>{{ title }} · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css"></head>
-<body><main class="panel">
-<p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。請連線後再查看公告。</p>
-<p class="brand">NKUST Mail Assistant</p>
-<nav aria-label="主要導覽"><a href="/dashboard" {% if not settings %}aria-current="page"{% endif %}>校園公告</a><a href="/settings" {% if settings %}aria-current="page"{% endif %}>帳號設定</a></nav>
-<h1>{{ title }}</h1>
-<p>你好，{{ user.display_name or user.email }}。</p>
-<p class="email">{{ user.email }}</p>
-{% if settings %}
-<p>登出只會結束這台瀏覽器的登入狀態，不會撤銷 Google 授權。</p>
-<h2>安裝到手機</h2>
-<p>在瀏覽器選單選「加到主畫面」。安裝後仍需網路才能查看公告；離線時只會顯示連線提示，不提供郵件或公告內容。</p>
-{% else %}
-<div class="stats">
-<a href="/announcements?view=today">今日收到 <strong>{{ counts.today }}</strong></a>
-<a href="/announcements?view=deadline">即將截止 <strong>{{ counts.deadline }}</strong></a>
-<a href="/announcements?view=action">需要處理 <strong>{{ counts.action }}</strong></a>
-</div>
-<p class="muted">日期以台灣時間計算；即將截止為今天起 7 天（含今天）。需要處理僅計入已標記的公告，未判定者不計入。</p>
-<a class="button secondary" href="/announcements">查看全部 {{ counts.all }} 則公告</a>
-{% if not counts.all %}<p class="notice">還沒有公告。按下同步按鈕，匯入自己的校園通知。</p>{% endif %}
-<form method="post" action="/sync">
-<input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="limit" value="5">
-<button class="button" type="submit">同步最近 5 封校園通知</button>
-</form>
-{% endif %}
-<form method="post" action="/logout">
-<input type="hidden" name="csrf_token" value="{{ csrf }}">
-<button class="button secondary" type="submit">登出</button>
-</form>
-</main></body></html>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}
+  <title>{{ title }} · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css">
+</head>
+<body><div class="site-shell">
+  {% set active_page = 'settings' if settings else 'dashboard' %}
+  {% include 'site_header.html' %}
+  <main id="main-content" class="page-content">
+    <p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。請連線後再查看公告。</p>
+    {% if settings %}
+    <section class="hero compact" aria-labelledby="page-title">
+      <div><p class="eyebrow">YOUR SPACE</p><h1 id="page-title">帳號設定</h1><p>管理這台裝置的登入狀態與安裝方式。</p></div>
+    </section>
+    <div class="card-stack">
+      <section class="paper-card" aria-labelledby="account-title">
+        <h2 id="account-title">你的帳號</h2>
+        <span class="account-email">{{ user.email }}</span>
+        <p class="muted">{{ user.display_name or user.email }}</p>
+        <p>登出只會結束這台瀏覽器的登入狀態，不會撤銷 Google 授權。</p>
+      </section>
+      <section class="paper-card" aria-labelledby="install-title">
+        <h2 id="install-title">安裝到手機</h2>
+        <p>在瀏覽器選單選「加到主畫面」。安裝後仍需網路才能查看公告；離線時只會顯示連線提示，不提供郵件或公告內容。</p>
+      </section>
+    </div>
+    {% else %}
+    <section class="hero" aria-labelledby="page-title">
+      <div><p class="eyebrow">YOUR CAMPUS, IN FOCUS</p><h1 id="page-title">你的校園公告，<br>一眼掌握。</h1><p>把重要的通知、待處理事項和截止日期，整理在同一個地方。</p></div>
+    </section>
+    <div class="identity-strip"><strong>你好，{{ user.display_name or user.email }}。</strong><span>{{ user.email }}</span></div>
+    <section aria-labelledby="overview-title">
+      <div class="section-heading"><h2 id="overview-title">校園公告</h2><p>你的近期重點</p></div>
+      <div class="stats">
+        <a class="stat-card" href="/announcements?view=today"><span>今日收到</span><strong>{{ counts.today }}</strong><small>查看今日通知</small></a>
+        <a class="stat-card" href="/announcements?view=deadline"><span>即將截止</span><strong>{{ counts.deadline }}</strong><small>今天起 7 天內</small></a>
+        <a class="stat-card" href="/announcements?view=action"><span>需要處理</span><strong>{{ counts.action }}</strong><small>查看已標記事項</small></a>
+      </div>
+      <p class="section-note">日期以台灣時間計算；即將截止為今天起 7 天（含今天）。需要處理僅計入已標記的公告，未判定者不計入。</p>
+    </section>
+    <section class="action-panel" aria-labelledby="inbox-title">
+      <div><h2 id="inbox-title">你的公告收件匣</h2><p>已整理的通知與原文都在這裡。</p></div>
+      <div class="actions">
+        <a class="button" href="/announcements">查看全部 {{ counts.all }} 則公告</a>
+        <form method="post" action="/sync">
+          <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="limit" value="5">
+          <button class="button secondary" type="submit">同步最近 5 封校園通知</button>
+        </form>
+      </div>
+    </section>
+    {% if not counts.all %}<p class="notice">還沒有公告。按下同步按鈕，匯入自己的校園通知。</p>{% endif %}
+    {% endif %}
+    <div class="footer-actions"><form method="post" action="/logout">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <button class="button secondary" type="submit">登出</button>
+    </form></div>
+  </main>
+</div></body></html>

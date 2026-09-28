@@ -1,0 +1,14 @@
+<a class="skip-link" href="#main-content">跳到主要內容</a>
+<header class="site-header">
+  <a class="brand" href="{% if user is defined %}/dashboard{% else %}/login{% endif %}">
+    <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg></span>
+    <span>NKUST Mail Assistant<small>校園郵件助手</small></span>
+  </a>
+  {% if user is defined %}
+  <nav class="main-nav" aria-label="主要導覽">
+    <a href="/dashboard" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>總覽</a>
+    <a href="/announcements" {% if active_page == 'announcements' %}aria-current="page"{% endif %}>我的公告</a>
+    <a href="/settings" {% if active_page == 'settings' %}aria-current="page"{% endif %}>帳號設定</a>
+  </nav>
+  {% endif %}
+</header>

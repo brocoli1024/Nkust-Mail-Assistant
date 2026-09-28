@@ -22,11 +22,14 @@ def test_manifest_offline_notice_and_icons(web):
     manifest = manifest_response.json()
     assert manifest['start_url'] == manifest['scope'] == '/'
     assert manifest['display'] == 'standalone'
+    assert manifest['theme_color'] == '#1d191a'
 
     offline = client.get('/offline')
     assert offline.status_code == 200
     assert '目前沒有網路' in offline.text
     assert '郵件與公告內容' in offline.text
+    assert client.get('/assets/icon.svg').status_code == 200
+    assert client.get('/assets/fonts/Manrope.ttf').status_code == 200
 
     for path, expected_size in (
         ('/assets/icon-192.png', 192),
