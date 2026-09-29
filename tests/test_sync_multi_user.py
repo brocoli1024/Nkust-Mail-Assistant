@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone, date
 from threading import Event
 
@@ -42,6 +43,88 @@ class FakeMailbox:
         if isinstance(value, Exception):
             raise value
         return value
+
+
+def test_new_sync_classifies_source_category_variant(database):
+    db, _ = database
+    email = mail('variant')
+    email = replace(email, html_body=email.html_body.replace('<td>獎學金</td>', '<td>獎學金申請</td>'))
+    result = UserSyncService(db, lambda user: FakeMailbox({'variant': email})).sync_gmail_for_user(A)
+    assert result['announcements_created'] == 3
+    with db.transaction() as session:
+        row = session.scalar(select(Announcement).where(
+            Announcement.user_id == A.id, Announcement.source_index == 0))
+        assert row.source_category == '獎學金申請'
+        assert row.category == '獎學金'
+
+
+def test_generic_source_uses_unique_title_category(database):
+    db, _ = database
+    UserSyncService(db, lambda user: FakeMailbox({'sample': mail('sample')})).sync_gmail_for_user(A)
+    with db.transaction() as session:
+        row = session.scalar(select(Announcement).where(
+            Announcement.user_id == A.id, Announcement.source_index == 1))
+        assert row.source_category == '其他'
+        assert row.category == '徵才'
+
+
+def test_repeat_sync_backfills_only_current_users_unclassified_announcements(database):
+    db, _ = database
+    boxes = {1: FakeMailbox({'a': mail('a')}), 2: FakeMailbox({'b': mail('b')})}
+    service = UserSyncService(db, lambda user: boxes[user.id])
+    service.sync_gmail_for_user(A)
+    service.sync_gmail_for_user(B)
+    with db.transaction() as session:
+        own = session.scalar(select(Announcement).where(
+            Announcement.user_id == A.id, Announcement.source_index == 0))
+        other = session.scalar(select(Announcement).where(
+            Announcement.user_id == B.id, Announcement.source_index == 0))
+        own.source_category = other.source_category = '獎學金申請'
+        own.category = other.category = None
+        own.category_rule_version = other.category_rule_version = None
+        kept = session.scalar(select(Announcement).where(
+            Announcement.user_id == A.id, Announcement.source_index == 1))
+        kept.category = '行政通知'
+
+    boxes[1].messages = {}
+    result = service.sync_gmail_for_user(A)
+    assert result['emails_found'] == 0
+    with db.transaction() as session:
+        own = session.scalar(select(Announcement).where(
+            Announcement.user_id == A.id, Announcement.source_index == 0))
+        other = session.scalar(select(Announcement).where(
+            Announcement.user_id == B.id, Announcement.source_index == 0))
+        kept = session.scalar(select(Announcement).where(
+            Announcement.user_id == A.id, Announcement.source_index == 1))
+        assert own.category == '獎學金'
+        assert other.category is None
+        assert kept.category == '行政通知'
+
+
+def test_unresolved_backfill_is_not_rechecked_on_every_sync(database, monkeypatch):
+    db, _ = database
+    box = FakeMailbox({'a': mail('a')})
+    service = UserSyncService(db, lambda user: box)
+    service.sync_gmail_for_user(A)
+    with db.transaction() as session:
+        row = session.scalar(select(Announcement).where(
+            Announcement.user_id == A.id, Announcement.source_index == 0))
+        row.source_category = '校園訊息'
+        row.title = '校園最新消息'
+        row.category = None
+        row.category_rule_version = None
+
+    box.messages = {}
+    service.sync_gmail_for_user(A)
+    with db.transaction() as session:
+        row = session.scalar(select(Announcement).where(
+            Announcement.user_id == A.id, Announcement.source_index == 0))
+        assert row.category is None
+
+    def rechecked(*_):
+        raise AssertionError('unresolved announcement was rechecked')
+    monkeypatch.setattr('app.database.user_mail.classify_category', rechecked)
+    assert service.sync_gmail_for_user(A)['emails_found'] == 0
 
 
 def test_user_data_isolation_and_same_message_id_allowed(database):

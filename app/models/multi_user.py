@@ -123,6 +123,7 @@ class Announcement(Timestamps, MultiUserBase):
     department = Column(Text, nullable=False)
     source_category = Column(Text, nullable=False)
     category = Column(String(255), index=True)
+    category_rule_version = Column(String(64))
     title = Column(Text, nullable=False)
     summary = Column(Text)
     original_text = Column(Text, nullable=False)

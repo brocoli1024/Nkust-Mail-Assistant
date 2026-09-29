@@ -38,7 +38,7 @@ def check_database(settings):
         try:
             with db.engine.connect() as connection:
                 revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
-            return [] if revision == '0004' else ['DATABASE_MIGRATION_REQUIRED']
+            return [] if revision == '0005' else ['DATABASE_MIGRATION_REQUIRED']
         finally:
             db.close()
     except Exception:

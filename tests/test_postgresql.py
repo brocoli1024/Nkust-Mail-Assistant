@@ -73,6 +73,9 @@ def test_schema_and_repeat_upgrade(database):
     sync_contracts.test_user_data_isolation_and_same_message_id_allowed,
     sync_contracts.test_repeat_sync_skips_download_and_releases_lease,
     sync_contracts.test_one_failure_continues_sanitizes_and_retry_recovers,
+    sync_contracts.test_new_sync_classifies_source_category_variant,
+    sync_contracts.test_generic_source_uses_unique_title_category,
+    sync_contracts.test_repeat_sync_backfills_only_current_users_unclassified_announcements,
 ])
 def test_database_contracts(database, contract):
     contract(database)

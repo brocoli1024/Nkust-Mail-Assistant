@@ -22,7 +22,7 @@
         <noscript><button class="button" type="submit">套用篩選</button></noscript>
       </form>
     </section>
-    <p class="results-meta">共 {{ total }} 則 · 第 {{ page_number }} 頁。尚未由 AI 分類的公告依原始分類或標題匹配，標籤顯示「符合：分類」。</p>
+    <p class="results-meta">共 {{ total }} 則 · 第 {{ page_number }} 頁。分類依原始分類與標題規則判定；無法確定時仍顯示「未分類」。篩選中的「符合：」僅表示關鍵字命中。</p>
     <div class="announcement-list">
       {% for item in items %}
       <article class="announcement">

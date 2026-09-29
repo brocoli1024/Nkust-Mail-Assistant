@@ -9,18 +9,10 @@ from sqlalchemy import and_, func, or_, select
 from app.api.session import page
 from app.core.session import current_page_user
 from app.models.multi_user import Announcement as A, Email
+from app.services.category_rules import CATEGORIES, FILTER_WORDS
 
 router = APIRouter()
 TAIPEI = timezone(timedelta(hours=8))
-CATEGORIES = ('課程', '選課', '獎學金', '競賽', '講座', '活動', '證照', 'TOEIC',
-              '實習', '徵才', '交換學生', '行政通知', '其他')
-FILTER_WORDS = {
-    '課程': ('課程', '開課', '微學分'), '選課': ('選課',), '獎學金': ('獎學金', '獎助學金', '獎勵金'),
-    '競賽': ('競賽', '比賽'), '講座': ('講座', '演講'), '活動': ('活動',),
-    '證照': ('證照', '證輔導', '考證'), 'TOEIC': ('TOEIC', '多益'),
-    '實習': ('實習',), '徵才': ('徵才', '徵聘'), '交換學生': ('交換學生',),
-    '行政通知': ('行政通知',), '其他': ('其他',),
-}
 View = Literal['all', 'today', 'deadline', 'action']
 
 

@@ -140,6 +140,34 @@ def test_migration_matches_models_and_repeat_upgrade_preserves_data(database):
     assert 'users' not in Base.metadata.tables
 
 
+def test_category_rule_migration_preserves_existing_unclassified_data(tmp_path):
+    path = tmp_path / 'before-rules.db'
+    url = URL.create('sqlite', database=str(path))
+    config = configuration(url)
+    command.upgrade(config, '0004')
+    now = '2026-09-29T00:00:00+00:00'
+    with sqlite3.connect(path) as connection:
+        connection.execute('INSERT INTO users (id, google_user_id, email, created_at, updated_at) '
+                           'VALUES (1, ?, ?, ?, ?)', ('existing', 'existing@example.invalid', now, now))
+        connection.execute('INSERT INTO emails (id, user_id, gmail_message_id, status, warnings) '
+                           'VALUES (1, 1, ?, ?, ?)', ('existing-mail', 'processed', '[]'))
+        connection.execute('INSERT INTO announcements (id, user_id, email_id, source_index, '
+                           'source_fingerprint, department, source_category, category, title, '
+                           'original_text, date_evidence, date_inferred, keywords, analysis_status, '
+                           'created_at, updated_at) VALUES (1, 1, 1, 0, ?, ?, ?, NULL, ?, ?, ?, 0, ?, ?, ?, ?)',
+                           ('a' * 64, '教務處', '獎學金申請', '測試公告', '合成內容', '[]', '[]', 'pending', now, now))
+    command.upgrade(config, 'head')
+    db = MultiUserDatabase(url)
+    try:
+        with db.transaction() as session:
+            row = session.get(Announcement, 1)
+            assert row.source_category == '獎學金申請'
+            assert row.category is None
+            assert row.category_rule_version is None
+    finally:
+        db.close()
+
+
 def test_downgrade_and_reupgrade_on_disposable_database(database):
     db, config = database
     command.downgrade(config, 'base')

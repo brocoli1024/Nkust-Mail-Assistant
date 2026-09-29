@@ -26,6 +26,7 @@ class UserSyncService:
             with self.gmail_factory(user) as gmail:
                 result = SyncService(gmail, repository, parser=self.parser,
                                      parser_version=self.parser_version).sync(limit)
+            repository.backfill_categories()
             errors = [{'gmail_message_id': e['gmail_message_id'], 'error': safe_error(e['error']),
                        'failure_recorded': 'persistence_error' not in e} for e in result.errors]
             return {

@@ -3,12 +3,12 @@ from dataclasses import asdict
 from datetime import date, datetime, timedelta, timezone
 import secrets
 
-from sqlalchemy import delete, select, func, update
+from sqlalchemy import delete, select, func, or_, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.database.database import CATEGORIES
 from app.models.multi_user import SyncLease, Email, Announcement
+from app.services.category_rules import RULE_VERSION, classify_category
 
 LEASE_SECONDS = 300
 
@@ -124,7 +124,8 @@ class UserMailRepository:
                     user_id=self.user_id, email_id=row.id, source_index=item.source_index,
                     source_fingerprint=item.source_fingerprint, department=item.department,
                     source_category=item.source_category,
-                    category=item.source_category if item.source_category in CATEGORIES else None,
+                    category=classify_category(item.source_category, item.title),
+                    category_rule_version=RULE_VERSION,
                     title=item.title, original_text=item.original_text, original_html=item.original_html,
                     url=item.url, event_date=date.fromisoformat(item.event_date) if item.event_date else None,
                     deadline=date.fromisoformat(item.deadline) if item.deadline else None,
@@ -152,6 +153,29 @@ class UserMailRepository:
                 if email.received_at.tzinfo is not None:
                     self._copy_email(row, email)
             row.last_error = safe_error(error)
+
+    def backfill_categories(self):
+        """Classify this user's existing pending announcements in bounded batches."""
+        assigned = 0
+        last_id = 0
+        while True:
+            with self.database.transaction() as session:
+                self.lease.fence(session)
+                rows = session.scalars(select(Announcement).where(
+                    Announcement.user_id == self.user_id, Announcement.category.is_(None),
+                    or_(Announcement.category_rule_version.is_(None),
+                        Announcement.category_rule_version != RULE_VERSION),
+                    Announcement.id > last_id).order_by(Announcement.id).limit(100)).all()
+                if not rows:
+                    return assigned
+                for row in rows:
+                    last_id = row.id
+                    category = classify_category(row.source_category, row.title)
+                    row.category_rule_version = RULE_VERSION
+                    if category:
+                        row.category = category
+                        row.updated_at = datetime.now(timezone.utc)
+                        assigned += 1
 
     def counts(self):
         with self.database.transaction() as session:

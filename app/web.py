@@ -47,7 +47,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             try:
                 with database.engine.connect() as connection:
                     revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
-                if revision != '0004':
+                if revision != '0005':
                     raise ValueError()
             except Exception:
                 raise RuntimeError('Run alembic upgrade head on the NEW database before starting app.web') from None
