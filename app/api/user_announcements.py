@@ -4,7 +4,7 @@ from typing import Literal
 from urllib.parse import urlencode, urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, func, or_, select
 
 from app.api.session import page
 from app.core.session import current_page_user
@@ -14,6 +14,13 @@ router = APIRouter()
 TAIPEI = timezone(timedelta(hours=8))
 CATEGORIES = ('課程', '選課', '獎學金', '競賽', '講座', '活動', '證照', 'TOEIC',
               '實習', '徵才', '交換學生', '行政通知', '其他')
+FILTER_WORDS = {
+    '課程': ('課程', '開課', '微學分'), '選課': ('選課',), '獎學金': ('獎學金', '獎助學金', '獎勵金'),
+    '競賽': ('競賽', '比賽'), '講座': ('講座', '演講'), '活動': ('活動',),
+    '證照': ('證照', '證輔導', '考證'), 'TOEIC': ('TOEIC', '多益'),
+    '實習': ('實習',), '徵才': ('徵才', '徵聘'), '交換學生': ('交換學生',),
+    '行政通知': ('行政通知',), '其他': ('其他',),
+}
 View = Literal['all', 'today', 'deadline', 'action']
 
 
@@ -79,10 +86,20 @@ def announcements(request: Request, user=Depends(current_page_user), view: View 
         raise HTTPException(422, '未知的公告分類。')
     statement = owned(user.id).where(view_condition(view, calendar()))
     if category:
-        statement = statement.where(A.category.is_(None) if category == '未分類' else A.category == category)
+        if category == '未分類':
+            statement = statement.where(A.category.is_(None))
+        else:
+            fallback = or_(*(column.contains(word, autoescape=True)
+                             for word in FILTER_WORDS[category]
+                             for column in (A.source_category, A.title)))
+            statement = statement.where(or_(A.category == category,
+                                            and_(A.category.is_(None), fallback)))
+    ordering = (Email.received_at.desc().nulls_last(), A.id.desc())
+    if view == 'deadline':
+        ordering = (A.deadline.asc(), *ordering)
     with request.app.state.database.transaction() as session:
         total = session.scalar(select(func.count()).select_from(statement.subquery()))
-        rows = session.execute(statement.order_by(Email.received_at.desc().nulls_last(), A.id.desc())
+        rows = session.execute(statement.order_by(*ordering)
                                .offset((page_number - 1) * 20).limit(20)).all()
         items = [item_data(row, received_at) for row, received_at in rows]
     def link(number):

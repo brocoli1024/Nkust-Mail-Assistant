@@ -54,7 +54,7 @@ def test_pwa_assets_and_account_pages_keep_private_headers(web):
     assert login_page.headers['cache-control'] == 'no-store'
     csp = login_page.headers['content-security-policy']
     for directive in ("script-src 'self'", "worker-src 'self'", "connect-src 'self'",
-                      "manifest-src 'self'", "img-src 'self'"):
+                      "manifest-src 'self'", "img-src 'self'", "font-src 'self'"):
         assert directive in csp
 
     worker = client.get('/sw.js')

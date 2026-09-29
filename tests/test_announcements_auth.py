@@ -1,6 +1,10 @@
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import shutil
+import subprocess
 
 import pytest
+from bs4 import BeautifulSoup
 
 from app.api.user_announcements import calendar, dashboard_counts, safe_url
 from app.models.multi_user import User, Email, Announcement
@@ -83,6 +87,73 @@ def test_pagination_filters_and_validation(web):
         assert client.get('/announcements' + query).status_code == 422
 
 
+def test_category_filter_finds_unclassified_source_and_title_matches(web):
+    _, _, ids = seed(web, count=3)
+    client, app, _, _ = web
+    with app.state.database.transaction() as session:
+        source_match = session.get(Announcement, ids[0])
+        source_match.category = None
+        source_match.source_category = '獎學金申請'
+
+        title_match = session.get(Announcement, ids[1])
+        title_match.category = None
+        title_match.source_category = '校園訊息'
+        title_match.title = '獎助學金說明'
+
+        classified_elsewhere = session.get(Announcement, ids[2])
+        classified_elsewhere.category = '課程'
+        classified_elsewhere.source_category = '獎學金申請'
+        classified_elsewhere.title = '獎學金說明'
+
+    response = client.get('/announcements?view=all&category=獎學金')
+    assert response.status_code == 200
+    assert '共 2 則' in response.text
+    assert f'href="/announcements/{ids[0]}"' in response.text
+    assert f'href="/announcements/{ids[1]}"' in response.text
+    assert f'href="/announcements/{ids[2]}"' not in response.text
+    assert '原始分類：獎學金申請' in response.text
+    assert '原始分類：校園訊息' in response.text
+    assert 'PRIVATE-OTHER' not in response.text
+
+
+def test_category_filter_shows_matched_category_without_claiming_ai_classification(web):
+    _, _, ids = seed(web, count=2)
+    client, app, _, _ = web
+    with app.state.database.transaction() as session:
+        matched = session.get(Announcement, ids[0])
+        matched.category = None
+        matched.source_category = '獎學金申請'
+        classified = session.get(Announcement, ids[1])
+        classified.category = '獎學金'
+    response = client.get('/announcements?category=獎學金')
+    assert response.status_code == 200
+    assert response.text.count('class="tag">符合：獎學金') == 1
+    assert response.text.count('class="tag">獎學金') == 1
+    assert '原始分類：獎學金申請' in response.text
+
+
+def test_filter_selects_apply_without_button_and_keep_get_navigation(web):
+    client, _, _, _ = web
+    login(client)
+    response = client.get('/announcements?view=today&category=課程')
+    assert response.status_code == 200
+    assert '<form method="get" action="/announcements"' in response.text
+    assert '<script src="/assets/announcement-filters.js" defer></script>' in response.text
+    assert 'value="today" selected' in response.text
+    assert '<option selected>課程</option>' in response.text
+    page = BeautifulSoup(response.text, 'html.parser')
+    assert not [button for button in page.select('button[type=submit]')
+                if button.find_parent('noscript') is None]
+    assert client.get('/assets/announcement-filters.js').status_code == 200
+
+    node = shutil.which('node')
+    if node is None:
+        pytest.skip('Node.js is not installed; filter interaction simulation unavailable')
+    script = Path(__file__).resolve().parent / 'announcement_filter_check.cjs'
+    result = subprocess.run([node, str(script)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_taipei_boundaries_and_unknown_values(web, monkeypatch):
     uid, _, ids = seed(web)
     client, app, _, _ = web
@@ -106,6 +177,23 @@ def test_taipei_boundaries_and_unknown_values(web, monkeypatch):
         session.get(Email, row.email_id).received_at = start
     assert dashboard_counts(app.state.database, uid)['today'] == 1
     assert dashboard_counts(app.state.database, uid)['deadline'] == 1
+
+
+def test_deadline_view_orders_urgent_items_before_pagination(web):
+    _, _, ids = seed(web, count=21)
+    client, app, _, _ = web
+    today, _, _ = calendar()
+    with app.state.database.transaction() as session:
+        # The oldest item must move ahead of twenty later deadlines.
+        session.get(Announcement, ids[0]).deadline = today
+    first = client.get('/announcements?view=deadline').text
+    second = client.get('/announcements?view=deadline&page=2').text
+    urgent = f'href="/announcements/{ids[0]}"'
+    assert urgent in first
+    assert urgent not in second
+    assert first.index(urgent) < first.index(f'href="/announcements/{ids[20]}"')
+    # Other views retain the existing newest-first ordering.
+    assert urgent not in client.get('/announcements').text
 
 
 @pytest.mark.parametrize('url', ['javascript:alert(1)', '//evil.invalid', 'data:text/html,test',

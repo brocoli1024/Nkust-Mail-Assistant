@@ -132,7 +132,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Content-Security-Policy'] = (
             "default-src 'none'; script-src 'self'; worker-src 'self'; connect-src 'self'; "
-            "manifest-src 'self'; img-src 'self'; style-src 'self'; "
+            "manifest-src 'self'; img-src 'self'; style-src 'self'; font-src 'self'; "
             "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
         )
         return response
