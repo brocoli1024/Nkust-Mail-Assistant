@@ -81,7 +81,11 @@ class TokenService:
             OAuthAccount.provider_user_id == User.google_user_id)
         if google_user_id is not None:
             statement = statement.where(User.google_user_id == google_user_id)
-        account = session.scalar(statement.with_for_update())
+        # PostgreSQL otherwise locks the joined User as well, blocking a
+        # reconnect from checking the active deletion/sync lease while a
+        # provider request is in flight. The account lock still serializes
+        # credentials and prevents its owner from being deleted meanwhile.
+        account = session.scalar(statement.with_for_update(of=OAuthAccount))
         if account is None or not account.refresh_token_encrypted:
             raise ReauthorizationRequired('OAUTH_REAUTHORIZE')
         normalized_scopes(account.scopes)

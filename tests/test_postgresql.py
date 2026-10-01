@@ -46,8 +46,8 @@ def database():
         db = MultiUserDatabase(isolated)
         with db.transaction() as session:
             assert session.scalar(text('select current_schema()')) == schema
-            session.add_all([User(id=1, google_user_id='a', email='a@example.invalid'),
-                             User(id=2, google_user_id='b', email='b@example.invalid')])
+            session.add_all([User(id=1, google_user_id='google-a', email='a@example.invalid'),
+                             User(id=2, google_user_id='google-b', email='b@example.invalid')])
         yield db, config
     finally:
         if db is not None:

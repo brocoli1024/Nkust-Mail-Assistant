@@ -74,7 +74,10 @@ class UserSyncLease:
                 raise UserAccountChanged('SESSION_EXPIRED')
 
     def fence(self, session):
-        self._check_identity(session)
+        # Match acquire/save_identity: User before SyncLease. Account deletion
+        # later deletes User in this transaction; the opposite order can
+        # deadlock with a simultaneous identity-bound lease acquisition.
+        self._check_identity(session, lock=True)
         now = self.now()
         result = session.execute(update(SyncLease).where(
             SyncLease.user_id == self.user_id, SyncLease.owner == self.owner,
