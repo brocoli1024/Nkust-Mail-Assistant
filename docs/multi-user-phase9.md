@@ -30,9 +30,9 @@
 
 ## Google Cloud：正式授權驗收
 
-正式網址已確定。2026-10-01 已實查 Google Cloud：External／Testing，只有 1 位測試使用者；首頁與隱私政策連結未填，尚未完成公開驗證。詳見最新開放使用檢查。
+正式網址已確定。2026-10-01 已實查 Google Cloud：External／Testing，只有 1 位測試使用者。修正版網站發布後已填寫並儲存首頁與隱私政策連結；尚未完成公開驗證。詳見最新開放使用檢查。
 
-選定後到 Google Cloud Console 對應專案的 Google Auth Platform／OAuth client 設定，選現有 Web application client，在 Authorized redirect URIs 加入實際的 `https://正式網域/auth/google/callback`，並與環境變數完全一致。保留開發用途的 localhost callback。介面位置与發布／驗證要求屆時依官方文件確認，不假設測試模式可直接服務所有學生。需準備適用的隱私政策、資料保存／刪除方式與 OAuth 授權說明；gmail.readonly 對外發布相關要求尚未驗證。
+Google Cloud Console 現有 Web application client 已登錄正式 `https://nkust-mail-assistant.onrender.com/auth/google/callback` 與開發用途的 localhost callback。若更換網域，需在 Authorized redirect URIs 更新，並與環境變數完全一致。發布／驗證要求依 Google 官方文件確認；測試模式只能服務名單中的使用者。資料使用說明已發布，`gmail.readonly` 對外發布的適用驗證要求仍待完成。
 
 ## 上線驗收與回復
 

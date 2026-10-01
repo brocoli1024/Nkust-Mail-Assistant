@@ -1,6 +1,6 @@
 # NKUST 校園郵件智慧助手
 
-> **多人版已部署至 Render；全面開放仍待驗收。** `app.web:app` 提供 Google 登入、依帳號同步、分類規則、公告清單／詳細頁與 PWA。最新的資料說明、帳號刪除與帳號隔離修正目前僅完成本地驗證。請先閱讀 [2026-10-01 開放使用檢查](docs/public-readiness-2026-10-01.md)，確認 Google OAuth 對外授權、隱私政策、PostgreSQL 實機測試、備份還原及容量。部署操作見 [Phase 9 手冊](docs/multi-user-phase9.md)。唯讀部署前檢查：`python -m app.deployment_check`（本機 SQLite／HTTP 不符合正式設定）。
+> **多人版已部署至 Render；全面開放仍待驗收。** `app.web:app` 提供 Google 登入、依帳號同步、分類規則、公告清單／詳細頁與 PWA。2026-10-01 已發布資料說明、帳號刪除、帳號隔離與 PostgreSQL 併發補修，Google 品牌首頁及隱私連結也已儲存。本機 PostgreSQL 實機測試已通過；OAuth 仍為 Testing。請先閱讀 [2026-10-01 開放使用檢查](docs/public-readiness-2026-10-01.md)，確認 Google OAuth 對外授權、備份還原及容量。部署操作見 [Phase 9 手冊](docs/multi-user-phase9.md)。唯讀部署前檢查：`python -m app.deployment_check`（本機 SQLite／HTTP 不符合正式設定）。
 >
 > **以下原有章節描述單人本機版 `app.main:app`，不可直接套用於多人公開服務。** 多人 OAuth／Session／同步設定請見 [Phase 2](docs/multi-user-phase2.md)、[Phase 3](docs/multi-user-phase3.md)、[Phase 5](docs/multi-user-phase5.md)。
 
