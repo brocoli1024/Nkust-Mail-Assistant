@@ -26,9 +26,9 @@ class GmailCredentialsUnavailable(GmailError):
     """Temporary token provider/database failure; retry later."""
 
 
-def _access_token(tokens, user_id, *, rejected_token=None):
+def _access_token(tokens, user_id, *, google_user_id, rejected_token=None):
     try:
-        return tokens.access_token(user_id, rejected_token=rejected_token)
+        return tokens.access_token(user_id, rejected_token=rejected_token, google_user_id=google_user_id)
     except ReauthorizationRequired:
         raise GmailReauthorizationRequired('GMAIL_REAUTHORIZE') from None
     except AuthError as exc:
@@ -43,17 +43,19 @@ def _access_token(tokens, user_id, *, rejected_token=None):
 
 class _UserCredentials(Credentials):
     """SDK bearer adapter; TokenService exclusively owns refresh and persistence."""
-    def __init__(self, tokens, user_id):
+    def __init__(self, tokens, user_id, google_user_id):
         super().__init__()
         self._tokens = tokens
         self._user_id = user_id
+        self._google_user_id = google_user_id
 
     def before_request(self, request, method, url, headers):
-        self.token = _access_token(self._tokens, self._user_id)
+        self.token = _access_token(self._tokens, self._user_id, google_user_id=self._google_user_id)
         self.apply(headers)
 
     def refresh(self, request):
-        self.token = _access_token(self._tokens, self._user_id, rejected_token=self.token)
+        self.token = _access_token(self._tokens, self._user_id, google_user_id=self._google_user_id,
+                                   rejected_token=self.token)
 
 
 @dataclass(frozen=True)
@@ -64,14 +66,14 @@ class _ReadSettings:
 
 class UserGmailService(GmailService):
     @classmethod
-    def connect(cls, settings, *, tokens, user_id):
-        if type(user_id) is not int or user_id < 1:
+    def connect(cls, settings, *, tokens, user_id, google_user_id):
+        if type(user_id) is not int or user_id < 1 or not google_user_id:
             raise GmailReauthorizationRequired('GMAIL_REAUTHORIZE')
         if settings.timeout_seconds <= 0:
             raise ValueError('Gmail timeout must be positive')
-        credentials = _UserCredentials(tokens, user_id)
+        credentials = _UserCredentials(tokens, user_id, google_user_id)
         # Fail before constructing the SDK resource if the account is unavailable.
-        credentials.token = _access_token(tokens, user_id)
+        credentials.token = _access_token(tokens, user_id, google_user_id=google_user_id)
         http = None
         try:
             http = AuthorizedHttp(credentials, http=httplib2.Http(timeout=settings.timeout_seconds),
@@ -129,4 +131,5 @@ class UserGmailFactory:
         # Callers pass the identity produced by current_user, never request JSON.
         if not isinstance(user, CurrentUser):
             raise GmailReauthorizationRequired('GMAIL_REAUTHORIZE')
-        return UserGmailService.connect(self.settings, tokens=self.tokens, user_id=user.id)
+        return UserGmailService.connect(self.settings, tokens=self.tokens, user_id=user.id,
+                                       google_user_id=user.google_user_id)

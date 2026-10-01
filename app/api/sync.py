@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.api.session import page
 from app.core.session import current_user
-from app.database.user_mail import SyncBusy, SyncLeaseLost
+from app.database.user_mail import SyncBusy, SyncLeaseLost, UserAccountChanged
 from app.services.gmail_service import GmailError
 from app.services.user_gmail_service import GmailReauthorizationRequired, GmailCredentialsUnavailable
 
@@ -66,6 +66,8 @@ def sync(request: Request, payload=Depends(sync_input), user=Depends(current_use
         result = request.app.state.sync_service.sync_gmail_for_user(user, payload.limit)
     except (SyncBusy, SyncLeaseLost):
         error, status = 'SYNC_BUSY', 409
+    except UserAccountChanged:
+        error, status = 'SESSION_EXPIRED', 401
     except GmailReauthorizationRequired:
         error, status = 'GMAIL_REAUTHORIZE', 401
     except GmailCredentialsUnavailable:

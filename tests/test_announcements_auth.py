@@ -54,7 +54,8 @@ def test_list_detail_and_dashboard_ownership(web):
         response = client.get('/announcements' + query)
         assert response.status_code == 200
         assert 'OWN-0' in response.text and 'PRIVATE-OTHER' not in response.text
-    assert dashboard_counts(app.state.database, uid) == dict(all=1, today=1, deadline=1, action=1)
+    actor = app.state.sessions.resolve(client.cookies.get(app.state.sessions.cookie_name))
+    assert dashboard_counts(app.state.database, actor) == dict(all=1, today=1, deadline=1, action=1)
     assert '查看全部 1 則公告' in client.get('/dashboard').text
     response = client.get(f'/announcements/{ids[0]}')
     assert response.status_code == 200
@@ -157,6 +158,7 @@ def test_filter_selects_apply_without_button_and_keep_get_navigation(web):
 def test_taipei_boundaries_and_unknown_values(web, monkeypatch):
     uid, _, ids = seed(web)
     client, app, _, _ = web
+    actor = app.state.sessions.resolve(client.cookies.get(app.state.sessions.cookie_name))
     fixed = datetime(2026, 9, 27, 16, 0, tzinfo=timezone.utc)
     dates = calendar(fixed)
     assert dates[0].isoformat() == '2026-09-28'
@@ -168,15 +170,15 @@ def test_taipei_boundaries_and_unknown_values(web, monkeypatch):
         row.requires_action = None
         row.category = None
         session.get(Email, row.email_id).received_at = end
-    assert dashboard_counts(app.state.database, uid) == dict(all=1, today=0, deadline=0, action=0)
+    assert dashboard_counts(app.state.database, actor) == dict(all=1, today=0, deadline=0, action=0)
     assert 'OWN-0' in client.get('/announcements?category=未分類').text
     assert '尚未判定' in client.get(f'/announcements/{ids[0]}').text
     with app.state.database.transaction() as session:
         row = session.get(Announcement, ids[0])
         row.deadline = today
         session.get(Email, row.email_id).received_at = start
-    assert dashboard_counts(app.state.database, uid)['today'] == 1
-    assert dashboard_counts(app.state.database, uid)['deadline'] == 1
+    assert dashboard_counts(app.state.database, actor)['today'] == 1
+    assert dashboard_counts(app.state.database, actor)['deadline'] == 1
 
 
 def test_deadline_view_orders_urgent_items_before_pagination(web):

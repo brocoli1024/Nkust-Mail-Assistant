@@ -15,7 +15,7 @@
     </section>
     <section class="result-card" aria-label="同步狀態">
       {% if error %}
-      <p role="alert">{% if error == 'SYNC_BUSY' %}已有同步進行中或本次作業已逾時，請稍後重試。{% elif error == 'GMAIL_REAUTHORIZE' %}Google 授權已失效，請重新連結帳號。{% else %}目前無法連線，請稍後重試。{% endif %}</p>
+      <p role="alert">{% if error == 'SYNC_BUSY' %}已有同步進行中或本次作業已逾時，請稍後重試。{% elif error == 'GMAIL_REAUTHORIZE' %}Google 授權已失效，請重新連結帳號。{% elif error == 'SESSION_EXPIRED' %}登入狀態已失效，請重新登入。{% else %}目前無法連線，請稍後重試。{% endif %}</p>
       {% else %}
       <p class="notice">{% if result.emails_failed %}部分郵件未能處理，成功的公告已保存。{% else %}本次同步完成。{% endif %}</p>
       <dl class="result-grid">
@@ -27,6 +27,7 @@
       </dl>
       {% endif %}
       {% if error == 'GMAIL_REAUTHORIZE' or (result and result.reauthorization_required) %}<a class="button" href="/auth/google">重新連結 Google</a>{% endif %}
+      {% if error == 'SESSION_EXPIRED' %}<a class="button" href="/login">重新登入</a>{% endif %}
       <p><a class="text-link dark" href="/dashboard">返回校園公告</a></p>
     </section>
   </main>

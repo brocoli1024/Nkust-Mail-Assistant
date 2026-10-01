@@ -5,6 +5,7 @@ from alembic import command
 from sqlalchemy.dialects import postgresql
 
 from app.api.user_announcements import owned, calendar, view_condition
+from app.core.session import CurrentUser
 from app.database.multi_user import validate_database_url
 from tests.test_multi_user_database import configuration
 
@@ -27,10 +28,11 @@ def test_postgresql_upgrade_and_downgrade_sql():
 
 def test_dashboard_queries_compile_with_postgresql():
     for view in ('all', 'today', 'deadline', 'action'):
-        statement = owned(7).where(view_condition(view, calendar()))
+        statement = owned(CurrentUser(7, 'synthetic@example.invalid', None, 'google-synthetic')).where(view_condition(view, calendar()))
         compiled = statement.compile(dialect=postgresql.dialect())
         sql = str(compiled)
         assert 'announcements.user_id =' in sql and 'emails.user_id =' in sql
+        assert 'users.google_user_id =' in sql
         assert 'julianday' not in sql and 'strftime' not in sql
 
 

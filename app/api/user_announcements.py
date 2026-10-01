@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import and_, func, or_, select
 
 from app.api.session import page
-from app.core.session import current_page_user
-from app.models.multi_user import Announcement as A, Email
+from app.core.session import CurrentUser, current_page_user
+from app.models.multi_user import Announcement as A, Email, User
 from app.services.category_rules import CATEGORIES, FILTER_WORDS
 
 router = APIRouter()
@@ -22,10 +22,12 @@ def calendar(now=None):
     return today, start, start + timedelta(days=1)
 
 
-def owned(user_id):
+def owned(user: CurrentUser):
     return select(A, Email.received_at).join(Email, and_(
-        A.email_id == Email.id, A.user_id == Email.user_id)).where(
-        A.user_id == user_id, Email.user_id == user_id)
+        A.email_id == Email.id, A.user_id == Email.user_id)).join(
+        User, User.id == A.user_id).where(
+        A.user_id == user.id, Email.user_id == user.id,
+        User.google_user_id == user.google_user_id)
 
 
 def view_condition(view, dates):
@@ -38,11 +40,11 @@ def view_condition(view, dates):
     }[view]
 
 
-def dashboard_counts(database, user_id):
+def dashboard_counts(database, user: CurrentUser):
     dates = calendar()
     with database.transaction() as session:
         return {view: session.scalar(select(func.count()).select_from(
-            owned(user_id).where(view_condition(view, dates)).subquery()))
+            owned(user).where(view_condition(view, dates)).subquery()))
             for view in ('all', 'today', 'deadline', 'action')}
 
 
@@ -76,7 +78,7 @@ def announcements(request: Request, user=Depends(current_page_user), view: View 
                   category: str = '', page_number: int = Query(1, alias='page', ge=1, le=1000000)):
     if category and category not in CATEGORIES and category != '未分類':
         raise HTTPException(422, '未知的公告分類。')
-    statement = owned(user.id).where(view_condition(view, calendar()))
+    statement = owned(user).where(view_condition(view, calendar()))
     if category:
         if category == '未分類':
             statement = statement.where(A.category.is_(None))
@@ -105,7 +107,7 @@ def announcements(request: Request, user=Depends(current_page_user), view: View 
 @router.get('/announcements/{announcement_id}')
 def announcement_detail(announcement_id: int, request: Request, user=Depends(current_page_user)):
     with request.app.state.database.transaction() as session:
-        result = session.execute(owned(user.id).where(A.id == announcement_id)).first()
+        result = session.execute(owned(user).where(A.id == announcement_id)).first()
         if result is None:
             raise HTTPException(404, '找不到公告。')
         item = item_data(*result, detail=True)

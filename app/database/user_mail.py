@@ -7,7 +7,7 @@ from sqlalchemy import delete, select, func, or_, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-from app.models.multi_user import SyncLease, Email, Announcement
+from app.models.multi_user import User, SyncLease, Email, Announcement
 from app.services.category_rules import RULE_VERSION, classify_category
 
 LEASE_SECONDS = 300
@@ -21,6 +21,10 @@ class SyncLeaseLost(RuntimeError):
     pass
 
 
+class UserAccountChanged(PermissionError):
+    pass
+
+
 def safe_error(error):
     # Do not persist arbitrary exception messages/SQL parameters/mail fragments.
     prefix = str(error).split(':', 1)[0]
@@ -29,6 +33,7 @@ def safe_error(error):
         'GMAIL_REQUEST_FAILED', 'GMAIL_RESPONSE_INVALID', 'EMAIL_ID_MISMATCH',
         'EMAIL_FORMAT_ERROR', 'EMAIL_DATE_ERROR', 'MIME_DECODE_ERROR',
         'MIME_BODY_MISSING', 'MIME_ATTACHMENT_ERROR', 'MIME_ATTACHMENT_REQUIRED',
+        'MIME_BODY_TOO_LARGE', 'MIME_STRUCTURE_LIMIT',
         'ANNOUNCEMENT_EMPTY_FIELD', 'TABLE_DUPLICATE_HEADER', 'TABLE_SPAN_UNSUPPORTED',
         'TABLE_ROW_INVALID', 'TABLE_NOT_FOUND', 'TABLE_EMPTY', 'PLAIN_LAYOUT_UNKNOWN',
         'PLAIN_BLOCK_INVALID', 'DATABASE_WRITE_FAILED', 'EMPTY_PARSE_RESULT',
@@ -37,9 +42,10 @@ def safe_error(error):
 
 
 class UserSyncLease:
-    def __init__(self, database, user_id, *, now=None):
+    def __init__(self, database, user_id, *, google_user_id=None, now=None):
         self.database = database
         self.user_id = user_id
+        self.google_user_id = google_user_id
         self.owner = secrets.token_hex(32)
         self.now = now or (lambda: datetime.now(timezone.utc))
 
@@ -54,11 +60,21 @@ class UserSyncLease:
             where=SyncLease.expires_at <= now,
         ).returning(SyncLease.user_id)
         with self.database.transaction() as session:
+            self._check_identity(session, lock=True)
             acquired = session.scalar(statement)
         if acquired is None:
             raise SyncBusy('SYNC_BUSY')
 
+    def _check_identity(self, session, *, lock=False):
+        if self.google_user_id is not None:
+            statement = select(User.google_user_id).where(User.id == self.user_id)
+            if lock:
+                statement = statement.with_for_update()
+            if session.scalar(statement) != self.google_user_id:
+                raise UserAccountChanged('SESSION_EXPIRED')
+
     def fence(self, session):
+        self._check_identity(session)
         now = self.now()
         result = session.execute(update(SyncLease).where(
             SyncLease.user_id == self.user_id, SyncLease.owner == self.owner,

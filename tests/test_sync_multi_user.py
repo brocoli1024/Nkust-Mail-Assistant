@@ -17,8 +17,8 @@ from app.services.user_sync_service import UserSyncService
 from tests.test_api import mail
 from tests.test_multi_user_database import database
 
-A = CurrentUser(1, 'a@example.invalid', 'A')
-B = CurrentUser(2, 'b@example.invalid', 'B')
+A = CurrentUser(1, 'a@example.invalid', 'A', 'google-a')
+B = CurrentUser(2, 'b@example.invalid', 'B', 'google-b')
 
 
 class FakeMailbox:

@@ -12,6 +12,7 @@ from fastapi import HTTPException, Request
 from sqlalchemy import delete, select
 
 from app.config import ROOT
+from app.auth.errors import AuthError
 from app.models.multi_user import User, WebSession
 
 SESSION_SECONDS = 8 * 60 * 60
@@ -34,6 +35,7 @@ class CurrentUser:
     id: int
     email: str
     display_name: str | None
+    google_user_id: str
 
 
 class SessionService:
@@ -50,10 +52,14 @@ class SessionService:
     def cookie_options(self):
         return dict(httponly=True, secure=self.secure, samesite='lax', path='/')
 
-    def create(self, user_id, previous=None):
+    def create(self, user_id, previous=None, *, google_user_id=None):
         value = secrets.token_urlsafe(32)
         now = self.now()
         with self.database.transaction() as session:
+            if google_user_id is not None:
+                subject = session.scalar(select(User.google_user_id).where(User.id == user_id).with_for_update())
+                if subject != google_user_id:
+                    raise AuthError('OAUTH_ACCOUNT_CHANGED')
             session.execute(delete(WebSession).where(WebSession.expires_at <= now))
             if valid_id(previous):
                 session.execute(delete(WebSession).where(WebSession.id_hash == session_hash(previous)))
@@ -65,7 +71,7 @@ class SessionService:
         if not valid_id(value):
             return None
         with self.database.transaction() as session:
-            row = session.execute(select(User.id, User.email, User.display_name).join(
+            row = session.execute(select(User.id, User.email, User.display_name, User.google_user_id).join(
                 WebSession, WebSession.user_id == User.id).where(
                     WebSession.id_hash == session_hash(value), WebSession.expires_at > self.now())).first()
             return CurrentUser(*row) if row else None

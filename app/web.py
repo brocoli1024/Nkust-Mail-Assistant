@@ -76,9 +76,11 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         from app.api.session import router as session_router
         from app.api.sync import router as sync_router
         from app.api.user_announcements import router as announcements_router
+        from app.api.account import router as account_router
         app.include_router(session_router)
         app.include_router(sync_router)
         app.include_router(announcements_router)
+        app.include_router(account_router)
         app.mount('/assets', StaticFiles(directory=ROOT / 'app/static/web'), name='web-assets')
 
         @app.get('/manifest.webmanifest', include_in_schema=False)
@@ -127,7 +129,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         # which correctly fail our CSRF origin check. Account pages must retain
         # same-origin form metadata; OAuth URLs must never disclose their code.
         response.headers['Referrer-Policy'] = (
-            'same-origin' if request.url.path in ('/dashboard', '/settings') else 'no-referrer'
+            'same-origin' if request.url.path in ('/dashboard', '/settings', '/account/delete') else 'no-referrer'
         )
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Content-Security-Policy'] = (

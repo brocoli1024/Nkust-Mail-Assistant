@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}
+  <title>資料使用說明 · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css?v=editorial-1">
+</head>
+<body><div class="site-shell">
+  {% include 'site_header.html' %}
+  <main id="main-content" class="page-content">
+    <section class="hero compact" aria-labelledby="page-title"><div><h1 id="page-title">資料使用說明</h1><p>授權前，先了解網站會讀取與保存哪些資料。</p></div></section>
+    <section class="detail-section"><h2>登入與 Gmail 授權</h2><p>網站使用 Google 帳號識別碼、姓名、電子郵件地址及頭像建立你的帳號。Gmail 唯讀授權允許讀取郵件；本站在你按下同步時，只查詢寄件者為 mailoffice@nkust.edu.tw 的校園通知。不會寄信、刪信或修改 Gmail 郵件，登入也不會自動同步。</p></section>
+    <section class="detail-section"><h2>保存與使用的資料</h2><p>網站保存已同步郵件的識別碼、寄件者、主旨、收到時間、內文，以及整理出的公告、分類與日期。Google 授權 token 會加密保存，以便之後由你啟動同步。公告分類使用原始分類與標題規則；多人版不會把郵件內容傳送到 AI 或廣告系統。</p><p>每位使用者僅能透過網站存取自己的資料。同步內容保存於伺服器資料庫；網站不會提供離線郵件或公告快取。</p></section>
+    <section class="detail-section"><h2>主機服務與歷史還原</h2><p>本站使用 Render 的美國主機及 Neon 的新加坡區域資料庫，處理與保存上述資料。目前資料庫提供最近 6 小時的歷史還原紀錄，未啟用額外快照或排程備份。刪除本站資料不會立即移除這段期間可供還原的歷史副本。</p></section>
+    <section class="detail-section"><h2>停止使用與刪除</h2><p>登出只結束目前瀏覽器的登入狀態。已同步內容會保留至你刪除本站帳號與資料。你可以在「帳號設定」確認刪除自己的帳號、同步郵件、公告與授權資料，並結束所有裝置的本站登入。這不會刪除 Gmail 裡的原始郵件。網站會同時嘗試撤銷 Google 授權；若 Google 暫時無法處理，你仍可完成本站資料刪除，再到 Google 帳戶手動移除連線。</p><p>重新登入會建立帳號；只有你再次按下同步，才會重新匯入郵件。如有伺服器備份，刪除本站資料不會立即清除備份副本。</p><p><a class="text-link" href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">管理 Google 帳戶的第三方連線（另開分頁）</a></p></section>
+    <section class="detail-section"><h2>聯絡我們</h2><p>若對資料使用、Google 授權或刪除本站資料有疑問，請聯絡 <a class="text-link" href="mailto:c113156128@nkust.edu.tw">c113156128@nkust.edu.tw</a>。</p></section>
+    <p><a class="button secondary" href="/login">返回登入</a></p>
+  </main>
+</div></body></html>

@@ -19,7 +19,9 @@ def login(request: Request):
         sessions = request.app.state.sessions
         if sessions.resolve(request.cookies.get(sessions.cookie_name)):
             return RedirectResponse('/dashboard', status_code=303)
-        response = page(request, 'login.html', logged_out=request.query_params.get('logged_out') == '1')
+        response = page(request, 'login.html', logged_out=request.query_params.get('logged_out') == '1',
+                        deleted=request.query_params.get('deleted') == '1',
+                        manual_disconnect=request.query_params.get('disconnect') == 'manual')
         sessions.clear_cookie(response)
         return response
     return RedirectResponse('/auth/google', status_code=303)
@@ -52,7 +54,8 @@ def callback(request: Request):
         identity = state.google.verify_identity(tokens, context['nonce'])
         user_id = state.tokens.save_identity(identity, tokens)
         if getattr(state, 'sessions', None) is not None:
-            value = state.sessions.create(user_id, request.cookies.get(state.sessions.cookie_name))
+            value = state.sessions.create(user_id, request.cookies.get(state.sessions.cookie_name),
+                                          google_user_id=identity['sub'])
             response = RedirectResponse('/dashboard', status_code=303)
             state.sessions.set_cookie(response, value)
         else:

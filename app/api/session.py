@@ -22,7 +22,7 @@ def dashboard(request: Request, user=Depends(current_page_user)):
     from app.api.user_announcements import dashboard_counts
     sessions = request.app.state.sessions
     return page(request, 'account.html', user=user, title='校園公告', settings=False,
-                counts=dashboard_counts(request.app.state.database, user.id),
+                counts=dashboard_counts(request.app.state.database, user),
                 csrf=sessions.csrf(request.cookies.get(sessions.cookie_name)))
 
 

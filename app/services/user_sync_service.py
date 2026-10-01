@@ -15,11 +15,12 @@ class UserSyncService:
         self.parser_version = parser_version
 
     def sync_gmail_for_user(self, user, limit=5):
-        if not isinstance(user, CurrentUser) or type(user.id) is not int or user.id < 1:
+        if (not isinstance(user, CurrentUser) or type(user.id) is not int or user.id < 1 or
+                not isinstance(user.google_user_id, str) or not user.google_user_id):
             raise ValueError('Authenticated CurrentUser required')
         if type(limit) is not int or not 1 <= limit <= 100:
             raise ValueError('Sync limit must be between 1 and 100')
-        lease = UserSyncLease(self.database, user.id)
+        lease = UserSyncLease(self.database, user.id, google_user_id=user.google_user_id)
         lease.acquire()
         try:
             repository = UserMailRepository(self.database, user.id, lease)

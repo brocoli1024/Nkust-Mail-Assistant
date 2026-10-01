@@ -88,3 +88,34 @@ def test_alternatives_do_not_duplicate_html():
         part('text/html', '<p>variant 1</p>'), part('text/html', '<p>variant 2</p>'),
     ]}))
     assert decoded.html_body == '<p>variant 2</p>'
+
+
+def test_deep_mime_tree_is_rejected_before_recursive_processing():
+    payload = part('text/plain', '公告')
+    for _ in range(80):
+        payload = {'mimeType': 'multipart/mixed', 'parts': [payload]}
+    with pytest.raises(EmailParseError, match='MIME_STRUCTURE_LIMIT'):
+        decode_message(message(payload))
+
+
+def test_many_mime_parts_are_bounded():
+    payload = {'mimeType': 'multipart/mixed', 'parts': [part('text/plain', '公告') for _ in range(500)]}
+    with pytest.raises(EmailParseError, match='MIME_STRUCTURE_LIMIT'):
+        decode_message(message(payload))
+
+
+def test_combined_body_size_is_bounded_across_parts():
+    payload = {'mimeType': 'multipart/mixed', 'parts': [part('text/plain', 'a' * 800_000) for _ in range(3)]}
+    with pytest.raises(EmailParseError, match='MIME_BODY_TOO_LARGE'):
+        decode_message(message(payload))
+
+
+def test_large_attachment_body_is_rejected_before_download():
+    calls = []
+    def loader(attachment_id):
+        calls.append(attachment_id)
+        return encoded('公告')
+    payload = {'mimeType': 'text/html', 'body': {'attachmentId': 'large-body', 'size': 3_000_000}}
+    with pytest.raises(EmailParseError, match='MIME_BODY_TOO_LARGE'):
+        decode_message(message(payload), loader)
+    assert calls == []

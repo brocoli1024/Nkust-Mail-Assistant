@@ -13,6 +13,17 @@ class EmailParseError(ValueError):
     pass
 
 
+MAX_BODY_BYTES = 2 * 1024 * 1024
+MAX_MIME_DEPTH = 32
+MAX_MIME_PARTS = 200
+
+
+@dataclass
+class _BodyBudget:
+    remaining: int = MAX_BODY_BYTES
+    parts: int = 0
+
+
 @dataclass(frozen=True)
 class DecodedEmail:
     gmail_message_id: str
@@ -31,21 +42,31 @@ def _headers(part: dict) -> dict[str, str]:
     return {item['name'].lower(): item['value'] for item in part.get('headers', [])}
 
 
-def _decode_data(data: str, charset: str) -> str:
+def _decode_data(data: str, charset: str, remaining: int):
+    # Check the encoded length before allocating its decoded bytes.
+    if len(data) > ((remaining + 2) // 3) * 4:
+        raise EmailParseError('MIME_BODY_TOO_LARGE: message body exceeds safe size')
     try:
         raw = base64.b64decode(data + '=' * (-len(data) % 4), altchars=b'-_', validate=True)
-        return raw.decode(charset)
+        if len(raw) > remaining:
+            raise EmailParseError('MIME_BODY_TOO_LARGE: message body exceeds safe size')
+        return raw.decode(charset), len(raw)
+    except EmailParseError:
+        raise
     except (ValueError, UnicodeError, LookupError, binascii.Error) as exc:
         raise EmailParseError('MIME_DECODE_ERROR: invalid base64url or character encoding') from exc
 
 
-def _bodies(part: dict, attachment_loader: Callable[[str], str] | None):
+def _bodies(part: dict, attachment_loader: Callable[[str], str] | None, budget: _BodyBudget, depth=0):
+    budget.parts += 1
+    if depth >= MAX_MIME_DEPTH or budget.parts > MAX_MIME_PARTS:
+        raise EmailParseError('MIME_STRUCTURE_LIMIT: message has too many nested parts')
     headers = _headers(part)
     if part.get('filename') or headers.get('content-disposition', '').lower().startswith('attachment'):
         return None, None
     mime = part.get('mimeType', '').lower()
     if mime.startswith('multipart/'):
-        alternatives = [_bodies(child, attachment_loader) for child in part.get('parts', [])]
+        alternatives = [_bodies(child, attachment_loader, budget, depth + 1) for child in part.get('parts', [])]
         def combine(index):
             values = [item[index] for item in alternatives if item[index] is not None]
             if not values:
@@ -56,6 +77,8 @@ def _bodies(part: dict, attachment_loader: Callable[[str], str] | None):
     if mime not in ('text/html', 'text/plain'):
         return None, None
     body = part.get('body', {})
+    if body.get('size', 0) > budget.remaining:
+        raise EmailParseError('MIME_BODY_TOO_LARGE: message body exceeds safe size')
     data = body.get('data')
     if data is None and body.get('attachmentId'):
         if attachment_loader is None:
@@ -70,7 +93,8 @@ def _bodies(part: dict, attachment_loader: Callable[[str], str] | None):
         data = ''
     message = Message()
     message['Content-Type'] = headers.get('content-type', mime)
-    decoded = _decode_data(data, message.get_content_charset() or 'utf-8')
+    decoded, size = _decode_data(data, message.get_content_charset() or 'utf-8', budget.remaining)
+    budget.remaining -= size
     return (decoded, None) if mime == 'text/html' else (None, decoded)
 
 
@@ -84,7 +108,7 @@ def decode_message(message: dict, attachment_loader: Callable[[str], str] | None
             received_at = parsedate_to_datetime(headers['date'])
             if received_at.tzinfo is None:
                 raise EmailParseError('EMAIL_DATE_ERROR: received date has no timezone')
-        html, plain = _bodies(payload, attachment_loader)
+        html, plain = _bodies(payload, attachment_loader, _BodyBudget())
         if html is None and plain is None:
             raise EmailParseError('MIME_BODY_MISSING: no supported message body')
         return DecodedEmail(

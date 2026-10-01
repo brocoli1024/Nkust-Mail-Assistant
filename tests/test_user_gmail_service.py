@@ -13,7 +13,7 @@ from sqlalchemy import select
 from app.auth.errors import ReauthorizationRequired, AuthError
 from app.config import Settings
 from app.core.session import CurrentUser
-from app.models.multi_user import OAuthAccount
+from app.models.multi_user import OAuthAccount, User
 from app.services.gmail_service import GmailError
 from app.services.user_gmail_service import (
     UserGmailFactory, UserGmailService, GmailReauthorizationRequired, GmailCredentialsUnavailable,
@@ -42,7 +42,24 @@ def seed(app, google, *, expired=False):
     first = app.state.tokens.save_identity(google.claims, tokens(access_token='user-a-token', refresh_token='user-a-refresh', expires_at=expiry))
     second = app.state.tokens.save_identity({'sub':'google-b', 'email':'b@example.invalid'},
                                            tokens(access_token='user-b-token', refresh_token='user-b-refresh'))
-    return CurrentUser(first, 'a@example.invalid', 'A'), CurrentUser(second, 'b@example.invalid', 'B')
+    return CurrentUser(first, 'a@example.invalid', 'A', 'google-a'), CurrentUser(second, 'b@example.invalid', 'B', 'google-b')
+
+
+def test_existing_gmail_client_cannot_use_a_reused_accounts_token(web):
+    _, app, google = web
+    first = app.state.tokens.save_identity(google.claims, tokens(access_token='user-a-token'))
+    actor = CurrentUser(first, 'a@example.invalid', 'A', 'google-a')
+    transport = FakeHttp()
+    with patch('app.services.user_gmail_service.httplib2.Http', return_value=transport):
+        with app.state.gmail_for_user(actor) as client:
+            with app.state.database.transaction() as session:
+                session.delete(session.get(User, first))
+            second = app.state.tokens.save_identity({'sub': 'google-b', 'email': 'b@example.invalid'},
+                                                    tokens(access_token='user-b-token'))
+            assert second == first  # SQLite's numeric ID may be reused after deletion.
+            with pytest.raises(GmailReauthorizationRequired):
+                client.list_message_ids()
+    assert transport.requests == []
 
 
 def test_two_users_have_separate_clients_bearer_tokens_and_fixed_query(web, tmp_path):
@@ -121,7 +138,7 @@ def test_refresh_failure_leaves_other_user_usable(web, error, expected):
 def test_no_token_fallback_for_unknown_user_or_untrusted_identity(web):
     _, app, _ = web
     with patch('app.services.gmail_service.authenticate', side_effect=AssertionError('legacy fallback')):
-        for user in ({'id':1}, 1, None, CurrentUser(999,'missing@example.invalid',None), CurrentUser(True,'bad',None)):
+        for user in ({'id':1}, 1, None, CurrentUser(999,'missing@example.invalid',None,'missing'), CurrentUser(True,'bad',None,'bad')):
             with pytest.raises(GmailReauthorizationRequired):
                 app.state.gmail_for_user(user)
 

@@ -7,7 +7,7 @@ from sqlalchemy import select, update
 
 from app.auth.errors import AuthError, ReauthorizationRequired
 from app.auth.google_oauth import normalized_scopes
-from app.models.multi_user import User, OAuthAccount
+from app.models.multi_user import User, OAuthAccount, SyncLease
 
 
 def utc(value):
@@ -44,6 +44,12 @@ class TokenService:
                 user = User(google_user_id=identity['sub'], email=identity['email'])
                 session.add(user)
                 session.flush()
+            elif session.scalar(select(SyncLease.user_id).where(
+                    SyncLease.user_id == user.id, SyncLease.expires_at > datetime.now(timezone.utc))) is not None:
+                # The user-row lock serializes this check with identity-bound
+                # lease acquisition. Reconnect cannot replace a grant during
+                # sync or between revocation and account removal.
+                raise AuthError('OAUTH_ACCOUNT_BUSY')
             user.email = identity['email']
             user.display_name = identity.get('name') if isinstance(identity.get('name'), str) else None
             user.avatar_url = identity.get('picture') if isinstance(identity.get('picture'), str) else None
@@ -67,20 +73,23 @@ class TokenService:
             session.flush()
             return user.id
 
-    def _account(self, session, user_id):
+    def _account(self, session, user_id, *, google_user_id=None):
         if type(user_id) is not int or user_id < 1:
             raise ReauthorizationRequired('OAUTH_REAUTHORIZE')
-        account = session.scalar(select(OAuthAccount).join(User, User.id == OAuthAccount.user_id).where(
+        statement = select(OAuthAccount).join(User, User.id == OAuthAccount.user_id).where(
             OAuthAccount.user_id == user_id, OAuthAccount.provider == 'google',
-            OAuthAccount.provider_user_id == User.google_user_id).with_for_update())
+            OAuthAccount.provider_user_id == User.google_user_id)
+        if google_user_id is not None:
+            statement = statement.where(User.google_user_id == google_user_id)
+        account = session.scalar(statement.with_for_update())
         if account is None or not account.refresh_token_encrypted:
             raise ReauthorizationRequired('OAUTH_REAUTHORIZE')
         normalized_scopes(account.scopes)
         return account
 
-    def access_token(self, user_id, *, rejected_token=None):
+    def access_token(self, user_id, *, rejected_token=None, google_user_id=None):
         with self.database.transaction() as session:
-            account = self._account(session, user_id)
+            account = self._account(session, user_id, google_user_id=google_user_id)
             if (account.access_token_encrypted and account.expires_at and
                     utc(account.expires_at) > datetime.now(timezone.utc) + timedelta(seconds=60)):
                 cached = self.decrypt(account.access_token_encrypted, context=self.context(user_id, 'access'))
@@ -103,9 +112,9 @@ class TokenService:
                 raise ReauthorizationRequired('OAUTH_REAUTHORIZE')
             return tokens.access_token
 
-    def revoke(self, user_id):
+    def revoke(self, user_id, *, google_user_id=None):
         with self.database.transaction() as session:
-            account = self._account(session, user_id)
+            account = self._account(session, user_id, google_user_id=google_user_id)
             old_refresh = account.refresh_token_encrypted
             self.google.revoke(self.decrypt(old_refresh, context=self.context(user_id, 'refresh')))
             session.execute(update(OAuthAccount).where(

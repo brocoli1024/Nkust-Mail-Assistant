@@ -12,6 +12,7 @@
   <main id="main-content" class="page-content">
     <p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。請連線後再查看公告。</p>
     {% if settings %}
+    {% if account_error %}<p class="notice" role="alert">{{ account_error }}</p>{% endif %}
     <section class="hero compact" aria-labelledby="page-title">
       <div><p class="eyebrow">YOUR SPACE</p><h1 id="page-title">帳號設定</h1><p>管理這台裝置的登入狀態與安裝方式。</p></div>
     </section>
@@ -25,6 +26,18 @@
       <section class="paper-card" aria-labelledby="install-title">
         <h2 id="install-title">安裝到手機</h2>
         <p>在瀏覽器選單選「加到主畫面」。安裝後仍需網路才能查看公告；離線時只會顯示連線提示，不提供郵件或公告內容。</p>
+      </section>
+      <section class="paper-card" aria-labelledby="remove-title">
+        <h2 id="remove-title">資料與授權</h2>
+        <p><a class="text-link dark" href="/privacy">閱讀資料使用說明</a></p>
+        <details><summary>刪除本站帳號與同步資料</summary>
+          <p>這會永久刪除你的本站帳號、已同步郵件及公告，並結束所有裝置的登入。Gmail 原始郵件不會刪除。重新登入後，需再次同步才能匯入公告。</p>
+          <form method="post" action="/account/delete">
+            <input type="hidden" name="csrf_token" value="{{ csrf }}">
+            <p><label><input type="checkbox" name="confirm" value="DELETE" required> 我確認刪除自己的本站資料，並解除 Google 授權</label></p>
+            <button class="button secondary" type="submit">確認刪除我的資料</button>
+          </form>
+        </details>
       </section>
     </div>
     {% else %}
