@@ -2,7 +2,27 @@
 
 將 Gmail 中的高科大校園通知拆成可搜尋的公告，在本機查看原文、活動日期與截止日；可選擇使用 iAI 產生摘要，或擷取公告連結補充內容。
 
-**第一次使用：先完成第 1 章的離線測試，再設定 Gmail。AI 是選用功能。**
+**目前開放下載本機版試用、收集回饋；多人網站尚未全面開放。** 本文件於 2026-10-08 核對 GitHub 預設分支 `main` 的程式與操作方式。分享 GitHub 連結不會自動啟動服務，使用者需自行安裝並設定自己的 Gmail 授權；AI 是選用功能。
+
+## 第一次試用，從這裡開始
+
+1. **安裝並試跑合成範例：**依照[第 1 章](#install)操作；暫時不需要 Gmail 或 AI 金鑰。
+2. **同步自己的校園通知：**依照[第 2 章](#gmail)建立自己的 Google Cloud 專案與授權。
+3. **開啟本機網頁：**依照[第 3 章](#dashboard)啟動 Dashboard；第一次未同步時清單會是空的。
+4. **留下回饋：**到 [GitHub Issues](https://github.com/brocoli1024/Nkust-Mail-Assistant/issues)回報安裝卡點、解析錯誤或功能建議，格式見[第 12 章](#feedback)。
+
+已有 Python／Git 環境時，第一次安裝與 Gmail 設定約需 **20–35 分鐘**；下載速度、Google 介面與學校帳號限制可能使時間增加。只想先看解析結果，可先完成不需授權的離線範例。
+
+## 本機版與多人版的差別
+
+| 版本 | 用途與資料位置 | 從哪裡開始 |
+| --- | --- | --- |
+| **本機版：`main`** | 每人在自己的電腦啟動 `app.main:app`，郵件與授權預設存於本機；可選用 iAI 分析及網頁擷取 | 本 README 的第 1–12 章；此次分享試用建議使用這個版本 |
+| **多人版：`codex/web-deployment`** | `app.web:app` 提供 Google 登入、帳號隔離、同步與規則分類，資料存於伺服器；目前維持受控測試 | [多人版程式](https://github.com/brocoli1024/Nkust-Mail-Assistant/tree/codex/web-deployment)、[部署手冊](https://github.com/brocoli1024/Nkust-Mail-Assistant/blob/codex/web-deployment/docs/multi-user-phase9.md)、[開放使用檢查](https://github.com/brocoli1024/Nkust-Mail-Assistant/blob/codex/web-deployment/docs/public-readiness-2026-10-01.md) |
+
+兩個版本的授權設定、分類方式與功能不同。以下操作對應 **`main` 的本機單人版**；多人版近期的帳號刪除與分類修正不代表已合併到 `main`。本機版的 Desktop OAuth 憑證不要拿來套用多人版的 Web OAuth 設定。
+
+## 操作索引
 
 | 你想做的事 | 從這裡開始 | 預估時間 |
 | --- | --- | --- |
@@ -12,7 +32,7 @@
 | 使用 AI 或補充網頁內容 | [4. iAI 分析](#ai)、[5. 網頁擷取](#scrape) | 設定約 5–10 分鐘 |
 | 查設定或排除問題 | [6. 設定表](#settings)、[7. 常用指令](#commands)、[8. 故障排除](#troubleshooting) | 依問題而定 |
 
-維護與開發：[9. 資料與金鑰保護](#privacy) · [10. 開發與 API](#development) · [11. 功能限制](#limitations)
+維護與開發：[9. 資料與金鑰保護](#privacy) · [10. 開發與 API](#development) · [11. 功能限制](#limitations) · [12. 試用回饋](#feedback)
 
 ## 功能與資料流
 
@@ -51,11 +71,11 @@ git --version
 ### 1.2 下載專案
 
 ```powershell
-git clone https://github.com/brocoli1024/Nkust-Mail-Assistant.git
+git clone --branch main https://github.com/brocoli1024/Nkust-Mail-Assistant.git
 cd Nkust-Mail-Assistant
 ```
 
-如果你已經有這份專案，直接進入原本的資料夾，跳過 clone。也可從 GitHub 的 **Code → Download ZIP** 下載並解壓縮；ZIP 版本無法直接使用 `git pull` 更新。
+如果你已經有這份專案，先執行 `git branch --show-current` 確認為 `main`，再使用本教學；其他分支請依該分支文件操作。也可在 GitHub 確認分支為 **main**，再按 **Code → Download ZIP** 下載並解壓縮；ZIP 版本無法直接使用 `git pull` 更新。
 
 ### 1.3 建立虛擬環境並安裝套件
 
@@ -124,7 +144,7 @@ python3 -m venv .venv
 <a id="gmail"></a>
 ## 2. Gmail 授權與同步
 
-需要一個能收到校園通知的 Gmail 帳號，以及可建立 OAuth 用戶端的 Google Cloud 專案。OAuth 是讓程式取得你同意的讀取權限，不需要把 Gmail 密碼寫入專案。
+需要一個能收到校園通知的 Gmail 帳號，以及可建立 OAuth 用戶端的 Google Cloud 專案。每位試用者自行建立自己的專案與 Desktop OAuth 用戶端，不需要加入作者的測試名單，也不要共用作者或其他人的憑證與 token。OAuth 是讓程式取得你同意的讀取權限，不需要把 Gmail 密碼寫入專案。
 
 ### 2.1 建立 Google Cloud 專案並啟用 Gmail API
 
@@ -142,6 +162,8 @@ python3 -m venv .venv
 https://www.googleapis.com/auth/gmail.readonly
 ```
 
+使用 **External／Testing** 並要求 Gmail 權限時，測試授權及 refresh token 會在同意授權 7 天後到期。到期後依[第 8 章](#troubleshooting)重新授權，不需要重新安裝程式。這是 Google 的測試模式限制，詳見 [Google Audience 說明](https://support.google.com/cloud/answer/15549945?hl=en)。
+
 若學校或組織管理員封鎖此類存取，需先向管理員確認允許的授權方式。
 
 ### 2.3 建立桌面 OAuth 用戶端
@@ -150,7 +172,7 @@ https://www.googleapis.com/auth/gmail.readonly
 2. **Application type** 選 **Desktop app**，填入名稱並建立。
 3. 下載 JSON，重新命名為 `credentials.json`，放在專案根目錄，與 `README.md` 同層。
 
-本專案使用桌面授權流程，不要選成 Web application，也不需自行填寫 Web 用戶端的 redirect URI。
+本章的 **本機版 `app.main:app`** 使用桌面授權流程，不要選成 Web application，也不需自行填寫 Web 用戶端的 redirect URI。
 
 Google 介面可能調整；建立流程可對照 [Google 官方 Gmail Python quickstart](https://developers.google.com/workspace/gmail/api/quickstart/python) 與 [OAuth 同意畫面指南](https://developers.google.com/workspace/guides/configure-oauth-consent)。本專案程式已包含 API 呼叫，不必再複製官方 quickstart 的 Python 範例。
 
@@ -216,6 +238,8 @@ GMAIL_TOKEN_PATH=token.json
 3. 使用分類與主旨搜尋縮小範圍；切換側欄視圖仍會保留這些篩選條件。
 4. 點公告主旨，查看原文、日期依據與已有的 AI 結果。
 
+**本機版如何分類？** 郵件的原始「性質」完全符合標準分類時會直接沿用；其餘的分類欄位先保持未分類，畫面標籤仍可能顯示原始郵件性質。分類篩選會對未分類公告比對原始性質與主旨關鍵字，但不會因此改寫分類標籤；AI 分析完成後會更新分類，原始性質仍保留。「AI／科技」「就業／實習」側欄另外比對主旨，因此結果可能與分類下拉選單不同。本機版尚未採用多人版的完整規則分類流程。
+
 統計以台北時間計算。「今日收到」依郵件收件日；「即將截止」是今天起 7 天內。尚未分析的行動需求可能為未知，不代表沒有需要處理的公告。
 
 同步、分析、擷取在同一服務程序共用作業鎖。請使用單一服務程序，不加 `--workers`，也不要同時用 CLI 同步同一資料庫。關閉網頁不會取消已經開始的作業。
@@ -267,7 +291,7 @@ AI_TIMEOUT_SECONDS=90
 2. 作業完成後，點開公告查看摘要、分類、關鍵字與判斷依據。
 3. 若有失敗項目，先檢查服務或額度，再按 **重試失敗項目**。
 
-分析批次依資料庫中符合條件的公告挑選，不限於目前畫面顯示或篩選的公告。要指定單則，請在詳情中按 **分析這則公告**。
+分析批次依資料庫中符合條件的公告挑選，不限於目前畫面顯示或篩選的公告。詳情中的 **分析這則公告** 按鈕目前需要先成功擷取網頁，且該則分析狀態不是已完成，才可使用；尚未擷取的公告請先用 **分析 5 則**。開發者若需指定單則，可使用第 10 章 API 的 `announcement_id`。
 
 同一模型與分析版本已完成的項目會略過；變更模型、分析版本或網頁內容後，可能需要再次分析。畫面的「已完成」統計不一定表示全部都由目前模型完成。
 
@@ -393,6 +417,7 @@ git pull --ff-only
 | 現象 | 處理方式 |
 | --- | --- |
 | AI 顯示尚未設定 | 確認金鑰、模型已填，先跑 `ai-models`／`ai-check`，再重啟 |
+| 「分析這則公告」無法點選 | 先確認沒有其他作業，再成功擷取該則網頁；已完成分析的項目也會停用按鈕，未擷取公告可先用批次分析 |
 | `AI_HTTP_ERROR`／`AI_TIMEOUT`／`AI_CONNECTION_FAILED` | 檢查金鑰、模型存取權、額度、服務與網路；必要時調整 timeout 後重試 |
 | AI 格式或驗證失敗 | 確認模型支援 Chat Completions 與 JSON 輸出；檢查原文，不能把未通過驗證當作成功 |
 | 網址被擋／需要登入／不支援版型 | 確認允許清單；需登入或不支援的頁面請自行開啟閱讀 |
@@ -524,3 +549,27 @@ Invoke-RestMethod -Method Post `
 3. **擷取不等同瀏覽器：**不登入網站、不遞迴爬取、不處理 PDF／附件，也不執行網頁 JavaScript。
 4. **本機單人使用：**沒有帳號登入、多使用者隔離、背景排程或自動寄送通知；同步、分析、擷取需手動啟動。
 5. **外部服務需自行設定：**Gmail OAuth 與 iAI 的可用性、帳號權限、額度與資料政策由相關服務決定。
+
+
+<a id="feedback"></a>
+## 12. 試用回饋
+
+歡迎到 [GitHub Issues](https://github.com/brocoli1024/Nkust-Mail-Assistant/issues)留下問題或建議。先搜尋是否已有相同問題；沒有的話按 **New issue**，可以用中文描述。優先想了解：安裝在哪一步卡住、校園通知是否解析正確、分類是否容易理解，以及日常查看公告是否方便。
+
+### 回報操作問題
+
+複製下面格式，填上實際遇到的情況；不需要每欄都寫很長：
+
+```text
+使用環境：Windows／macOS／Linux、Python 版本
+專案版本：分支名稱與 git rev-parse --short HEAD 的結果；ZIP 請填下載日期
+操作步驟：從 README 哪一節開始，做了哪些操作
+預期與實際結果：原本期待什麼，實際發生什麼；可附錯誤代碼
+補充：已遮蔽個資的截圖，或自行編造且可重現問題的範例
+```
+
+GitHub Issue 是公開的。請勿附上 `.env`、`credentials.json`、`token.json`、API 金鑰、資料庫或真實郵件全文；截圖也請遮住信箱、姓名與私人內容。對解析問題，盡量提供保留版型的虛構範例。
+
+### 提出功能建議
+
+描述「在哪個情境遇到困難」與「希望怎麼操作」即可；例如想更快找到即將截止的報名公告。可以註明你使用的是本機版還是多人版，避免將不同版本的功能混在一起。
