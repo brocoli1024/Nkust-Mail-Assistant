@@ -20,6 +20,7 @@ from app.auth.token_service import TokenService
 from app.config import Settings, ROOT
 from app.core.session import SessionService, load_session_secret
 from app.database.multi_user import MultiUserDatabase
+from app.database.schema import REQUIRED_REVISION
 from app.services.user_gmail_service import UserGmailFactory
 from app.services.user_sync_service import UserSyncService
 
@@ -47,7 +48,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             try:
                 with database.engine.connect() as connection:
                     revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
-                if revision != '0005':
+                if revision != REQUIRED_REVISION:
                     raise ValueError()
             except Exception:
                 raise RuntimeError('Run alembic upgrade head on the NEW database before starting app.web') from None
