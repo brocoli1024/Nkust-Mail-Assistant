@@ -1,0 +1,94 @@
+# 公開公告維護手冊
+
+本功能是「公開資料＋私人 Gmail」整合版。公開區免登入，私人郵件仍沿用 Google OAuth / 帳號隔離。
+這份功能分支尚未自動發布至 Render，不代表正式網站已有公開入口。
+
+## 收錄範圍
+
+- 指定清單：https://www.nkust.edu.tw/p/422-1000-1001.php 。
+- 官方 RSS：https://www.nkust.edu.tw/p/503-1000-1001.php 。實查回傳 20 則近期公告，不代表歷史全量。
+- 全部收錄指定來源取得的公告。學生相關、分類不影響收錄，未知公告仍保存在「全部」。
+- 摘要只來自來源提供的文字，可能截短；未提供發布時間時顯示未知，不用抓取日猜日期。
+- 不自動抓取處室全文、附件，也不使用 AI。只有指定清單內資料，不保證涵蓋全校或所有 Gmail 通知。
+
+## 安裝與資料庫
+
+多人網站仍由 `app.web:app` 啟動，使用 `requirements-web.txt`，新增 `defusedxml==0.7.1`。
+執行開發測試則安裝 `requirements-dev.txt`；鎖定環境使用 `requirements-lock.txt` 時也需有 defusedxml。
+
+本版本 migration head 是 **0006**。請先依 Phase 9 手冊備份資料庫與金鑰，再在確認的目的多人庫執行：
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+```
+
+0006 只新增獨立公開公告、來源狀態與維護紀錄表。現有私人表的帳號約束不變。
+CLI 不自動遷移；錯誤 `PUBLIC_MIGRATION_REQUIRED` 表示需由維護者確認 migration。
+不要把舊單人 SQLite 當成多人資料庫。啟動腳本會先 migration，再執行新版 preflight。
+
+## 日常更新
+
+在專案根目錄，使用已設定的多人 `DATABASE_URL` 執行；不需要 Gmail 或 AI 金鑰：
+
+```powershell
+.\.venv\Scripts\python.exe -m app.public_cli sync --source nkust-latest
+```
+
+成功 stdout JSON 包含 added / updated / unchanged / failed / status；exit 0 表示成功。
+來源或資料部分失敗為 exit 1，參數錯誤為 exit 2。來源失敗保留上次資料。
+同一來源的同步 / 補收 / 重分類共用資料庫 lease；`PUBLIC_SYNC_BUSY` 表示請稍後再試。
+lease 最長 10 分鐘，程序中斷後可在到期後重試。不要手動清除仍在執行中的 lease。
+
+初期沒有自動更新排程，也沒有匿名「立即更新」端點。維護者需自行執行 CLI；
+頁面提供真實最後成功更新、近期失敗及收錄範圍，不承諾每天或即時更新。
+Render Free 會休眠，不能只靠 web 程序內背景迴圈提供可靠排程。
+
+## 歷史補收
+
+先執行近期 RSS 同步，再分批讀取歷史清單：
+
+```powershell
+.\.venv\Scripts\python.exe -m app.public_cli backfill --source nkust-latest --max-pages 5
+```
+
+每次預設 5 頁，允許 1–20 頁；請求至少間隔 2 秒，單批最多約 120 秒。
+一次批次成功不表示全部歷史完成。重跑相同指令會從已提交游標繼續，直到驗證到合法末頁。
+請先查看來源是否允許自動讀取；本次 robots 內容為 `User-agent: * / Allow: /`，不是全文再利用授權。
+目前只保存標題、日期、來源摘要與連結，尚未批次抓取所有歷史原文。
+
+狀態說明：
+
+| 狀態 | 意義 |
+| --- | --- |
+| not_started | 尚未執行歷史補收 |
+| incomplete | 已開始但未到合法末頁，或來源暫時無法讀取 |
+| complete | 已完成一次歷史掃描，來源變動仍可能造成缺漏 |
+
+游標僅在該頁交易成功後前進。遇到重複頁、頁碼不符、非公告 HTML、空頁或不允許的 URL，
+停止並保留該頁游標；修復來源合約後重試，不把錯誤頁視為末頁。
+清單 URL 與 RSS URL 有時指向不同的同主題頁面，第一版保守保留兩筆，不能僅因標題相同而合併。
+不同 URL 保留查詢參數語意；RSS 不再出現某則公告不會觸發刪除。
+
+## 重分類與網站操作
+
+規則更新後可離線重算公開公告，不下載來源：
+
+```powershell
+.\.venv\Scripts\python.exe -m app.public_cli reclassify --source nkust-latest
+```
+
+`/` 為免登入首頁，`/public/announcements` 為公開清單，`/public/announcements/{id}` 為詳情。
+對象預設全部；學生相關是規則提示，不是資格判斷。搜尋與分類可組合，清除篩選回到全部。
+`/announcements` 仍是私人郵件公告，未登入不能閱讀。公開路由不解析 cookie、也不回退到私人表。
+刪除自己的帳號不會刪除公開公告。PWA 沒有新增離線公告快取。
+
+## 驗證與發布
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q -p no:cacheprovider
+git diff --check
+```
+
+PostgreSQL 實機案例需使用獨立測試庫的 `NKUST_TEST_POSTGRES_URL`；不得沿用正式 DATABASE_URL。
+SQLite 測試或 PostgreSQL 離線編譯不代表正式 Neon 已驗收。
+發布前仍需核對備份、migration、公開頁匿名存取與私人帳號隔離；Google 私人 Gmail 功能的發布限制不變。

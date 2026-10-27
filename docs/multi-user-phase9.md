@@ -1,5 +1,7 @@
 # Phase 9：部署手冊
 
+> **本分支更新**：公開公告整合功能需要 schema **0006**，web 與 preflight 共用此 revision。下文「已部署」與 0005 為先前正式部署紀錄，不能當成本分支已發布的證據。新增維護流程見 [公開公告維護手冊](public-announcements.md)。正式部署前先備份與驗收，再執行既有 start 腳本的 migration；勿將舊 0005 程式直接當作新版 preflight。
+
 多人版已部署至 Render，網址為 https://nkust-mail-assistant.onrender.com/login。啟動入口為 `app.web:app`，資料庫 migration head 為 0005。這不代表已完成全面開放驗收；最新檢查與尚待完成項目見 [開放使用檢查](public-readiness-2026-10-01.md)。下列流程保留作為部署與回復指引。
 
 ## 執行入口

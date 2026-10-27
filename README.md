@@ -1,5 +1,7 @@
 # NKUST 校園郵件智慧助手
 
+> **公開公告整合版（本分支，尚未發布）**：新增免登入公開首頁、公開公告搜尋／分類／學生相關篩選，以及官方 RSS 更新與分批歷史補收指令。私人 Gmail 維持帳號隔離。需要 migration **0006**；操作及收錄限制見 [公開公告維護手冊](docs/public-announcements.md)。RSS 近期資料不等於全部歷史，自動排程尚未啟用。
+
 > **多人版已部署至 Render；全面開放仍待驗收。** `app.web:app` 提供 Google 登入、依帳號同步、分類規則、公告清單／詳細頁與 PWA。2026-10-01 已發布資料說明、帳號刪除、帳號隔離與 PostgreSQL 併發補修，Google 品牌首頁及隱私連結也已儲存。本機 PostgreSQL 實機測試已通過；OAuth 仍為 Testing。請先閱讀 [2026-10-01 開放使用檢查](docs/public-readiness-2026-10-01.md)，確認 Google OAuth 對外授權、備份還原及容量。部署操作見 [Phase 9 手冊](docs/multi-user-phase9.md)。唯讀部署前檢查：`python -m app.deployment_check`（本機 SQLite／HTTP 不符合正式設定）。
 >
 > **以下原有章節描述單人本機版 `app.main:app`，不可直接套用於多人公開服務。** 多人 OAuth／Session／同步設定請見 [Phase 2](docs/multi-user-phase2.md)、[Phase 3](docs/multi-user-phase3.md)、[Phase 5](docs/multi-user-phase5.md)。

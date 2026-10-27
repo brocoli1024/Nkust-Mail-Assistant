@@ -73,3 +73,31 @@ def test_fetch_uses_fixed_source_and_accepts_xml_served_as_html():
 def test_fetch_does_not_follow_external_redirect():
     with pytest.raises(PublicSourceError, match='PUBLIC_SOURCE_REDIRECT'):
         fetch_feed(transport=lambda _: (302, {'location': 'https://evil.invalid/'}, b''))
+
+
+def test_downloader_rejects_nonpublic_dns_before_connecting():
+    import time
+    from app.services.public_source import _download
+    def resolve(*args,**kwargs): return [(None,None,None,None,('127.0.0.1',443))]
+    with pytest.raises(PublicSourceError,match='PUBLIC_SOURCE_ADDRESS'):
+        _download('https://www.nkust.edu.tw/',deadline=time.monotonic()+30,resolver=resolve)
+
+
+def test_tls_connects_to_validated_ip_with_original_hostname(monkeypatch):
+    from app.services.public_source import _PinnedHTTPSConnection
+    observed=[]
+    class Sock:
+        def close(self): pass
+    class Context:
+        def wrap_socket(self,sock,server_hostname):
+            observed.append(server_hostname)
+            return sock
+    def connect(address,timeout):
+        observed.append(address)
+        return Sock()
+    monkeypatch.setattr('app.services.public_source.socket.create_connection',connect)
+    connection=_PinnedHTTPSConnection('www.nkust.edu.tw','140.127.1.1',5)
+    connection._context=Context()
+    connection.connect()
+    assert observed==[('140.127.1.1',443),'www.nkust.edu.tw']
+    connection.close()
