@@ -8,7 +8,7 @@ from app.config import Settings
 from app.database.multi_user import MultiUserDatabase
 from app.database.schema import REQUIRED_REVISION
 from app.services.public_source import SOURCE_KEY, fetch_feed, PublicSourceError
-from app.services.public_sync import sync_recent, reclassify
+from app.services.public_sync import sync_recent, reclassify, backfill_history
 
 
 def main(argv=None) -> int:
@@ -18,6 +18,9 @@ def main(argv=None) -> int:
     sync.add_argument('--source', choices=[SOURCE_KEY], default=SOURCE_KEY)
     rules = subs.add_parser('reclassify', help='離線重算公開公告分類與學生相關提示')
     rules.add_argument('--source', choices=[SOURCE_KEY], default=SOURCE_KEY)
+    history = subs.add_parser('backfill', help='分批補收歷史清單；失敗可續跑')
+    history.add_argument('--source', choices=[SOURCE_KEY], default=SOURCE_KEY)
+    history.add_argument('--max-pages', type=int, choices=range(1,21), default=5)
     args = parser.parse_args(argv)
     database = None
     try:
@@ -27,7 +30,12 @@ def main(argv=None) -> int:
             revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
         if revision != REQUIRED_REVISION:
             raise PublicSourceError('PUBLIC_MIGRATION_REQUIRED')
-        result = sync_recent(database, source=fetch_feed) if args.command == 'sync' else reclassify(database)
+        if args.command == 'sync':
+            result = sync_recent(database, source=fetch_feed)
+        elif args.command == 'backfill':
+            result = backfill_history(database,max_pages=args.max_pages)
+        else:
+            result = reclassify(database)
         print(json.dumps(asdict(result)))
         return 0 if result.status == 'success' else 1
     except Exception as exc:

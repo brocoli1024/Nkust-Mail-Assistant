@@ -7,6 +7,7 @@ import ipaddress
 import socket
 import ssl
 import time
+import re
 from urllib.parse import urlsplit, urlunsplit, urljoin
 from xml.etree.ElementTree import ParseError
 
@@ -162,8 +163,7 @@ def _download(url, *, deadline, resolver=socket.getaddrinfo, connection_factory=
         raise PublicSourceError('PUBLIC_SOURCE_UNAVAILABLE') from None
 
 
-def fetch_feed(*, transport=None) -> bytes:
-    url = FEED_URL
+def _fetch_url(url, *, transport=None) -> bytes:
     deadline = time.monotonic() + 30
     for _ in range(4):
         status, headers, body = (transport(url) if transport else _download(url, deadline=deadline))
@@ -183,3 +183,45 @@ def fetch_feed(*, transport=None) -> bytes:
             raise PublicSourceError('PUBLIC_SOURCE_SIZE')
         return body  # known official endpoint serves valid XML as text/html
     raise PublicSourceError('PUBLIC_SOURCE_REDIRECT')
+
+
+def fetch_feed(*, transport=None) -> bytes:
+    return _fetch_url(FEED_URL, transport=transport)
+
+
+@dataclass(frozen=True)
+class ListingPage:
+    entries: list[PublicEntry]
+    has_next: bool
+
+
+def parse_listing(data: bytes, *, page_number: int) -> ListingPage:
+    if not isinstance(data, bytes) or len(data) > MAX_BYTES:
+        raise PublicSourceError('PUBLIC_SOURCE_SIZE')
+    soup = BeautifulSoup(data, 'html.parser', from_encoding='utf-8')
+    active = soup.select_one('.mpgbar .pagination .active')
+    total = soup.select_one('.mpgbar .pg-txt')
+    match = re.fullmatch(r'共\s*(\d+)\s*頁', total.get_text('',strip=True)) if total else None
+    if (not active or active.get_text(strip=True) != str(page_number) or not match
+            or not page_number <= int(match[1]) <= 1000000):
+        raise PublicSourceError('PUBLIC_HISTORY_PAGE')
+    nodes = soup.select('#pageptlist .d-item')
+    if not nodes or len(nodes) > 500:
+        raise PublicSourceError('PUBLIC_HISTORY_ITEMS')
+    entries = []
+    for node in nodes:
+        link = node.select_one('.mtitle a[href]')
+        date = node.select_one('.mdate')
+        title = link.get_text(' ',strip=True) if link else ''
+        if not title or len(title) > 2000:
+            raise PublicSourceError('PUBLIC_HISTORY_ITEM')
+        url = normalize_public_url(urljoin(LISTING_URL, link['href']))
+        entries.append(PublicEntry(title, url, source_date(date.get_text(strip=True)) if date else None))
+    return ListingPage(entries, page_number < int(match[1]))
+
+
+def fetch_listing(page_number: int) -> bytes:
+    if not 1 <= page_number <= 1000000:
+        raise PublicSourceError('PUBLIC_HISTORY_PAGE')
+    url = LISTING_URL if page_number == 1 else f'https://www.nkust.edu.tw/p/422-1000-1001-{page_number}.php?Lang=zh-tw'
+    return _fetch_url(url)

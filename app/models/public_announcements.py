@@ -58,5 +58,6 @@ class PublicSourceState(MultiUserBase):
     next_history_page = Column(Integer, nullable=False, default=1)
     history_status = Column(String(32), nullable=False, default='not_started')
     history_completed_at = Column(DateTime(timezone=True))
+    history_fingerprint = Column(String(64))
     lease_owner = Column(String(64))
     lease_expires_at = Column(DateTime(timezone=True))

@@ -51,6 +51,7 @@ def upgrade():
         sa.Column('next_history_page', sa.Integer(), nullable=False),
         sa.Column('history_status', sa.String(32), nullable=False),
         sa.Column('history_completed_at', sa.DateTime(timezone=True)),
+        sa.Column('history_fingerprint', sa.String(64)),
         sa.Column('lease_owner', sa.String(64)),
         sa.Column('lease_expires_at', sa.DateTime(timezone=True)),
         sa.CheckConstraint("history_status IN ('not_started','incomplete','complete')", name='history_status'),

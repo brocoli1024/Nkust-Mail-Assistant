@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import secrets
+import time
 
 from sqlalchemy import select, update, or_
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -12,6 +13,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from app.models.public_announcements import PublicAnnouncement as P, PublicSourceState as S, PublicSyncRun as R
 from app.services.category_rules import classify_category, RULE_VERSION as CATEGORY_VERSION
 from app.services.public_source import SOURCE_KEY, PublicSourceError, fetch_feed, parse_feed, normalize_public_url
+from app.services.public_source import fetch_listing, parse_listing, TAIPEI
 from app.services.student_relevance import classify_student_relevance, RULE_VERSION as STUDENT_VERSION
 
 
@@ -71,6 +73,10 @@ def store_entries(session, entries, now, result):
         # A listing without an excerpt/date must not erase richer RSS data.
         excerpt = entry.excerpt or (row.excerpt if row else '')
         published = aware(entry.published_at) or (aware(row.published_at) if row else None)
+        if row and not entry.excerpt and published and row.published_at:
+            previous = aware(row.published_at)
+            if published.astimezone(TAIPEI).date() == previous.astimezone(TAIPEI).date():
+                published = previous
         external = entry.external_id or (row.external_id if row else None)
         values = dict(title=entry.title, excerpt=excerpt, published_at=published, external_id=external)
         fingerprint = hashlib.sha256(json.dumps(dict(values, published_at=published.isoformat() if published else None),
@@ -182,6 +188,60 @@ def reclassify(database, *, now=None) -> SyncResult:
         try:
             if run_id is not None:
                 finish_run(database, run_id, result, error, now=lease.clock())
+        finally:
+            lease.release()
+    return result
+
+
+def backfill_history(database, *, max_pages=5, source=None, now=None, sleep=time.sleep) -> SyncResult:
+    if not isinstance(max_pages, int) or isinstance(max_pages,bool) or not 1 <= max_pages <= 20:
+        raise ValueError('max_pages must be between 1 and 20')
+    lease = SourceLease(database, now=now)
+    lease.acquire()
+    run_id, result, error = None, SyncResult(), None
+    deadline = time.monotonic() + 120
+    try:
+        run_id = begin_run(database, lease, 'history')
+        for i in range(max_pages):
+            with database.transaction() as session:
+                state = lease.verify(session)
+                if state.history_status == 'complete':
+                    break
+                page_number = state.next_history_page
+                state.history_status = 'incomplete'
+            if i:
+                sleep(2)
+            if time.monotonic() >= deadline:
+                break  # successful bounded batch; history remains incomplete
+            listing = parse_listing((source or fetch_listing)(page_number), page_number=page_number)
+            if time.monotonic() >= deadline:
+                raise PublicSourceError('PUBLIC_HISTORY_TIMEOUT')
+            fingerprint = hashlib.sha256(json.dumps(sorted(e.url for e in listing.entries)).encode()).hexdigest()
+            batch = SyncResult()
+            with database.transaction() as session:
+                state = lease.verify(session)
+                if state.next_history_page != page_number or state.history_fingerprint == fingerprint:
+                    raise PublicSourceError('PUBLIC_HISTORY_REPEATED_PAGE')
+                oldest = store_entries(session, listing.entries, lease.clock(), batch)
+                state.next_history_page = page_number + 1
+                state.history_fingerprint = fingerprint
+                if oldest and (not state.oldest_seen_at or oldest < aware(state.oldest_seen_at)):
+                    state.oldest_seen_at = oldest
+                if not listing.has_next:
+                    state.history_status = 'complete'
+                    state.history_completed_at = lease.clock()
+                state.last_success_at = lease.clock()
+            for name in ('added','updated','unchanged'):
+                setattr(result, name, getattr(result,name)+getattr(batch,name))
+            if not listing.has_next:
+                break
+    except Exception as exc:
+        result.failed, result.status = 1, 'failed'
+        error = str(exc) if isinstance(exc,PublicSourceError) else 'PUBLIC_HISTORY_FAILED'
+    finally:
+        try:
+            if run_id is not None:
+                finish_run(database,run_id,result,error,now=lease.clock())
         finally:
             lease.release()
     return result
