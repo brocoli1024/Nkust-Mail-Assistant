@@ -1,6 +1,6 @@
 # Public and Private Announcements Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Execution method is pending user selection.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. User approved Native execution on 2026-10-27. Implementation and local verification completed; PostgreSQL execution and formal deployment remain unverified. See [validation record](../../public-announcements-validation-2026-10-27.md).
 
 **Goal:** 提供免登入的公開校園公告，全部收錄並提供學生相關篩選，同站保留私人 Gmail 公告。
 
