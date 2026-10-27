@@ -4,19 +4,20 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   {% include 'pwa_head.html' %}<title>公開公告 · NKUST Mail Assistant</title>
   <link rel="stylesheet" href="/assets/account.css?v=public-1">
+  <script src="/assets/announcement-filters.js" defer></script>
 </head>
 <body><div class="site-shell">
   {% set active_page = 'public' %}{% include 'site_header.html' %}
   <main id="main-content" class="page-content">
     <section class="hero compact" aria-labelledby="page-title"><div><p class="eyebrow">OPEN TO EVERYONE</p><h1 id="page-title">公開公告</h1><p>全部收錄，再依需要篩選。資料來自高科大「最新消息」，免登入即可閱讀。</p></div></section>
     <section class="filter-panel" aria-label="搜尋與篩選公開公告">
-      <form method="get" action="/public/announcements" class="filters public-filters">
-        <label>搜尋標題與摘要<input type="search" name="q" value="{{ q }}" maxlength="200" placeholder="例如：獎學金、實習"></label>
+      <form method="get" action="/public/announcements" class="filters public-filters" id="announcement-filters" aria-describedby="public-filter-help">
+        <label>搜尋標題與摘要<input type="search" name="q" value="{{ q }}" maxlength="200" placeholder="例如：獎學金、實習" enterkeyhint="search"></label>
         <label>對象<select name="audience"><option value="all" {% if audience == 'all' %}selected{% endif %}>全部公告</option><option value="student" {% if audience == 'student' %}selected{% endif %}>學生相關</option></select></label>
         <label>分類<select name="category"><option value="">全部分類</option>{% for name in categories + ('未分類',) %}<option {% if category == name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-        <button type="submit" class="button">套用篩選</button><a class="text-link dark" href="/public/announcements">清除篩選</a>
+        <noscript><button type="submit" class="button">套用篩選</button></noscript><a class="text-link dark" href="/public/announcements">清除篩選</a>
       </form>
-      <p class="filter-help">學生相關依內容規則判斷，可能漏判；可切回全部查看，公告不會因篩選而被刪除。</p>
+      <p class="filter-help" id="public-filter-help">選單變更後立即更新；輸入關鍵字後按 Enter 搜尋。學生相關依內容規則判斷，可能漏判；可切回全部查看。</p>
     </section>
     <p class="results-meta" role="status">共 {{ total }} 則 · 第 {{ page_number }} 頁</p>
     <details class="public-source-status"><summary>更新與收錄範圍</summary>
