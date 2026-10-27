@@ -65,7 +65,7 @@ def test_login_cookie_hash_and_user_page(web):
     assert client.get('/api/me').json()['email'] == google.claims['email']
     assert google.claims['email'] in client.get('/dashboard').text
     assert client.get('/login').headers['location'] == '/dashboard'
-    assert client.get('/').headers['location'] == '/dashboard'
+    assert client.get('/').status_code == 200
     assert client.get('/auth/complete').headers['location'] == '/dashboard'
     assert 'private-marker' not in client.get('/settings').text
 

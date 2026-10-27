@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}<title>NKUST Mail Assistant · 校園公告</title>
+  <meta name="description" content="免登入查看高科大公開公告，搜尋分類與學生相關資訊；私人郵件功能另需授權。">
+  <link rel="stylesheet" href="/assets/account.css?v=public-1">
+</head>
+<body><div class="site-shell">
+  {% include 'site_header.html' %}
+  <main id="main-content" class="page-content">
+    <section class="hero" aria-labelledby="page-title"><div>
+      <p class="eyebrow">PUBLIC CAMPUS UPDATES</p><h1 id="page-title">校園消息，<br>一眼找到。</h1>
+      <p>NKUST Mail Assistant 整理高科大公開公告。免登入就能搜尋、查看分類，或篩選學生相關資訊。</p>
+      <div class="actions"><a class="button" href="/public/announcements">瀏覽公開公告</a><a class="button secondary" href="/login">我的郵件公告</a></div>
+    </div></section>
+    <section class="stats" aria-label="收錄現況">
+      <article class="stat-card"><span>已收錄公開公告</span><strong>{{ total }}</strong><small>來源：高科大最新消息</small></article>
+      <article class="stat-card"><span>使用方式</span><strong class="public-stat-text">免登入</strong><small>公開公告不讀取你的信箱</small></article>
+      <article class="stat-card"><span>更新方式</span><strong class="public-stat-text">維護更新</strong><small>最後成功：{{ last_success }}（台灣時間）</small></article>
+    </section>
+    <section class="detail-section"><h2>公開公告與私人郵件，一站查看</h2><p>公開區收錄學校「最新消息」來源可取得的公告，保留原文連結。分類與學生相關提示由規則判斷；需要確認的日期、資格與內容，請核對學校原文。</p><p>若要整理自己的校園郵件，可另行登入並同意 Gmail 唯讀授權。私人郵件僅本人可見，現階段須先加入 Google 測試名單；公開區無此需求。</p></section>
+    <section class="detail-section"><h2>收錄範圍透明可查</h2><p>近期資料由官方 RSS 收集，歷史公告分批補收。已收錄不代表已涵蓋所有歷史、所有處室或你的全部郵件；更新與補收狀態可在公開清單查看。</p><p><a class="text-link" href="{{ source_url }}" target="_blank" rel="noopener noreferrer">學校原始公告清單（另開分頁）</a> · <a class="text-link" href="/privacy">隱私政策與資料使用說明</a></p></section>
+  </main>
+</div></body></html>

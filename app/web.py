@@ -82,6 +82,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         app.include_router(sync_router)
         app.include_router(announcements_router)
         app.include_router(account_router)
+        from app.api.public_announcements import router as public_router
+        app.include_router(public_router)
         app.mount('/assets', StaticFiles(directory=ROOT / 'app/static/web'), name='web-assets')
 
         @app.get('/manifest.webmanifest', include_in_schema=False)
@@ -100,9 +102,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
     @app.get('/')
     def root(request: Request):
         if session_enabled:
-            sessions = request.app.state.sessions
-            if sessions.resolve(request.cookies.get(sessions.cookie_name)):
-                return RedirectResponse('/dashboard', status_code=303)
+            from app.api.public_announcements import home
+            return home(request)
         return RedirectResponse('/login', status_code=303)
 
     @app.exception_handler(RequestValidationError)

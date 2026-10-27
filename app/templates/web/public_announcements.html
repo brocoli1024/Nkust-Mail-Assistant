@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}<title>公開公告 · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css?v=public-1">
+</head>
+<body><div class="site-shell">
+  {% set active_page = 'public' %}{% include 'site_header.html' %}
+  <main id="main-content" class="page-content">
+    <section class="hero compact" aria-labelledby="page-title"><div><p class="eyebrow">OPEN TO EVERYONE</p><h1 id="page-title">公開公告</h1><p>全部收錄，再依需要篩選。資料來自高科大「最新消息」，免登入即可閱讀。</p></div></section>
+    <section class="filter-panel" aria-label="搜尋與篩選公開公告">
+      <form method="get" action="/public/announcements" class="filters public-filters">
+        <label>搜尋標題與摘要<input type="search" name="q" value="{{ q }}" maxlength="200" placeholder="例如：獎學金、實習"></label>
+        <label>對象<select name="audience"><option value="all" {% if audience == 'all' %}selected{% endif %}>全部公告</option><option value="student" {% if audience == 'student' %}selected{% endif %}>學生相關</option></select></label>
+        <label>分類<select name="category"><option value="">全部分類</option>{% for name in categories + ('未分類',) %}<option {% if category == name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+        <button type="submit" class="button">套用篩選</button><a class="text-link dark" href="/public/announcements">清除篩選</a>
+      </form>
+      <p class="filter-help">學生相關依內容規則判斷，可能漏判；可切回全部查看，公告不會因篩選而被刪除。</p>
+    </section>
+    <p class="results-meta" role="status">共 {{ total }} 則 · 第 {{ page_number }} 頁</p>
+    <details class="public-source-status"><summary>更新與收錄範圍</summary>
+      <p>最後成功更新：{{ last_success }}（台灣時間）。最早已收錄發布時間：{{ oldest }}。</p>
+      {% if last_run_status in ('failed','partial') %}<p class="notice" role="status">最近維護更新{% if last_run_status == 'partial' %}有部分失敗{% else %}失敗{% endif %}；目前保留先前取得的資料。</p>{% endif %}
+      {% if history_status == 'complete' %}<p>已完成一次歷史掃描：{{ history_completed }}。來源會變動，仍可能有缺漏。</p>{% elif history_status == 'incomplete' %}<p>歷史公告補收中，尚未涵蓋全部歷史。</p>{% else %}<p>目前以近期 RSS 資料為主，歷史補收尚未完成。</p>{% endif %}
+      <p>僅涵蓋指定來源已取得的資料；摘要可能截短，日期與內容請核對<a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">學校原文清單（另開分頁）</a>。</p>
+    </details>
+    <div class="announcement-list">
+      {% for item in items %}<article class="announcement">
+        <div class="meta-row"><span class="tag">{{ item.category or '未分類' }}</span><span>高科大最新消息</span>{% if item.student_relevance == 'relevant' %}<span>學生相關</span>{% endif %}</div>
+        <h2><a href="/public/announcements/{{ item.id }}">{{ item.title }}</a></h2>
+        <p class="muted">發布：{{ item.published }}{% if item.published != '未知' %}（台灣時間）{% endif %}</p>
+        {% if item.excerpt %}<p class="public-excerpt">{{ item.excerpt }}</p>{% endif %}
+      </article>{% else %}<p class="notice">目前沒有符合條件的公開公告。可清除篩選；若仍無資料，表示尚未收錄。</p>{% endfor %}
+    </div>
+    <nav class="pagination" aria-label="公開公告分頁">{% if previous %}<a href="{{ previous }}">上一頁</a>{% endif %}{% if following %}<a href="{{ following }}">下一頁</a>{% endif %}</nav>
+  </main>
+</div></body></html>

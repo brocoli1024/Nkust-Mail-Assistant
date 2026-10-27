@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}<title>{{ item.title }} · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css?v=public-1">
+</head>
+<body><div class="site-shell">
+  {% set active_page = 'public' %}{% include 'site_header.html' %}
+  <main id="main-content" class="page-content narrow">
+    <section class="hero compact public-detail-hero" aria-labelledby="page-title"><div><p class="eyebrow">PUBLIC ANNOUNCEMENT</p><h1 id="page-title">{{ item.title }}</h1></div></section>
+    <article class="detail-card">
+      <div class="meta-row"><span class="tag">{{ item.category or '未分類' }}</span><span>發布：{{ item.published }}</span></div>
+      <p>來源：高科大最新消息。{% if item.student_relevance == 'relevant' %}規則提示：學生相關。{% else %}學生相關性尚未確認，請核對原文對象。{% endif %}</p>
+      <h2>來源摘要</h2><p class="public-detail-excerpt">{{ item.excerpt or '來源未提供摘要，請開啟學校原文。' }}</p>
+      <p class="muted">這是來源提供的摘要，可能截短；活動日期、截止日與參加資格以學校原文為準。</p>
+      {% if item.url %}<p><a class="button" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">閱讀學校原文（另開分頁）</a></p>{% endif %}
+      <a class="text-link dark" href="/public/announcements">返回公開公告</a>
+    </article>
+  </main>
+</div></body></html>
