@@ -12,6 +12,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from app.models.public_announcements import PublicAnnouncement as P, PublicSourceState as S, PublicSyncRun as R
 from app.services.category_rules import classify_category, RULE_VERSION as CATEGORY_VERSION
 from app.services.public_source import SOURCE_KEY, PublicSourceError, fetch_feed, parse_feed, normalize_public_url
+from app.services.student_relevance import classify_student_relevance, RULE_VERSION as STUDENT_VERSION
 
 
 def utcnow():
@@ -89,11 +90,23 @@ def store_entries(session, entries, now, result):
             row.category = classify_category('', entry.title)
             row.category_rule_version = CATEGORY_VERSION
             row.updated_at = now
+        if (row.student_rule_version != STUDENT_VERSION or row.category_rule_version != CATEGORY_VERSION
+                or row.updated_at == now):
+            apply_classification(row)
         row.last_seen_at = now
         if published:
             dates.append(published)
         session.flush()  # same-response duplicate URLs see the newly inserted row
     return min(dates) if dates else None
+
+
+def apply_classification(row):
+    result = classify_student_relevance(row.title, row.excerpt)
+    row.student_relevance = result.status
+    row.student_reason = list(result.reasons)
+    row.student_rule_version = result.rule_version
+    row.category = classify_category('', row.title)
+    row.category_rule_version = CATEGORY_VERSION
 
 
 def begin_run(database, lease, mode):
@@ -135,6 +148,36 @@ def sync_recent(database, *, source=None, now=None) -> SyncResult:
     except Exception as exc:
         result = SyncResult(failed=1, status='failed')
         error = str(exc) if isinstance(exc, PublicSourceError) else 'PUBLIC_SYNC_FAILED'
+    finally:
+        try:
+            if run_id is not None:
+                finish_run(database, run_id, result, error, now=lease.clock())
+        finally:
+            lease.release()
+    return result
+
+
+def reclassify(database, *, now=None) -> SyncResult:
+    lease = SourceLease(database, now=now)
+    lease.acquire()
+    run_id, result, error = None, SyncResult(), None
+    try:
+        run_id = begin_run(database, lease, 'reclassify')
+        last_id = 0
+        while True:
+            with database.transaction() as session:
+                lease.verify(session)
+                rows = session.scalars(select(P).where(P.source_key == SOURCE_KEY, P.id > last_id)
+                                       .order_by(P.id).limit(200)).all()
+                if not rows:
+                    break
+                for row in rows:
+                    apply_classification(row)
+                last_id = rows[-1].id
+            result.updated += len(rows)
+    except Exception as exc:
+        result.failed, result.status = 1, 'failed'
+        error = str(exc) if isinstance(exc, PublicSourceError) else 'PUBLIC_RECLASSIFY_FAILED'
     finally:
         try:
             if run_id is not None:
