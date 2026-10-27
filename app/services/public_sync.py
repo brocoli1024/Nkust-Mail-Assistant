@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from app.models.public_announcements import PublicAnnouncement as P, PublicSourceState as S, PublicSyncRun as R
+from app.models.public_announcements import PublicHistoryPage
 from app.services.category_rules import classify_category, RULE_VERSION as CATEGORY_VERSION
 from app.services.public_source import SOURCE_KEY, PublicSourceError, fetch_feed, parse_feed, normalize_public_url
 from app.services.public_source import fetch_listing, parse_listing, TAIPEI
@@ -220,9 +221,13 @@ def backfill_history(database, *, max_pages=5, source=None, now=None, sleep=time
             batch = SyncResult()
             with database.transaction() as session:
                 state = lease.verify(session)
-                if state.next_history_page != page_number or state.history_fingerprint == fingerprint:
+                seen = session.scalar(select(PublicHistoryPage.page_number).where(
+                    PublicHistoryPage.source_key == SOURCE_KEY, PublicHistoryPage.fingerprint == fingerprint))
+                if state.next_history_page != page_number or seen is not None or state.history_fingerprint == fingerprint:
                     raise PublicSourceError('PUBLIC_HISTORY_REPEATED_PAGE')
                 oldest = store_entries(session, listing.entries, lease.clock(), batch)
+                session.add(PublicHistoryPage(source_key=SOURCE_KEY,page_number=page_number,
+                    fingerprint=fingerprint,scanned_at=lease.clock()))
                 state.next_history_page = page_number + 1
                 state.history_fingerprint = fingerprint
                 if oldest and (not state.oldest_seen_at or oldest < aware(state.oldest_seen_at)):

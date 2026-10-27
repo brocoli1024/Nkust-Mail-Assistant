@@ -47,6 +47,19 @@ def test_repeated_page_and_malformed_end_do_not_mark_complete(database):
         assert s.get(S,'nkust-latest').history_status=='incomplete'
 
 
+@pytest.mark.parametrize('split',[False,True])
+def test_nonadjacent_repeated_last_page_is_rejected_across_batches(database,split):
+    db,_=database
+    def source(n): return listing(n,url='https://osa.nkust.edu.tw/'+('a' if n in (1,3) else 'b'))
+    if split:
+        assert backfill_history(db,max_pages=2,source=source,sleep=lambda _:None).status=='success'
+    result=backfill_history(db,source=source,sleep=lambda _:None)
+    assert result.status=='failed'
+    with db.transaction() as s:
+        assert s.get(S,'nkust-latest').history_status=='incomplete'
+        assert s.get(S,'nkust-latest').next_history_page==3
+
+
 def test_page_budget_preserves_richer_rss_and_can_resume(database):
     db,_=database
     sync_recent(db,source=lambda:feed(item()))

@@ -9,6 +9,13 @@ depends_on = None
 
 
 def upgrade():
+    op.create_table('public_history_pages',
+        sa.Column('source_key', sa.String(64), primary_key=True),
+        sa.Column('page_number', sa.Integer(), primary_key=True, autoincrement=False),
+        sa.Column('fingerprint', sa.String(64), nullable=False),
+        sa.Column('scanned_at', sa.DateTime(timezone=True), nullable=False),
+        sa.UniqueConstraint('source_key', 'fingerprint'),
+        sa.CheckConstraint('page_number >= 1', name='page_number'))
     op.create_table('public_announcements',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('source_key', sa.String(64), nullable=False),
@@ -59,6 +66,7 @@ def upgrade():
 
 
 def downgrade():
+    op.drop_table('public_history_pages')
     op.drop_table('public_source_states')
     op.drop_table('public_sync_runs')
     op.drop_table('public_announcements')

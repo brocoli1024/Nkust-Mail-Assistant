@@ -25,6 +25,11 @@ def test_public_contracts_on_postgresql(database,contract):
     contract(database)
 
 
+@pytest.mark.parametrize('split',[False,True])
+def test_repeated_history_page_across_postgresql_batches(database,split):
+    history_contracts.test_nonadjacent_repeated_last_page_is_rejected_across_batches(database,split)
+
+
 def test_public_source_lease_only_one_concurrent_owner(database):
     db,_=database
     ready=Barrier(2)

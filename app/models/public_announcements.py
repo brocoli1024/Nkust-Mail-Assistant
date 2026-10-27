@@ -61,3 +61,16 @@ class PublicSourceState(MultiUserBase):
     history_fingerprint = Column(String(64))
     lease_owner = Column(String(64))
     lease_expires_at = Column(DateTime(timezone=True))
+
+
+class PublicHistoryPage(MultiUserBase):
+    """Persistent scan receipts detect repeats across separate CLI batches."""
+    __tablename__ = 'public_history_pages'
+    __table_args__ = (
+        UniqueConstraint('source_key', 'fingerprint'),
+        CheckConstraint('page_number >= 1', name='page_number'),
+    )
+    source_key = Column(String(64), primary_key=True)
+    page_number = Column(Integer, primary_key=True, autoincrement=False)
+    fingerprint = Column(String(64), nullable=False)
+    scanned_at = Column(DateTime(timezone=True), nullable=False)

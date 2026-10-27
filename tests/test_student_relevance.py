@@ -15,6 +15,8 @@ from app.services.student_relevance import classify_student_relevance
     ('講座','','unknown'),
     ('一般徵才公告','','unknown'),
     ('教師專屬研習','本次研習提供獎學金案例教材','not_student'),
+    ('多益報名說明會','本活動僅限教師參加','not_student'),
+    ('教師研習：協助學生申請獎學金','','not_student'),
     ('學生實習媒合','','relevant'),
     ('ＴＯＥＩＣ 多益報名','','relevant'),
     ('','','unknown'),
