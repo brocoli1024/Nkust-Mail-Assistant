@@ -23,7 +23,9 @@ def utcnow():
 
 
 def aware(value):
-    return value.replace(tzinfo=timezone.utc) if value and value.tzinfo is None else value
+    if value is None:
+        return None
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
 @dataclass

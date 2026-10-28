@@ -25,8 +25,10 @@ def test_sync_repeat_update_and_source_failure(database):
     with db.transaction() as s:
         rows = s.scalars(select(P).order_by(P.id)).all()
         assert len(rows) == 2 and rows[0].excerpt == '新內容'
-        assert rows[0].first_seen_at.replace(tzinfo=timezone.utc) == NOW
-        assert s.get(S,'nkust-latest').last_success_at.replace(tzinfo=timezone.utc) == NOW+timedelta(minutes=2)
+        first_seen = rows[0].first_seen_at
+        last_success = s.get(S,'nkust-latest').last_success_at
+        assert (first_seen.replace(tzinfo=timezone.utc) if first_seen.tzinfo is None else first_seen) == NOW
+        assert (last_success.replace(tzinfo=timezone.utc) if last_success.tzinfo is None else last_success) == NOW+timedelta(minutes=2)
         assert s.scalars(select(R).order_by(R.id)).all()[-1].error_code == 'PUBLIC_SOURCE_UNAVAILABLE'
 
 

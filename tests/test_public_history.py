@@ -68,7 +68,8 @@ def test_page_budget_preserves_richer_rss_and_can_resume(database):
     with db.transaction() as s:
         row=s.scalar(select(P))
         assert row.excerpt=='學生申請'
-        assert row.published_at.replace(tzinfo=timezone.utc)==datetime(2026,10,27,7,tzinfo=timezone.utc)
+        published = row.published_at
+        assert (published.replace(tzinfo=timezone.utc) if published.tzinfo is None else published)==datetime(2026,10,27,7,tzinfo=timezone.utc)
         assert s.get(S,'nkust-latest').next_history_page==2
         assert s.get(S,'nkust-latest').history_status=='incomplete'
 
@@ -76,3 +77,11 @@ def test_page_budget_preserves_richer_rss_and_can_resume(database):
 @pytest.mark.parametrize('budget',[0,21,-1])
 def test_history_rejects_unbounded_page_budget(database,budget):
     with pytest.raises(ValueError): backfill_history(database[0],max_pages=budget)
+
+
+def test_same_listing_and_rss_content_is_unchanged_in_any_database_timezone(database):
+    db,_=database
+    sync_recent(db,source=lambda:feed(item()))
+    raw=listing(url='https://osa.nkust.edu.tw/p/404-1.php').replace('合成公告'.encode(),'合成獎學金申請'.encode())
+    result=backfill_history(db,max_pages=1,source=lambda _:raw,sleep=lambda _:None)
+    assert result.status=='success' and result.unchanged==1 and result.updated==0

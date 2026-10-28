@@ -20,6 +20,7 @@ from app.services.public_source import PublicSourceError
     history_contracts.test_backfill_resumes_only_after_committed_page,
     history_contracts.test_repeated_page_and_malformed_end_do_not_mark_complete,
     history_contracts.test_page_budget_preserves_richer_rss_and_can_resume,
+    history_contracts.test_same_listing_and_rss_content_is_unchanged_in_any_database_timezone,
 ],ids=lambda f:f.__name__)
 def test_public_contracts_on_postgresql(database,contract):
     contract(database)
