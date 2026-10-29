@@ -66,6 +66,10 @@ const request = (url, method = 'GET', mode = 'navigate') =>
   assert.equal(await dispatch('fetch', request('/auth/google/callback?code=secret')), undefined);
   assert.equal(await dispatch('fetch', request('/sync', 'POST')), undefined);
   assert.equal(await dispatch('fetch', request('/api/me', 'GET', 'cors')), undefined);
+  for (const url of ['/demo', '/demo/announcements/demo-event', '/public/announcements', '/public/announcements/1']) {
+    assert.equal(await dispatch('fetch', request(url)), undefined, 'public/demo HTML must not enter Cache Storage');
+    assert.equal(cached.size, 7);
+  }
 
   networkOnline = false;
   const offline = await dispatch('fetch', request('/dashboard'));

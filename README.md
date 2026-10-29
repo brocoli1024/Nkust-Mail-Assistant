@@ -1,6 +1,18 @@
 # NKUST 校園郵件智慧助手
 
-> **公開公告整合版（本分支，尚未發布）**：新增免登入公開首頁、公開公告搜尋／分類／學生相關篩選，以及官方 RSS 更新與分批歷史補收指令。私人 Gmail 維持帳號隔離。需要 migration **0006**；操作及收錄限制見 [公開公告維護手冊](docs/public-announcements.md)。RSS 近期資料不等於全部歷史，自動排程尚未啟用。
+> **公開公告整合版與部署狀態**：10/28 工作區發布紀錄記載曾部署公開公告版；本次新增功能未部署，也未重新確認今天的正式版本及收錄數。`main` 的單人本機版與 `codex/web-deployment` 的多人網站功能不同，不可把分支功能視為正式環境已有。多人網站使用 migration **0006**；操作及收錄限制見 [公開公告維護手冊](docs/public-announcements.md)。RSS 近期資料不等於全部歷史，自動排程尚未啟用。
+
+## 學生使用入口（多人網站）
+
+| 想做的事 | 入口 | 是否需要授權 |
+| --- | --- | --- |
+| 找公告、搜尋與分類 | `/` → `/public/announcements` | 免登入、無需 Gmail 或 AI 金鑰 |
+| 先試用操作 | `/demo` | 三則明確標示的合成公告，無需個人金鑰；不是實際報名資訊 |
+| 查看自己的郵件公告 | `/login` | 選用 Google／Gmail 唯讀整合，目前須加入測試名單 |
+
+公開頁顯示官方來源、最後成功更新時間、維護失敗與收錄範圍；更新失敗仍保留既有資料。示範頁的日期固定，與真實公告資料分開，不呼叫 Gmail 或 AI、不寫入公告資料庫。行動資訊卡與「我的待辦」尚未實作，系統的「需要處理」篩選不代表使用者已加入待辦。
+
+以上入口屬 `app.web:app`，不是下方 `app.main:app` 的單人 Dashboard。自行架設仍需管理者完成既有多人資料庫、OAuth 與 Session 設定，並依 [Phase 9 手冊](docs/multi-user-phase9.md) 啟動；學生端免金鑰不代表服務端零設定。第一階段未增加 migration、依賴、Google 權限或付費服務。驗證範圍見 [第一階段驗證紀錄](docs/campus-action-phase1-validation-2026-10-29.md)。
 
 > **多人版已部署至 Render；全面開放仍待驗收。** `app.web:app` 提供 Google 登入、依帳號同步、分類規則、公告清單／詳細頁與 PWA。2026-10-01 已發布資料說明、帳號刪除、帳號隔離與 PostgreSQL 併發補修，Google 品牌首頁及隱私連結也已儲存。本機 PostgreSQL 實機測試已通過；OAuth 仍為 Testing。請先閱讀 [2026-10-01 開放使用檢查](docs/public-readiness-2026-10-01.md)，確認 Google OAuth 對外授權、備份還原及容量。部署操作見 [Phase 9 手冊](docs/multi-user-phase9.md)。唯讀部署前檢查：`python -m app.deployment_check`（本機 SQLite／HTTP 不符合正式設定）。
 >
