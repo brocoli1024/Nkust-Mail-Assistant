@@ -20,6 +20,8 @@ def seed(app):
 def test_anonymous_public_pages_never_resolve_private_sessions(web,monkeypatch):
     client,app,_,_=web
     login(client)
+    valid_cookie = client.cookies.get(app.state.sessions.cookie_name)
+    assert valid_cookie
     uid=client.get('/api/me').json()['id']
     seed(app)
     with app.state.database.transaction() as s:
@@ -30,7 +32,7 @@ def test_anonymous_public_pages_never_resolve_private_sessions(web,monkeypatch):
                            department='私人單位',source_category='私人分類',title='PRIVATE-MARKER',original_text='PRIVATE-BODY'))
     def fail(*args): raise RuntimeError('public routes must not read private sessions')
     monkeypatch.setattr(app.state.sessions,'resolve',fail)
-    for cookie in (None,'forged-cookie'):
+    for cookie in (None,valid_cookie,'forged-cookie'):
         client.cookies.clear()
         if cookie: client.cookies.set(app.state.sessions.cookie_name,cookie)
         for path in ('/','/public/announcements','/public/announcements/1'):
