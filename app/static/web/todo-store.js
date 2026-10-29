@@ -15,6 +15,7 @@ function projectTodo(r,now){
  return {...r,effective_status:r.status==='snoozed'&&Date.parse(r.snoozed_until)<=dateNow(now).getTime()?'active':r.status,
  deadline,deadline_group:!deadline?'none':deadline<today?'overdue':deadline===today?'today':deadline<=end?'soon':'later',snooze_after_deadline:!!deadline&&deadline<taipeiDate(nextSnooze(now))};
 }
+function renderClockKey(records,now){return JSON.stringify([taipeiDate(now),records.map(r=>[r.source_ref,projectTodo(r,now).effective_status])]);}
 function createTodoStore(options={}){
  const factory=options.indexedDB??root.indexedDB;
  function open(){return new Promise((resolve,reject)=>{
@@ -42,5 +43,5 @@ function createTodoStore(options={}){
   return {...old,status:{complete:'done',reopen:'active',snooze:'snoozed',remove:'removed'}[operation],snoozed_until:operation==='snooze'?nextSnooze(now):null,revision:expectedRevision+1,updated_at:timestamp};
  });}};
 }
-const api={createTodoStore,nextSnooze,projectTodo};root.NkustTodos=api;if(typeof module!=='undefined')module.exports=api;
+const api={createTodoStore,nextSnooze,projectTodo,renderClockKey};root.NkustTodos=api;if(typeof module!=='undefined')module.exports=api;
 })(typeof window!=='undefined'?window:globalThis);

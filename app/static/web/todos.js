@@ -15,7 +15,7 @@ function init(){
   const detail=area.hasAttribute('data-device-todo'),scope=area.dataset.scope||'public',cardNode=detail?area.closest('[data-card-payload]'):null;
   if(!['public','demo'].includes(scope))continue;
   const status=area.querySelector('[data-todo-status]'),body=area.querySelector(detail?'[data-todo-actions]':'[data-todo-items]');
-  const store=scope==='demo'?makeMemory():api.createTodoStore();let records=[],card=null,dirty=false,ready=false,busy=false;
+  const store=scope==='demo'?makeMemory():api.createTodoStore();let records=[],card=null,dirty=false,ready=false,busy=false,clockKey='';
   const say=text=>{status.textContent=text;};
   const button=(target,text,fn)=>{const b=el('button',text);b.type='button';b.className='button secondary';b.disabled=busy; b.addEventListener('click',fn);target.append(b);};
   async function change(operation,old,snoozeUntil){
@@ -41,9 +41,10 @@ function init(){
    article.append(el('p','加入時的資訊快照，來源後續可能更新；不代表你符合資格。'));
    const url=safeLink(r.card.source.url);if(url){const link=el('a','核對公告來源（另開分頁）');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.className='text-link dark';article.append(link);}
    const history=el('details'),summary=el('summary','加入時的原文與依據'),pre=el('pre',JSON.stringify(r.card,null,2));history.append(summary,pre);article.append(history);
+   root.NkustCalendarUI?.mount(article,root.NkustCalendar.projectCard(r.card,{snapshot:true}));
    const controls=el('div');controls.className='actions todo-actions';actions(controls,r);article.append(controls);return article;
   }
-  function render(){body.replaceChildren();if(!ready){body.append(el('p','尚未完整讀取待辦，請重試。'));return;}
+  function render(){clockKey=api.renderClockKey(records,new Date());body.replaceChildren();if(!ready){body.append(el('p','尚未完整讀取待辦，請重試。'));return;}
    const projected=records.map(r=>api.projectTodo(r,new Date()));
    if(detail){const old=projected.find(r=>r.source_ref===card?.source.source_ref);
     if(!card){body.append(el('p','請先完成行動卡載入；修正讀取失敗時不會使用空白值加入。'));return;}
@@ -59,7 +60,7 @@ function init(){
   async function load(){if(busy)return;ready=false;say('正在讀取待辦。');try{records=await store.readAll();ready=true;say(scope==='demo'?'示範待辦只留在此頁。':'已讀取此裝置待辦；不會隨 Google 帳號切換。');}catch{say('待辦讀取失敗，並非沒有待辦。請檢查儲存權限、關閉舊分頁後重試；不會清除既有資料。');}render();}
   if(detail)controllers.set(cardNode,{setCard(value){card=structuredClone(value);dirty=false;render();},setDirty(){dirty=true;}});
   const retry=el('button','重新讀取待辦');retry.type='button';retry.className='button secondary';retry.addEventListener('click',load);area.append(retry);
-  area.querySelector('[data-todo-filter]')?.addEventListener('change',render);setInterval(()=>{if(ready&&!busy)render();},60000);load();
+  area.querySelector('[data-todo-filter]')?.addEventListener('change',render);setInterval(()=>{if(ready&&!busy&&clockKey!==api.renderClockKey(records,new Date()))render();},60000);load();
  }
 }
 root.NkustTodoUI={setCard(node,card){controllers.get(node)?.setCard(card);},setDirty(node){controllers.get(node)?.setDirty();}};

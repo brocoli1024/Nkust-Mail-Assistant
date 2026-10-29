@@ -30,3 +30,8 @@ function factory(){
 const {needsTodoRefresh}=require('../app/static/web/todo-clock.js');
 assert.equal(needsTodoRefresh(['2026-10-31T01:00:00+00:00'],Date.parse('2026-10-31T00:30:00Z')),false);
 assert.equal(needsTodoRefresh(['2026-10-31T01:00:00+00:00'],Date.parse('2026-10-31T01:00:00Z')),true);
+const {renderClockKey}=require('../app/static/web/todo-store.js');
+const clockRecord={schema_version:1,source_ref:'clock',card:{source:{kind:'public',source_ref:'clock'},baseline_hash:'a'.repeat(64),fields:{deadline:{value:null,state:'pending'}}},status:'snoozed',snoozed_until:'2026-10-30T01:00:00Z',revision:1,created_at:'2026-10-29T00:00:00Z',updated_at:'2026-10-29T00:00:00Z'};
+assert.equal(renderClockKey([clockRecord],'2026-10-29T15:00:00Z'),renderClockKey([clockRecord],'2026-10-29T15:01:00Z'));
+assert.notEqual(renderClockKey([clockRecord],'2026-10-29T15:59:00Z'),renderClockKey([clockRecord],'2026-10-29T16:00:00Z'));
+assert.notEqual(renderClockKey([clockRecord],'2026-10-30T00:59:00Z'),renderClockKey([clockRecord],'2026-10-30T01:00:00Z'));

@@ -11,6 +11,8 @@ from app.core.session import current_user, current_page_user
 
 router = APIRouter()
 templates = Jinja2Templates(directory=ROOT / 'app/templates/web')
+from app.services.calendar_export import calendar_payload
+templates.env.globals['calendar_payload']=calendar_payload
 
 
 def page(request, template, **context):

@@ -1,0 +1,7 @@
+<section class="calendar-export" data-calendar-payload="{{ calendar_payload(calendar_card if calendar_card is defined else card,snapshot=calendar_snapshot|default(false)) | tojson | forceescape }}" {% if calendar_wait|default(false) %}data-calendar-wait{% endif %} {% if error|default(false) %}data-calendar-dirty{% endif %}>
+<h3>行事曆匯出</h3><p>選擇活動或截止並核對日期後，產生 .ics 並啟動下載；不代表已加入行事曆。請確認瀏覽器下載清單。</p>
+{% set calendar_kind=(calendar_card.source.kind if calendar_card is defined else card.source.kind) if calendar_card is not mapping else calendar_card['source']['kind'] %}
+{% if calendar_kind=='private' %}<p>檔案含私人公告資訊，是可分享的純文字；請勿隨意轉傳。只在此頁產生，不上傳。</p>{% elif calendar_kind=='demo' %}<p>合成示範檔案，非真實公告；不可據此報名或申請。</p>{% endif %}
+{% if calendar_snapshot|default(false) %}<p>此處匯出待辦加入時快照，來源可能已更新，不會自動套用最新修正。</p>{% else %}<p>匯出目前畫面版本；來源變更不會更新已下載檔案，請先核對原文。</p>{% endif %}
+<div data-calendar-ui hidden></div><noscript>請啟用 JavaScript 在此裝置產生行事曆檔案；公告與原文仍可閱讀。</noscript>
+</section>
