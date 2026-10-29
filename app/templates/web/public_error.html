@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css?v=phase1">
+</head>
+<body><div class="site-shell">
+  {% set active_page = 'demo' if demo else 'public' %}{% include 'site_header.html' %}
+  <main id="main-content" class="page-content narrow">
+    <section class="hero compact" aria-labelledby="page-title"><div><h1 id="page-title">{{ title }}</h1></div></section>
+    {% if demo %}{% include 'demo_notice.html' %}{% endif %}
+    <section class="detail-card" aria-label="錯誤說明">
+      <p role="alert">{{ detail }}</p>
+      <div class="actions">
+        <a class="button" href="{{ return_url }}">{% if retry %}重新載入{% elif demo %}返回合成示範{% else %}返回公開公告{% endif %}</a>
+        {% if retry %}<a class="text-link dark" href="/demo">先體驗合成示範</a>{% endif %}
+      </div>
+    </section>
+  </main>
+</div></body></html>

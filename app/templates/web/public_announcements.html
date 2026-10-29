@@ -18,6 +18,7 @@
         <noscript><button type="submit" class="button">套用篩選</button></noscript><a class="text-link dark" href="/public/announcements">清除篩選</a>
       </form>
       <p class="filter-help" id="public-filter-help">選單變更後立即更新；輸入關鍵字後按 Enter 搜尋。學生相關依內容規則判斷，可能漏判；可切回全部查看。</p>
+      <p class="filter-help" id="filter-status" role="status" aria-live="polite" hidden></p>
     </section>
     <p class="results-meta" role="status">共 {{ total }} 則 · 第 {{ page_number }} 頁</p>
     {% include 'public_source_status.html' %}

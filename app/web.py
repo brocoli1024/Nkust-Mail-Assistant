@@ -5,11 +5,13 @@ from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.auth import router
 from app.auth.attempts import OAuthAttempts
@@ -108,13 +110,46 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             return home(request)
         return RedirectResponse('/login', status_code=303)
 
+    def is_public_page(request):
+        path = request.url.path
+        return session_enabled and request.method == 'GET' and (
+            path in ('/', '/public/announcements', '/demo')
+            or path.startswith('/public/announcements/')
+            or path.startswith('/demo/announcements/'))
+
+    def public_error(request, status_code):
+        from app.api.session import page
+        demo = request.url.path == '/demo' or request.url.path.startswith('/demo/')
+        messages = {
+            404: ('找不到這則公告', '公告可能不存在，請返回清單重新選擇。'),
+            422: ('請檢查搜尋與篩選條件', '請回到清單，縮短關鍵字或重新選擇分類。'),
+            503: ('暫時無法讀取公告', '目前無法連接資料服務，請稍後重試；你也可以先體驗合成示範。'),
+            500: ('暫時無法顯示這個頁面', '請稍後重試，或返回公告清單。'),
+        }
+        title, detail = messages[status_code]
+        response = page(request, 'public_error.html', title=title, detail=detail,
+                        demo=demo, return_url='/demo' if demo else '/public/announcements',
+                        retry=status_code >= 500)
+        response.status_code = status_code
+        return response
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request, exc):
+        if is_public_page(request) and exc.status_code in (404, 422):
+            return public_error(request, exc.status_code)
+        return await http_exception_handler(request, exc)
+
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request, exc):
         # Framework defaults echo input values; keep arbitrary request data private.
+        if is_public_page(request):
+            return public_error(request, 422)
         return JSONResponse({'error': 'INVALID_REQUEST', 'detail': '請求參數不正確，請檢查後重試。'}, status_code=422)
 
     @app.exception_handler(SQLAlchemyError)
     async def database_error(request, exc):
+        if is_public_page(request):
+            return public_error(request, 503)
         return JSONResponse({'error': 'DATABASE_UNAVAILABLE', 'detail': '請稍後重新開始登入。'}, status_code=503)
 
     @app.exception_handler(AuthError)
@@ -127,7 +162,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             response = await call_next(request)
         except Exception:
             # Do not let the ASGI server log provider exceptions or SQL parameters.
-            response = JSONResponse({'error': 'REQUEST_FAILED'}, status_code=500)
+            response = (public_error(request, 500) if is_public_page(request)
+                        else JSONResponse({'error': 'REQUEST_FAILED'}, status_code=500))
         response.headers['Cache-Control'] = 'no-store'
         # no-referrer makes browsers send Origin:null on HTML form POSTs,
         # which correctly fail our CSRF origin check. Account pages must retain

@@ -130,3 +130,64 @@ def test_empty_source_differs_from_empty_search(web):
     assert '沒有符合篩選的公告' in response.text
     assert '目前尚無收錄資料' not in response.text
     assert '清除篩選' in response.text
+
+
+@pytest.mark.parametrize('path,code', [
+    ('/public/announcements?q=' + 'x' * 201, 422),
+    ('/public/announcements?category=UNKNOWN', 422),
+    ('/public/announcements?page=0', 422),
+    ('/public/announcements/900', 404),
+    ('/public/announcements/not-an-id', 422),
+    ('/demo?category=UNKNOWN', 422),
+    ('/demo?q=' + 'x' * 201, 422),
+    ('/demo/announcements/missing', 404),
+])
+def test_public_page_errors_are_safe_html(web, path, code):
+    client, _, _, _ = web
+    r = client.get(path)
+    assert r.status_code == code
+    assert r.headers['content-type'].startswith('text/html')
+    assert '返回合成示範' in r.text if path.startswith('/demo') else '返回公開公告' in r.text
+    assert '請檢查搜尋與篩選條件' in r.text if code == 422 else '找不到這則公告' in r.text
+    assert 'no-store' in r.headers['cache-control']
+    assert 'content-security-policy' in r.headers
+    if path.startswith('/demo'):
+        assert '合成示範資料，非高科大真實公告' in r.text
+
+
+@pytest.mark.parametrize('path', ['/', '/public/announcements', '/public/announcements/1'])
+def test_public_database_failure_has_retry_without_exposing_error(web, monkeypatch, path):
+    from sqlalchemy.exc import SQLAlchemyError
+    client, app, _, _ = web
+    def fail(*args, **kwargs):
+        raise SQLAlchemyError('PRIVATE-SQL-MARKER')
+    monkeypatch.setattr(app.state.database, 'transaction', fail)
+    r = client.get(path)
+    assert r.status_code == 503
+    assert r.headers['content-type'].startswith('text/html')
+    assert '暫時無法讀取公告' in r.text and '重新載入' in r.text
+    assert 'PRIVATE-SQL-MARKER' not in r.text
+    assert 'href="/demo"' in r.text
+
+
+def test_public_errors_do_not_change_private_api_contracts(web):
+    client, _, _, _ = web
+    r = client.get('/api/me')
+    assert r.status_code == 401 and r.headers['content-type'].startswith('application/json')
+    login(client)
+    r = client.get('/announcements?page=0')
+    assert r.status_code == 422 and r.json()['error'] == 'INVALID_REQUEST'
+    assert client.post('/demo').status_code == 405
+
+
+def test_public_filter_form_preserves_get_and_no_old_page(web):
+    client, app, _, _ = web
+    seed(app)
+    for path in ('/public/announcements?page=2&category=獎學金', '/demo?category=活動'):
+        r = client.get(path)
+        soup = BeautifulSoup(r.text, 'html.parser')
+        form = soup.select_one('#announcement-filters')
+        assert form['method'] == 'get' and not form.select('[name="page"]')
+        assert form.select_one('noscript button[type="submit"]')
+        assert form.select_one('option[selected]').text in ('全部公告', '獎學金', '活動')
+        assert soup.select_one('#filter-status[role="status"][aria-live="polite"]')
