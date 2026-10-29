@@ -37,9 +37,13 @@ def render_private(request,user,aid,*,error=None,status=200,submitted=None):
             values.update({key+'.mode':change.mode,key+'.value':change.value or '',key+'.quote':change.quote or '',key+'.confirmed':'on' if change.confirmed else ''})
         values.update(action_decision=v.patch.action_decision,deadline_kind=v.patch.deadline_kind)
     if submitted is not None:values=submitted
+    from app.services.todos import get_private_todo
+    try:todo_entry=get_private_todo(request.app.state.database,user,v.base.source.source_ref)
+    except CorrectionUnavailable:
+        r=page(request,'action_card_error.html',user=user,source={'title':v.item['title'],'original_text':v.item['original_text'],'url':v.item['url']},title='暫時無法讀取待辦',detail='待辦讀取失敗，請稍後重試。');r.status_code=503;return r
     sessions=request.app.state.sessions
     r=page(request,'announcement_detail.html',user=user,item=v.item,view=v,error=error,form_values=values,
-        csrf=sessions.csrf(request.cookies.get(sessions.cookie_name)),**card_context(v.effective,'private'))
+        todo_entry=todo_entry,csrf=sessions.csrf(request.cookies.get(sessions.cookie_name)),**card_context(v.effective,'private'))
     r.status_code=status;return r
 
 

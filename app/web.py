@@ -91,6 +91,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         app.include_router(demo_router)
         from app.api.action_card_corrections import router as correction_router
         app.include_router(correction_router)
+        from app.api.todos import router as todo_router
+        app.include_router(todo_router)
         app.mount('/assets', StaticFiles(directory=ROOT / 'app/static/web'), name='web-assets')
 
         @app.get('/manifest.webmanifest', include_in_schema=False)
@@ -172,7 +174,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         # which correctly fail our CSRF origin check. Account pages must retain
         # same-origin form metadata; OAuth URLs must never disclose their code.
         response.headers['Referrer-Policy'] = (
-            'same-origin' if (request.url.path in ('/dashboard', '/settings', '/account/delete') or re.fullmatch(r'/announcements/[0-9]+(?:/action-card/corrections)?', request.url.path)) else 'no-referrer'
+            'same-origin' if (request.url.path in ('/dashboard', '/settings', '/account/delete', '/my/todos') or re.fullmatch(r'/my/todos/[0-9]+', request.url.path) or re.fullmatch(r'/announcements/[0-9]+(?:/action-card/corrections|/todos)?', request.url.path)) else 'no-referrer'
         )
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Content-Security-Policy'] = (

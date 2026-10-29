@@ -45,14 +45,18 @@
       <div><p class="eyebrow">YOUR CAMPUS, IN FOCUS</p><h1 id="page-title">你的校園公告，<br>一眼掌握。</h1><p>把重要的通知、待處理事項和截止日期，整理在同一個地方。</p></div>
     </section>
     <div class="identity-strip"><strong>你好，{{ user.display_name or user.email }}。</strong><span>{{ user.email }}</span></div>
+    <section class="detail-section" aria-label="我的待辦"><h2>我的待辦 · 私人帳號</h2>
+    {% if todo_error %}<p class="notice" role="alert">待辦讀取失敗，請稍後重試；並非沒有待辦。</p>{% else %}
+    {% for t in todo_items if t.effective_status=='active' %}<p><a class="text-link dark" href="/my/todos">{{ t.card.source.title }}</a> · {{ t.deadline or '截止待確認' }}{% if t.deadline_group=='overdue' %} · 已逾期{% elif t.deadline_group in ('today','soon') %} · 即將截止{% endif %}</p>{% else %}<p>尚無進行中的待辦。到公告詳情自行加入。</p>{% endfor %}{% endif %}
+    <a class="button" href="/my/todos">查看我的待辦</a> <a class="text-link" href="/todos">此裝置的公開待辦（分開保存）</a></section>
     <section aria-labelledby="overview-title">
       <div class="section-heading"><h2 id="overview-title">校園公告</h2><p>你的近期重點</p></div>
       <div class="stats">
         <a class="stat-card" href="/announcements?view=today"><span>今日收到</span><strong>{{ counts.today }}</strong><small>查看今日通知</small></a>
         <a class="stat-card" href="/announcements?view=deadline"><span>即將截止</span><strong>{{ counts.deadline }}</strong><small>今天起 7 天內</small></a>
-        <a class="stat-card" href="/announcements?view=action"><span>需要處理</span><strong>{{ counts.action }}</strong><small>查看已標記事項</small></a>
+        <a class="stat-card" href="/announcements?view=action"><span>系統辨識可行動</span><strong>{{ counts.action }}</strong><small>不是我的待辦</small></a>
       </div>
-      <p class="section-note">日期以台灣時間計算；即將截止為今天起 7 天（含今天）。需要處理僅計入已標記的公告，未判定者不計入。</p>
+      <p class="section-note">日期以台灣時間計算；即將截止為今天起 7 天（含今天）。系統辨識不代表已加入待辦，未判定者不計入。</p>
     </section>
     <section class="action-panel" aria-labelledby="inbox-title">
       <div><h2 id="inbox-title">你的公告收件匣</h2><p>已整理的通知與原文都在這裡。</p></div>

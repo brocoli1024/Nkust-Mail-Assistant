@@ -1,0 +1,17 @@
+{% for t in items if t.effective_status==view %}
+<article class="detail-card todo-row" data-todo-row data-snoozed-until="{{ t.snoozed_until.isoformat() if t.snoozed_until else '' }}">
+<h2>{{ t.card.source.title }}</h2><p>{{ t.card.fields.action.value or t.card.fields.summary.value or '行動待確認，請核對原文。' }}</p>
+<p>截止：{{ t.deadline or '待確認' }}{% if t.deadline_group=='overdue' %} · 已逾期{% elif t.deadline_group in ('today','soon') %} · 即將截止{% endif %}</p>
+{% if t.effective_status=='snoozed' %}<p>稍後至 {{ t.snoozed_label }}（台灣時間）</p>{% endif %}
+<p>加入時的資訊快照，後續來源可能更新；不代表你符合資格。</p>
+{% if t.source_missing or t.source_changed %}<p class="notice">來源{{ '已重新解析或不在目前清單' if t.source_missing else '內容已變更' }}，請重新核對；待辦保留加入時資訊。</p>{% endif %}
+{% if t.local_url %}<a class="text-link dark" href="{{ t.local_url }}">查看目前公告與依據</a>{% endif %}
+<details><summary>加入時的原文與解析</summary><pre>{{ t.card | tojson(indent=2) }}</pre></details>
+<div class="actions todo-actions">
+{% for op,label in [('complete','標記完成'),('reopen','重新開啟'),('snooze','稍後處理'),('remove','移除待辦')] %}
+{% if (op!='complete' or view!='done') and (op!='reopen' or view!='active') %}
+<form method="post" action="/my/todos/{{ t.id }}"><input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="expected_revision" value="{{ t.revision }}"><input type="hidden" name="operation" value="{{ op }}">
+{% if op=='snooze' %}<p>明天 {{ t.snooze_label }}（台灣時間）重新出現；不發送通知。{% if t.snooze_after_deadline %}<strong>此時間晚於截止日期，請先處理。</strong>{% endif %}</p>{% endif %}
+<button class="button secondary" type="submit">{{ label }}</button></form>{% endif %}{% endfor %}
+</div></article>
+{% else %}<p class="notice">此狀態尚無待辦。到公告詳情按「加入我的待辦」開始。</p>{% endfor %}

@@ -199,3 +199,6 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
 .action-card .detail-grid > div > div { padding:0; border:0; }
 .action-card .field-state { margin:8px 0; }
 .action-card .detail-grid details { margin:4px 0; }
+.todo-section{margin-block:2rem;padding-block:1.5rem;border-top:1px solid var(--border,#d7d0c6)}
+.todo-actions{align-items:flex-end;flex-wrap:wrap;gap:1rem}.todo-actions form{max-width:100%}.todo-actions p{max-width:28rem}
+.todo-section button,.todo-row button{min-height:44px}.todo-row pre{white-space:pre-wrap;overflow-wrap:anywhere}
