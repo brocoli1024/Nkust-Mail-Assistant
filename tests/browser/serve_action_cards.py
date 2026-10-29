@@ -56,6 +56,8 @@ def change_public():
     return RedirectResponse('/public/announcements/1',status_code=303)
 @app.get('/__qa/harness')
 def harness():return FileResponse(Path(__file__).with_name('action_card_store.html'))
+@app.get('/__qa/todos-harness')
+def todo_harness():return FileResponse(Path(__file__).with_name('todo_store.html'))
 app.mount('/__qa/assets',StaticFiles(directory=Path(__file__).parent))
 if __name__=='__main__':
     try:uvicorn.run(app,host='127.0.0.1',port=8766,access_log=False)
