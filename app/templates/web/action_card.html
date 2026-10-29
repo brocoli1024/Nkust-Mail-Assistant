@@ -1,0 +1,28 @@
+<section class="detail-card action-card" aria-label="公告行動資訊卡" {% if scope != 'private' %}data-card-payload="{{ payload | tojson | forceescape }}"{% endif %}>
+  <h2>公告行動資訊卡</h2>
+  <p>系統辨識不代表你必須參加，也不會自動建立待辦。</p>
+  {% if card.requires_action is none %}<p>行動尚未判定，請核對原文。</p>{% endif %}
+  <dl class="detail-grid">
+  {% for key,label in labels.items() %}{% set field=card.fields[key] %}
+    <div><dt>{{ label }}</dt><dd data-card-field="{{ key }}">{{ field.value if field.value else '待確認' }}</dd>
+    <p class="field-state" data-card-state="{{ key }}">{% if field.origin == 'user' %}我的修正 · {% endif %}{{ '待確認' if field.state in ('pending','stale') else ('使用者確認，非系統驗證' if field.state == 'user_confirmed' else '來源規則辨識') }}</p>
+    {% for warning in field.warnings %}<p>{{ warning }}</p>{% endfor %}
+    {% if field.evidence %}<details><summary>查看依據</summary>{% for e in field.evidence %}<blockquote>{{ e.quote }}</blockquote><p>依據：{{ {'title':'來源標題','excerpt':'來源摘要','original':'郵件公告原文'}.get(card.source.segments[e.segment].kind) }}</p>{% endfor %}</details>{% endif %}
+    </div>
+  {% endfor %}
+  </dl>
+  <p>公告列出的適用對象不代表你已符合資格，請核對完整條件。</p>
+  <p>時間尚未完整解析，請核對原文；不能直接據此匯出行事曆。</p>
+  {% if link_unverified %}<p>公告提供的連結，官方性待確認。</p>{% endif %}
+  {% if card_context.deadline_passed %}<p class="notice">此截止日期已過；其他條件與期限仍請核對原文。</p>{% endif %}
+  {% if scope == 'private' and view.stale %}<p class="notice">來源或解析版本已變更，過往修正尚未套用，請重新核對。</p>{% endif %}
+  <details><summary>原始解析與候選日期</summary><pre>{{ (view.base if scope == 'private' else card).legacy | tojson(indent=2) }}</pre>
+    {% for e in card.candidates %}<blockquote>{{ e.quote }}{% if e.year_inferred %}（年份推定，待確認）{% endif %}</blockquote>{% endfor %}
+    {% for warning in card.warnings %}<p>{{ warning }}</p>{% endfor %}
+    <p>解析版本：{{ card.parser_version }}</p>
+  </details>
+  {% if card.ai_references %}<details><summary>既有 AI 參考（請核對來源）</summary>{% for ref in card.ai_references %}<p>{{ ref.warning }}</p><pre>{{ ref.result | tojson(indent=2) }}</pre>{% endfor %}</details>{% endif %}
+  <p data-correction-status role="status" aria-live="polite"></p>
+  {% include 'action_card_editor.html' %}
+  {% if scope == 'private' %}<details><summary>此封郵件的修正歷史</summary>{% for h in view.history %}<p><a class="text-link dark" href="/action-cards/history/{{ h.id }}">查看原快照與修正（版本 {{ h.revision }}）</a></p>{% else %}<p>尚無修正紀錄。</p>{% endfor %}</details>{% endif %}
+</section>

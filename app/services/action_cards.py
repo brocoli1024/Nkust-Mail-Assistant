@@ -96,7 +96,7 @@ def public_source(row):
         url=normalize_public_url(row.canonical_url)
     except PublicSourceError:
         url=None
-    return SourceDocument(kind='public',source_ref=json.dumps([row.source_key,url or row.canonical_url],ensure_ascii=False),title=row.title,
+    return SourceDocument(kind='public',source_ref=json.dumps([row.source_key,url or ("invalid:"+digest(row.canonical_url))],ensure_ascii=False),title=row.title,
         segments=(SourceSegment(kind='title',text=row.title),SourceSegment(kind='excerpt',text=row.excerpt or '')),url=url)
 
 

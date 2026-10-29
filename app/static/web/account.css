@@ -182,3 +182,16 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
   .public-source-status { padding:16px; }
   .announcement, .detail-card, .filter-panel { min-width:0; }
 }
+.action-card { margin-bottom:24px; }
+.action-card h2 { font-size:1.5rem; margin-bottom:16px; }
+.action-card dd, .action-card pre, .action-card blockquote { overflow-wrap:anywhere; white-space:pre-wrap; }
+.action-card .field-state { font-size:.9rem; color:var(--ink-muted); }
+.action-card summary { min-height:44px; cursor:pointer; padding-block:10px; }
+.action-card details, .card-editor fieldset { margin-block:16px; }
+.action-card blockquote { margin:12px 0; border-left:3px solid var(--ink-muted); padding-left:12px; }
+.card-editor { display:grid; gap:16px; }
+.card-editor label { display:grid; gap:8px; }
+.card-editor textarea { width:100%; min-height:64px; font:inherit; padding:10px; color:var(--ink); background:var(--paper); }
+.card-editor select { min-height:44px; }
+.card-editor fieldset { min-width:0; border:1px solid var(--line-light); padding:16px; }
+[hidden] { display:none !important; }

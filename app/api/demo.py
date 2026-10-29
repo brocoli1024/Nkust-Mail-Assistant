@@ -1,4 +1,6 @@
 """Read-only synthetic demo; never resolves sessions or reads the database."""
+from app.services.action_cards import build_action_card, demo_source
+from app.api.action_card_corrections import card_context
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.api.session import page
@@ -21,4 +23,4 @@ def detail(demo_id: str, request: Request):
     item = get_demo_announcement(demo_id)
     if item is None:
         raise HTTPException(404, '找不到合成示範公告。')
-    return page(request, 'demo_announcement_detail.html', item=item)
+    return page(request, 'demo_announcement_detail.html', item=item, **card_context(build_action_card(demo_source(item)),'demo'))

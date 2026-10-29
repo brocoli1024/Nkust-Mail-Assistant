@@ -1,5 +1,7 @@
 """Anonymous public-table views. Never resolve sessions or fetch external data."""
 from typing import Literal
+from app.services.action_cards import build_action_card, public_source
+from app.api.action_card_corrections import card_context
 from urllib.parse import urlencode
 from fastapi import APIRouter, Request, Query, HTTPException
 from sqlalchemy import select, func, or_
@@ -77,5 +79,6 @@ def detail(announcement_id: int, request: Request):
         if row is None:
             raise HTTPException(404, '找不到公開公告。')
         item = public_item(row)
+        card = build_action_card(public_source(row))
         status = status_data(session)
-    return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, **status)
+    return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, **status, **card_context(card,'public'))
