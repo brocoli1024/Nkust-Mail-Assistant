@@ -19,7 +19,7 @@ def display_time(value):
 def status_data(session):
     state = session.get(S, SOURCE_KEY)
     run = session.scalar(select(R).where(R.source_key == SOURCE_KEY).order_by(R.id.desc()).limit(1))
-    return dict(last_success=display_time(state.last_success_at if state else None),
+    return dict(last_success=display_time(state.last_success_at) if state and state.last_success_at else '尚無成功更新紀錄',
                 oldest=display_time(state.oldest_seen_at if state else None),
                 history_status=state.history_status if state else 'not_started',
                 history_completed=display_time(state.history_completed_at if state else None),
@@ -57,13 +57,14 @@ def announcements(request: Request, q: str = Query('', max_length=200), category
     if q.strip():
         statement = statement.where(or_(P.title.contains(q.strip(), autoescape=True), P.excerpt.contains(q.strip(), autoescape=True)))
     with request.app.state.database.transaction() as session:
+        source_total = session.scalar(select(func.count()).select_from(P).where(P.source_key == SOURCE_KEY))
         total = session.scalar(select(func.count()).select_from(statement.subquery()))
         rows = session.scalars(statement.order_by(P.published_at.desc().nulls_last(), P.id.desc()).offset((page_number-1)*20).limit(20)).all()
         items = [public_item(row) for row in rows]
         status = status_data(session)
     def link(number):
         return '/public/announcements?' + urlencode(dict(q=q,category=category,audience=audience,page=number))
-    return page(request, 'public_announcements.html', items=items,total=total,q=q,category=category,
+    return page(request, 'public_announcements.html', items=items,total=total,source_total=source_total,q=q,category=category,
                 audience=audience,categories=CATEGORIES,page_number=page_number,source_url=LISTING_URL,
                 previous=link(page_number-1) if page_number>1 else None,
                 following=link(page_number+1) if page_number*20<total else None, **status)
@@ -76,4 +77,5 @@ def detail(announcement_id: int, request: Request):
         if row is None:
             raise HTTPException(404, '找不到公開公告。')
         item = public_item(row)
-    return page(request, 'public_announcement_detail.html', item=item)
+        status = status_data(session)
+    return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, **status)

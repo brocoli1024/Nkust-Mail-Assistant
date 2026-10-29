@@ -4,6 +4,9 @@ from tests.test_sessions import web, login, csrf
 from tests.test_auth import oauth
 from app.models.multi_user import Email, Announcement
 from app.models.public_announcements import PublicAnnouncement as P
+from app.models.public_announcements import PublicSourceState, PublicSyncRun
+from bs4 import BeautifulSoup
+import pytest
 
 
 def seed(app):
@@ -83,3 +86,47 @@ def test_account_deletion_preserves_public_announcements(web):
     r=client.post('/account/delete',data={'confirm':'DELETE','csrf_token':csrf(client)})
     assert r.status_code==303
     assert 'PUBLIC-STUDENT' in client.get('/public/announcements').text
+
+
+@pytest.mark.parametrize('run_status', ['failed', 'partial'])
+def test_source_status_is_visible_on_all_public_pages(web, run_status):
+    client, app, _, _ = web
+    seed(app)
+    with app.state.database.transaction() as s:
+        s.add(PublicSourceState(source_key='nkust-latest',
+            last_success_at=datetime(2026, 10, 28, 2, 0, tzinfo=timezone.utc),
+            history_status='incomplete'))
+        s.add(PublicSyncRun(source_key='nkust-latest', mode='recent', status=run_status,
+            started_at=datetime(2026, 10, 29, 2, 0, tzinfo=timezone.utc)))
+    for path in ('/', '/public/announcements', '/public/announcements/1'):
+        response = client.get(path)
+        assert response.status_code == 200
+        soup = BeautifulSoup(response.text, 'html.parser')
+        status = soup.select_one('[aria-label="公告來源與更新狀態"]')
+        assert status is not None
+        for details in status.select('details'):
+            details.decompose()
+        text = status.get_text()
+        assert '高科大最新消息' in text
+        assert '2026-10-28 10:00' in text
+        assert '台灣時間' in text and '保留先前取得的資料' in text
+        assert '僅涵蓋指定來源' in text
+        assert '2026-10-29 10:00' not in text
+
+
+def test_missing_success_is_not_invented(web):
+    client, app, _, _ = web
+    seed(app)
+    for path in ('/', '/public/announcements', '/public/announcements/1'):
+        assert '尚無成功更新紀錄' in client.get(path).text
+
+
+def test_empty_source_differs_from_empty_search(web):
+    client, app, _, _ = web
+    response = client.get('/public/announcements')
+    assert '目前尚無收錄資料' in response.text and 'href="/demo"' in response.text
+    seed(app)
+    response = client.get('/public/announcements?q=does-not-match')
+    assert '沒有符合篩選的公告' in response.text
+    assert '目前尚無收錄資料' not in response.text
+    assert '清除篩選' in response.text

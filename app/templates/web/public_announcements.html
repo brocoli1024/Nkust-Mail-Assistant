@@ -20,19 +20,14 @@
       <p class="filter-help" id="public-filter-help">選單變更後立即更新；輸入關鍵字後按 Enter 搜尋。學生相關依內容規則判斷，可能漏判；可切回全部查看。</p>
     </section>
     <p class="results-meta" role="status">共 {{ total }} 則 · 第 {{ page_number }} 頁</p>
-    <details class="public-source-status"><summary>更新與收錄範圍</summary>
-      <p>最後成功更新：{{ last_success }}（台灣時間）。最早已收錄發布時間：{{ oldest }}。</p>
-      {% if last_run_status in ('failed','partial') %}<p class="notice" role="status">最近維護更新{% if last_run_status == 'partial' %}有部分失敗{% else %}失敗{% endif %}；目前保留先前取得的資料。</p>{% endif %}
-      {% if history_status == 'complete' %}<p>已完成一次歷史掃描：{{ history_completed }}。來源會變動，仍可能有缺漏。</p>{% elif history_status == 'incomplete' %}<p>歷史公告補收中，尚未涵蓋全部歷史。</p>{% else %}<p>目前以近期 RSS 資料為主，歷史補收尚未完成。</p>{% endif %}
-      <p>僅涵蓋指定來源已取得的資料；摘要可能截短，日期與內容請核對<a href="{{ source_url }}" target="_blank" rel="noopener noreferrer">學校原文清單（另開分頁）</a>。</p>
-    </details>
+    {% include 'public_source_status.html' %}
     <div class="announcement-list">
       {% for item in items %}<article class="announcement">
         <div class="meta-row"><span class="tag">{{ item.category or '未分類' }}</span><span>高科大最新消息</span>{% if item.student_relevance == 'relevant' %}<span>學生相關</span>{% endif %}</div>
         <h2><a href="/public/announcements/{{ item.id }}">{{ item.title }}</a></h2>
         <p class="muted">發布：{{ item.published }}{% if item.published != '未知' %}（台灣時間）{% endif %}</p>
         {% if item.excerpt %}<p class="public-excerpt">{{ item.excerpt }}</p>{% endif %}
-      </article>{% else %}<p class="notice">目前沒有符合條件的公開公告。可清除篩選；若仍無資料，表示尚未收錄。</p>{% endfor %}
+      </article>{% else %}{% if source_total == 0 %}<p class="notice">目前尚無收錄資料。你可以先<a href="/demo">體驗合成示範</a>。</p>{% else %}<p class="notice">沒有符合篩選的公告。請<a href="/public/announcements">清除篩選</a>，或更換關鍵字。</p>{% endif %}{% endfor %}
     </div>
     <nav class="pagination" aria-label="公開公告分頁">{% if previous %}<a href="{{ previous }}">上一頁</a>{% endif %}{% if following %}<a href="{{ following }}">下一頁</a>{% endif %}</nav>
   </main>
