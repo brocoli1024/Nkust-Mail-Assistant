@@ -21,12 +21,29 @@ def build_action_card(source, *, legacy=None, ai_references=()):
     content=content or next((s for s in source.segments if s.text),None)
     fields['summary']=CardField(value=(content.text[:160] if content else None),
         state='supported' if content else 'pending',origin='source_excerpt',
+        evidence=(Evidence(segment=source.segments.index(content),quote=content.text[:160],start=0,end=min(160,len(content.text)),role='summary'),) if content else (),
         warnings=('來源節錄，完整內容請核對原文',) if content else ())
     refs=[]
+    from app.schemas.analysis import AnalysisOutput
+    from pydantic import ValidationError
     for ref in ai_references:
-        if isinstance(ref,dict):
-            refs.append({'status':ref.get('status'),'version':ref.get('version'),
-                'result':ref.get('result'),'warning':'既有 AI 結果，版本／來源一致性待確認'})
+        if not isinstance(ref,dict):
+            continue
+        result=None
+        warning='既有 AI 結果，版本／來源一致性待確認'
+        if ref.get('status')=='completed' and isinstance(ref.get('result'),dict):
+            try:
+                data={k:v for k,v in ref['result'].items() if k in AnalysisOutput.model_fields}
+                result=AnalysisOutput.model_validate(data).model_dump()
+                for role, evidence_key in (('event_date','event_evidence'),('deadline','deadline_evidence'),('requires_action','action_evidence')):
+                    quote=result.get(evidence_key)
+                    if quote and not any(quote in segment.text for segment in source.segments):
+                        result[role]=None
+                        result[evidence_key]=None
+            except (ValidationError,ValueError,TypeError):
+                warning='既有 AI 結果格式無法驗證；請核對原文'
+        refs.append({'status':ref.get('status') if ref.get('status') in ('completed','failed','pending') else 'unknown',
+            'version':str(ref.get('version') or '')[:255],'result':result,'warning':warning})
     payload=source.model_dump(mode='json')
     if source.anchor:
         anchor=source.anchor.replace(tzinfo=timezone.utc) if source.anchor.tzinfo is None else source.anchor

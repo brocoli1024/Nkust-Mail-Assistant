@@ -101,3 +101,32 @@ def test_private_year_anchor_uses_taipei_year():
     assert c.candidates[0].year_inferred
     # 推定僅是候選，仍不得成為確定日期。
     assert c.fields['deadline'].state == 'pending'
+
+
+def test_summary_and_reference_validation_preserve_provenance():
+    c=build_action_card(source('來源內容'*100),ai_references=({'status':'completed','version':'unknown','result':'broken'}, {'status':'failed','result':{'summary':'假的'}}, None))
+    f=c.fields['summary']
+    assert len(f.value)==160 and f.evidence
+    assert f.evidence[0].quote == f.value
+    assert c.source.segments[0].text == '來源內容'*100
+    assert all(r['result'] is None for r in c.ai_references)
+    assert all(r['warning'] for r in c.ai_references)
+
+
+@pytest.mark.parametrize('name,limit',[('action',1200),('audience',1200),('materials',1200)])
+def test_patch_boundaries(name,limit):
+    p=CorrectionPatch.model_validate({'fields':{name:{'mode':'value','value':'字'*limit,'quote':'文'*2000}}})
+    assert len(p.fields[name].value)==limit
+    for value,quote in [('字'*(limit+1),None),('字','文'*2001)]:
+        with pytest.raises(ValidationError):
+            CorrectionPatch.model_validate({'fields':{name:{'mode':'value','value':value,'quote':quote}}})
+
+
+def test_duplicate_source_dates_and_context_conflicts():
+    s=source('報名截止：2026年10月8日')
+    s=s.model_copy(update={'segments':s.segments+s.segments})
+    assert build_action_card(s).fields['deadline'].value=='2026-10-08'
+    c=build_action_card(source('發布日期：2026年10月8日；活動日期：2026年10月8日；報名截止：2026年10月7日'))
+    assert c.fields['event_date'].value=='2026-10-08'
+    assert c.fields['deadline'].value=='2026-10-07'
+    assert build_action_card(source('報名截止：2026年10月8日 15:30')).time_status=='unparsed'
