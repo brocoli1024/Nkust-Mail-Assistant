@@ -22,13 +22,14 @@ def next_snooze(now):
 
 def todo_view(record,now):
     out=dict(record);now=clock(now)
+    if out.get('snoozed_until'):out['snoozed_until']=aware(out['snoozed_until'])
     if out['status'] not in ('active','done','snoozed','removed'):raise ValueError('Invalid todo state')
     card=ActionCard.model_validate(out['card']);deadline=card.fields['deadline']
     out['effective_status']='active' if out['status']=='snoozed' and aware(out['snoozed_until'])<=now else out['status']
     d=date.fromisoformat(deadline.value) if deadline.value and deadline.state in ('supported','user_confirmed') else None
     today=now.astimezone(TAIPEI).date()
     out.update(deadline=d.isoformat() if d else None,deadline_group=('none' if d is None else 'overdue' if d<today else 'today' if d==today else 'soon' if d<=today+timedelta(days=6) else 'later'),
-        snooze_label=next_snooze(now).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M'),
+        snooze_target=next_snooze(now).isoformat(),snooze_label=next_snooze(now).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M'),
         snoozed_label=aware(out['snoozed_until']).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M') if out.get('snoozed_until') else None,
         snooze_after_deadline=bool(d and d<next_snooze(now).astimezone(TAIPEI).date()))
     return out
@@ -83,7 +84,7 @@ def add_private_todo(database,user,aid,*,expected_revision,baseline_hash,card_re
             return expected_revision+1
     except (SQLAlchemyError,ValidationError):raise CorrectionUnavailable() from None
 
-def update_private_todo(database,user,tid,*,operation,expected_revision,now=None):
+def update_private_todo(database,user,tid,*,operation,expected_revision,now=None,snooze_until=None):
     if operation not in ('complete','reopen','snooze','remove') or type(expected_revision) is not int or expected_revision<1:raise ValueError('Invalid operation')
     try:
         with database.transaction() as s:
@@ -91,9 +92,11 @@ def update_private_todo(database,user,tid,*,operation,expected_revision,now=None
             row=s.scalar(select(T).where(T.id==tid,T.user_id==user.id))
             if not row:raise CorrectionNotFound()
             if row.revision!=expected_revision or row.status=='removed':raise CorrectionConflict()
+            target=next_snooze(clock(now)) if operation=='snooze' else None
+            if target is not None and snooze_until is not None and aware(snooze_until)!=target:raise CorrectionConflict()
             status={'complete':'done','reopen':'active','snooze':'snoozed','remove':'removed'}[operation]
             changed=s.execute(update(T).where(T.id==tid,T.user_id==user.id,T.revision==expected_revision).values(
-                status=status,snoozed_until=next_snooze(clock(now)) if status=='snoozed' else None,revision=expected_revision+1,updated_at=clock(now)))
+                status=status,snoozed_until=target,revision=expected_revision+1,updated_at=clock(now)))
             if changed.rowcount!=1:raise CorrectionConflict()
             return expected_revision+1
     except SQLAlchemyError:raise CorrectionUnavailable() from None

@@ -31,9 +31,10 @@ function createTodoStore(options={}){
  request.onerror=()=>{failure=Error('STORAGE_UNAVAILABLE');};request.onsuccess=()=>{try{if(modify){const old=request.result?validate(request.result):null;result=modify(old);validate(result);store.put(result);}else result=request.result.map(r=>validate(r));}catch(e){failure=e.name==='QuotaExceededError'?Error('STORAGE_QUOTA'):e;tx.abort();}};
  }catch(e){failure=Error(e.name==='QuotaExceededError'?'STORAGE_QUOTA':'STORAGE_UNAVAILABLE');try{tx?.abort();}catch{}reject(failure);}
  });}finally{db.close();}}
- return {readAll(){return transaction();},async change({operation,card,sourceRef,expectedRevision,now=new Date().toISOString()}){
+ return {readAll(){return transaction();},async change({operation,card,sourceRef,expectedRevision,now=new Date().toISOString(),snoozeUntil}){
  if(operation==='add'&&card?.source?.kind!=='public')throw TypeError('PRIVATE_SOURCE_NOT_ALLOWED');
  if(!['add','complete','reopen','snooze','remove'].includes(operation)||typeof sourceRef!=='string'||!Number.isSafeInteger(expectedRevision)||expectedRevision<0)throw Error('INVALID_TODO');
+ if(operation==='snooze'&&snoozeUntil!==undefined&&dateNow(snoozeUntil).toISOString()!==nextSnooze(now))throw Error('STALE_SNOOZE');
  const timestamp=dateNow(now).toISOString();
  return transaction(sourceRef,old=>{if((old?.revision||0)!==expectedRevision)throw Error('REVISION_CONFLICT');
   if(operation==='add'){if(old&&old.status!=='removed')throw Error('REVISION_CONFLICT');return {schema_version:1,source_ref:sourceRef,card:structuredClone(card),status:'active',snoozed_until:null,revision:expectedRevision+1,created_at:timestamp,updated_at:timestamp};}

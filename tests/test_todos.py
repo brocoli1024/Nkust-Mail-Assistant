@@ -72,3 +72,11 @@ def test_two_todo_writers_have_one_winner(database):
         try:update_private_todo(db,A,tid,operation=operation,expected_revision=1);return 'saved'
         except (CorrectionConflict,CorrectionUnavailable):return 'rejected'
     with ThreadPoolExecutor(max_workers=2) as p:assert sorted(p.map(write,['complete','remove']))==['rejected','saved']
+
+
+def test_sqlite_snooze_projection_serializes_an_explicit_offset(database):
+    db,_=database;aid=seed(db);add(db,aid);tid=list_private_todos(db,A)[0]['id']
+    update_private_todo(db,A,tid,operation='snooze',expected_revision=1,now=NOW)
+    row=list_private_todos(db,A,now=NOW)[0]
+    assert row['snoozed_until'].tzinfo is not None
+    assert row['snoozed_until'].isoformat().endswith('+00:00')

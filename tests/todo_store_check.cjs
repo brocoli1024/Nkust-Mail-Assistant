@@ -23,5 +23,10 @@ function factory(){
  r=await store.change({operation:'snooze',sourceRef:'synthetic',expectedRevision:4,now});assert.equal(projectTodo(r,now).effective_status,'snoozed');assert.equal(projectTodo(r,r.snoozed_until).effective_status,'active');
  r.card.fields.deadline={value:'2026-10-29',state:'user_confirmed'};assert.equal(projectTodo(r,now).deadline_group,'overdue');r.card.fields.deadline.state='pending';assert.equal(projectTodo(r,now).deadline_group,'none');
  f.data.set('synthetic',{...r,card:{source:{kind:'private'}}});await assert.rejects(store.readAll(),/STORAGE_CORRUPT/);
+ const midnight=createTodoStore({indexedDB:factory()});await midnight.change({operation:'add',card,sourceRef:'synthetic',expectedRevision:0,now});
+ await assert.rejects(midnight.change({operation:'snooze',sourceRef:'synthetic',expectedRevision:1,now:'2026-10-29T16:01:00Z',snoozeUntil:'2026-10-30T01:00:00.000Z'}),/STALE_SNOOZE/);
  console.log('Todo store contracts passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+const {needsTodoRefresh}=require('../app/static/web/todo-clock.js');
+assert.equal(needsTodoRefresh(['2026-10-31T01:00:00+00:00'],Date.parse('2026-10-31T00:30:00Z')),false);
+assert.equal(needsTodoRefresh(['2026-10-31T01:00:00+00:00'],Date.parse('2026-10-31T01:00:00Z')),true);

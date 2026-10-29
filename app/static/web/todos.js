@@ -5,6 +5,7 @@ const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.
 const labelTime=iso=>new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',dateStyle:'short',timeStyle:'short',hourCycle:'h23'}).format(new Date(iso));
 function safeLink(url){try{const u=new URL(url);return ['https:','http:'].includes(u.protocol)&&!u.username&&!u.password?u.href:null;}catch{return null;}}
 function makeMemory(){let record=null;return {async readAll(){return record?[structuredClone(record)]:[];},async change(o){
+ if(o.operation==='snooze'&&o.snoozeUntil!==api.nextSnooze())throw Error('STALE_SNOOZE');
  if((record?.revision||0)!==o.expectedRevision)throw Error('REVISION_CONFLICT');const stamp=new Date().toISOString();
  if(o.operation==='add'){if(record&&record.status!=='removed')throw Error('REVISION_CONFLICT');record={schema_version:1,source_ref:o.sourceRef,card:structuredClone(o.card),status:'active',snoozed_until:null,revision:o.expectedRevision+1,created_at:stamp,updated_at:stamp};}
  else{if(!record||record.status==='removed')throw Error('REVISION_CONFLICT');record={...record,status:{complete:'done',reopen:'active',snooze:'snoozed',remove:'removed'}[o.operation],revision:record.revision+1,snoozed_until:o.operation==='snooze'?api.nextSnooze():null,updated_at:stamp};}return structuredClone(record);
@@ -17,20 +18,21 @@ function init(){
   const store=scope==='demo'?makeMemory():api.createTodoStore();let records=[],card=null,dirty=false,ready=false,busy=false;
   const say=text=>{status.textContent=text;};
   const button=(target,text,fn)=>{const b=el('button',text);b.type='button';b.className='button secondary';b.disabled=busy; b.addEventListener('click',fn);target.append(b);};
-  async function change(operation,old){
+  async function change(operation,old,snoozeUntil){
    if(!ready||busy)return;if(operation==='add'&&(!card||dirty)){say('請先讀取行動卡，並儲存或恢復尚未保存的修正，再加入待辦。');return;}
    if(operation==='remove'&&!root.confirm('移除此待辦？公告與修正仍保留，可從公告詳情重新加入。'))return;
    busy=true;render();say('正在保存待辦，請稍候。');
-   try{await store.change({operation,card:operation==='add'?card:undefined,sourceRef:old?.source_ref||card.source.source_ref,expectedRevision:old?.revision||0});records=await store.readAll();say(scope==='demo'?'示範待辦已更新；重新載入即重設。':'待辦已保存至此裝置。');}
-   catch(e){ready=false;say(e.message==='REVISION_CONFLICT'?'其他頁面已更新，本次未覆寫；請按重新讀取待辦後核對。':'保存結果無法確認，請重新讀取待辦；既有資料未清除。');}
+   try{await store.change({operation,card:operation==='add'?card:undefined,sourceRef:old?.source_ref||card.source.source_ref,expectedRevision:old?.revision||0,snoozeUntil});records=await store.readAll();say(scope==='demo'?'示範待辦已更新；重新載入即重設。':'待辦已保存至此裝置。');}
+   catch(e){ready=false;say(e.message==='STALE_SNOOZE'?'日期已跨日，本次未稍後；請重新讀取待辦並確認新的時間與截止提醒。':e.message==='REVISION_CONFLICT'?'其他頁面已更新，本次未覆寫；請按重新讀取待辦後核對。':'保存結果無法確認，請重新讀取待辦；既有資料未清除。');}
    finally{busy=false;render();}
   }
   function actions(target,r){
    if(r.effective_status!=='done')button(target,'標記完成',()=>change('complete',r));
    if(r.effective_status!=='active')button(target,'重新開啟',()=>change('reopen',r));
-   target.append(el('p','稍後至 '+labelTime(api.nextSnooze())+'（明天09:00，台灣時間）重新出現；不發送通知。'));
+   const shownSnooze=api.nextSnooze();
+   target.append(el('p','稍後至 '+labelTime(shownSnooze)+'（明天09:00，台灣時間）重新出現；不發送通知。'));
    if(r.snooze_after_deadline)target.append(el('p','此稍後時間晚於截止日期，請先處理。'));
-   button(target,'稍後處理',()=>change('snooze',r));button(target,'移除待辦',()=>change('remove',r));
+   button(target,'稍後處理',()=>change('snooze',r,shownSnooze));button(target,'移除待辦',()=>change('remove',r));
   }
   function row(r){const article=el('article');article.className='detail-card todo-row';article.append(el('h3',r.card.source.title||'公告待辦'));
    article.append(el('p',r.card.fields.action?.value||r.card.fields.summary?.value||'行動待確認，請核對原文。'));

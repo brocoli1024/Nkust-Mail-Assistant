@@ -60,3 +60,33 @@ def test_anonymous_todos_and_no_private_device_payload(web,monkeypatch):
     assert r.status_code==200 and '此裝置' in r.text and 'todo-store.js' in r.text
     assert 'data-todo-list' in c.get('/').text
     assert 'data-device-todo' in c.get('/demo/announcements/demo-event').text
+
+
+def test_snooze_across_midnight_rejects_stale_displayed_target(web,monkeypatch):
+    from datetime import datetime,timezone
+    import app.services.todos as service
+    c,app,_,_=web;login(c);aid=seed(app.state.database)
+    c.post(f'/announcements/{aid}/todos',data=add_form(c,aid))
+    before=datetime(2026,10,29,15,59,tzinfo=timezone.utc)
+    real_clock=service.clock
+    monkeypatch.setattr(service,'clock',lambda now=None: real_clock(now or before))
+    soup=BeautifulSoup(c.get('/my/todos').text,'html.parser')
+    f=next(f for f in soup.select('form') if f.select_one('[name="operation"][value="snooze"]'))
+    payload={i['name']:i.get('value','') for i in f.select('input[name]')}
+    target=f.select_one('[name="snooze_until"]')
+    assert target and target['value']=='2026-10-30T01:00:00+00:00'
+    monkeypatch.setattr(service,'clock',lambda now=None:real_clock(now or datetime(2026,10,29,16,1,tzinfo=timezone.utc)))
+    r=c.post(f['action'],data=payload)
+    assert r.status_code==409
+    with app.state.database.transaction() as s:
+        row=s.scalar(select(PrivateTodo));assert row.status=='active' and row.revision==1
+
+
+def test_private_snooze_html_has_utc_offset_and_target(web):
+    c,app,_,_=web;login(c);aid=seed(app.state.database);c.post(f'/announcements/{aid}/todos',data=add_form(c,aid))
+    soup=BeautifulSoup(c.get('/my/todos').text,'html.parser');f=next(f for f in soup.select('form') if f.select_one('[name="operation"][value="snooze"]'))
+    payload={i['name']:i.get('value','') for i in f.select('input[name]')}
+    assert c.post(f['action'],data=payload).status_code==303
+    soup=BeautifulSoup(c.get('/my/todos?view=snoozed').text,'html.parser')
+    markers=soup.select('[data-snoozed-until]')
+    assert markers and all(n['data-snoozed-until'].endswith('+00:00') for n in markers if n['data-snoozed-until'])

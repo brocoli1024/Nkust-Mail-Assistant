@@ -55,11 +55,13 @@ async def add(announcement_id:int,request:Request,user=Depends(current_user)):
 
 @router.post('/my/todos/{todo_id}')
 async def change(todo_id:int,request:Request,user=Depends(current_user)):
-    v=await form(request,{'csrf_token','expected_revision','operation'})
+    v=await form(request,{'csrf_token','expected_revision','operation','snooze_until'})
     if v.get('operation') not in ('complete','reopen','snooze','remove') or int(v['expected_revision'])<1:raise HTTPException(422,'待辦操作不正確。')
-    try:update_private_todo(request.app.state.database,user,todo_id,operation=v['operation'],expected_revision=int(v['expected_revision']))
+    if v['operation']=='snooze' and not re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:Z|\+00:00)',v.get('snooze_until','')):raise HTTPException(422,'請重新讀取並確認稍後時間。')
+    try:update_private_todo(request.app.state.database,user,todo_id,operation=v['operation'],expected_revision=int(v['expected_revision']),snooze_until=v.get('snooze_until'))
+    except ValueError:raise HTTPException(422,'稍後時間不正確，請重新讀取。') from None
     except CorrectionNotFound:raise HTTPException(404,'找不到待辦。') from None
-    except CorrectionConflict:return error(request,user,409,'其他頁面已更新，本次未覆寫；請重新讀取我的待辦。')
+    except CorrectionConflict:return error(request,user,409,'待辦版本或顯示的稍後日期已變更，本次未覆寫；請重新讀取並確認時間。')
     except CorrectionUnavailable:return error(request,user,503,'暫時無法確認更新結果，請重新讀取我的待辦後再試。')
     return RedirectResponse('/my/todos',status_code=303)
 
