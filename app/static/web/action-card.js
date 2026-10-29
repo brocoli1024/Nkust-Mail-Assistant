@@ -41,7 +41,8 @@ function applyLocalPatch(card,raw){
   }
   return out;
 }
-const api={validateCorrectionPatch,applyLocalPatch};root.NkustActionCards=api;
+function formatLocalHistory(record){return record?JSON.stringify({baselines:record.baselines,revisions:record.revisions},null,2):'尚無紀錄';}
+const api={validateCorrectionPatch,applyLocalPatch,formatLocalHistory};root.NkustActionCards=api;
 if(typeof module!=='undefined')module.exports=api;
 if(typeof document==='undefined')return;
 function init(){
@@ -69,14 +70,14 @@ function init(){
       const latest=record?.revisions?.at(-1),same=latest?.baseline_hash===base.baseline_hash;
       const patch=same&&latest.operation==='save'?latest.patch:null;
       paint(patch?applyLocalPatch(base,patch):base);fill(patch);
-      node.querySelector('[data-local-history]').textContent=record?JSON.stringify(record.revisions,null,2):'尚無紀錄';
+      node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);
       if(latest&&!same)message('來源或解析版本已變更，舊修正未套用，請重新核對後儲存。');
     }
     async function load(preserveInputs=false){
       ready=false;
       try{
         if(payload.scope==='public'){store=root.NkustActionCardStore.createActionCardStore();record=await store.read(base.source.source_ref);}
-        expected=record?.revision||0;if(!preserveInputs)render();else{node.querySelector('[data-local-history]').textContent=record?JSON.stringify(record.revisions,null,2):'尚無紀錄';message('已讀取裝置最新版本，輸入仍保留，請核對歷史後再儲存。');}ready=true;editor.hidden=false;
+        expected=record?.revision||0;if(!preserveInputs)render();else{node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);message('已讀取裝置最新版本，輸入仍保留，請核對歷史後再儲存。');}ready=true;editor.hidden=false;
       }catch(e){message('無法讀取裝置修正，尚未清除既有資料。請重新載入重試。');}
     }
     function readPatch(){

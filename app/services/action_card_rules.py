@@ -46,7 +46,8 @@ def extract(source):
             candidates.append(ev)
             if role:
                 other = [x for x in result.evidence if clause_match and clause_match.start() <= x.start < clause_match.end()]
-                ambiguous = len(other)>1 or bool(re.search(r'明年|去年|翌年|次年|跨年',clause))
+                ambiguous = (len(other)>1 or bool(re.search(r'明年|去年|翌年|次年|跨年|暫定|未定|預計|待定|待公告|可能',clause))
+                    or bool(re.match(r'\s*(?:至|到|[~～–—-])\s*\d',after)))
                 context_ev=Evidence(segment=index,quote=clause,start=clause_match.start(),end=clause_match.end(),role=role,year_inferred=d.year_inferred)
                 dates[role].append((d.iso_date,context_ev,ambiguous))
     fields = {}

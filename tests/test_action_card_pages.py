@@ -84,3 +84,40 @@ def test_corrupt_saved_patch_is_not_treated_as_empty(web):
     r=client.get(f'/announcements/{aid}')
     assert r.status_code==503 and '修正歷史讀取不完整' in r.text
     assert 'wrong' not in r.text
+
+
+def test_corrupt_revision_keeps_owned_source_readable(web):
+    client,app,_,_=web;login(client);aid=seed(app.state.database)
+    payload=form(client,aid)
+    client.post(f'/announcements/{aid}/action-card/corrections',data=payload)
+    with app.state.database.transaction() as s:s.scalar(select(R)).overrides={'fields':{'owner':{'mode':'value','value':'wrong'}}}
+    r=client.get(f'/announcements/{aid}')
+    assert r.status_code==503 and '合成本文' in r.text
+    assert '尚未覆寫' in r.text
+
+
+def test_snapshot_list_is_linked_and_owner_scoped(web):
+    client,app,google,_=web;login(client);aid=seed(app.state.database)
+    client.post(f'/announcements/{aid}/action-card/corrections',data=form(client,aid))
+    assert f'/action-cards/sources/{aid}' in client.get(f'/announcements/{aid}').text
+    r=client.get(f'/action-cards/sources/{aid}')
+    assert r.status_code==200 and '/action-cards/history/' in r.text
+    client.post('/logout',data={'csrf_token':csrf(client)})
+    google.claims={'sub':'google-b','email':'b@example.invalid','name':'B'};login(client)
+    assert client.get(f'/action-cards/sources/{aid}').status_code==404
+
+
+def test_history_read_failure_keeps_owned_snapshot(web,monkeypatch):
+    from sqlalchemy.orm import Session
+    from sqlalchemy.exc import SQLAlchemyError
+    client,app,_,_=web;login(client);aid=seed(app.state.database)
+    client.post(f'/announcements/{aid}/action-card/corrections',data=form(client,aid))
+    with app.state.database.transaction() as s:sid=s.scalar(select(R.snapshot_id))
+    original=Session.scalars
+    def fail_revision_read(self,statement,*args,**kwargs):
+        if 'private_action_revisions' in str(statement):raise SQLAlchemyError('synthetic read failure')
+        return original(self,statement,*args,**kwargs)
+    monkeypatch.setattr(Session,'scalars',fail_revision_read)
+    r=client.get(f'/action-cards/history/{sid}')
+    assert r.status_code==503 and '合成本文' in r.text
+    assert 'synthetic read failure' not in r.text

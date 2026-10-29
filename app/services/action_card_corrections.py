@@ -12,7 +12,11 @@ from datetime import timezone
 
 class CorrectionNotFound(Exception):pass
 class CorrectionConflict(Exception):pass
-class CorrectionUnavailable(Exception):pass
+class CorrectionUnavailable(Exception):
+    def __init__(self,source=None):
+        super().__init__('Correction unavailable')
+        self.source=source
+
 
 @dataclass
 class PrivateCardView:
@@ -54,16 +58,18 @@ def _snapshots(session,user,row,base):
 
 
 def load_private_view(database,user,announcement_id):
+    fallback=None
     try:
         with database.transaction() as session:
             _identity(session,user)
             row,email,base=_source(session,user,announcement_id)
+            fallback={'title':row.title,'original_text':row.original_text,'url':base.source.url}
             snap=_snapshots(session,user,row,base)
             patch=None
             rev=None
             if snap and snap.revision_count:
                 rev=session.scalar(select(R).where(R.user_id==user.id,R.snapshot_id==snap.id,R.revision==snap.revision_count))
-                if not rev:raise CorrectionUnavailable()
+                if not rev:raise CorrectionUnavailable(fallback)
                 if rev.operation=='save':patch=CorrectionPatch.model_validate(rev.overrides)
             history=[{'id':s.id,'baseline_hash':s.baseline_hash,'created_at':s.created_at,'revision':s.revision_count}
                 for s in session.scalars(select(S).where(S.user_id==user.id,S.email_id==row.email_id).order_by(S.created_at.desc(),S.id.desc()).limit(20))]
@@ -74,7 +80,7 @@ def load_private_view(database,user,announcement_id):
             return PrivateCardView(item,base,apply_patch(base,patch) if patch else base,patch,
                 snap.revision_count if snap else 0,history,bool(history and not snap),
                 ((rev.created_at.replace(tzinfo=timezone.utc) if rev.created_at.tzinfo is None else rev.created_at).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M')) if rev else None)
-    except (SQLAlchemyError,ValidationError):raise CorrectionUnavailable() from None
+    except (SQLAlchemyError,ValidationError):raise CorrectionUnavailable(fallback) from None
 
 
 def save_private_correction(database,user,announcement_id,*,expected_revision,baseline_hash,operation,patch):
@@ -105,14 +111,29 @@ def save_private_correction(database,user,announcement_id,*,expected_revision,ba
 
 def load_private_history(database,user,snapshot_id,*,page_number=1):
     if type(page_number) is not int or page_number<1:raise ValueError('Invalid history page')
+    fallback=None
     try:
         with database.transaction() as session:
             _identity(session,user)
             snap=session.scalar(select(S).where(S.id==snapshot_id,S.user_id==user.id))
             if not snap:raise CorrectionNotFound()
+            fallback={'title':'已保存的公告原文','original_text':snap.source_text,'url':None}
             rows=session.scalars(select(R).where(R.snapshot_id==snap.id,R.user_id==user.id)
                 .order_by(R.revision.desc()).offset((page_number-1)*20).limit(21)).all()
             return {'snapshot':{'id':snap.id,'source_text':snap.source_text,'original_card':snap.original_card,'created_at':snap.created_at},
                 'revisions':[{'revision':r.revision,'operation':r.operation,'overrides':r.overrides,'created_at':r.created_at} for r in rows[:20]],
                 'page_number':page_number,'has_more':len(rows)>20}
+    except (SQLAlchemyError,ValidationError):raise CorrectionUnavailable(fallback) from None
+
+
+def load_private_snapshots(database,user,announcement_id,*,page_number=1):
+    if type(page_number) is not int or page_number<1:raise ValueError('Invalid history page')
+    try:
+        with database.transaction() as session:
+            _identity(session,user)
+            row,email,base=_source(session,user,announcement_id)
+            rows=session.scalars(select(S).where(S.user_id==user.id,S.email_id==email.id)
+                .order_by(S.created_at.desc(),S.id.desc()).offset((page_number-1)*20).limit(21)).all()
+            return {'snapshots':[{'id':s.id,'revision':s.revision_count,'title':s.source_metadata.get('title','原快照')} for s in rows[:20]],
+                'page_number':page_number,'has_more':len(rows)>20,'announcement_id':announcement_id}
     except (SQLAlchemyError,ValidationError):raise CorrectionUnavailable() from None

@@ -121,3 +121,17 @@ def test_complete_patch_can_keep_unedited_materials(database):
     payload['fields']['event_date']={'mode':'value','value':'2026-11-01','confirmed':True}
     save(db,aid,1,p=CorrectionPatch.model_validate(payload))
     assert load_private_view(db,A,aid).effective.fields['materials'].value=='在學證明'
+
+
+def test_all_source_snapshots_are_discoverable(database):
+    from app.services.action_card_corrections import load_private_snapshots
+    db,_=database;aid=seed(db)
+    for i in range(21):
+        with db.transaction() as s:s.get(Announcement,aid).original_text=f'第{i}版原文'
+        save(db,aid)
+    first=load_private_snapshots(db,A,aid,page_number=1)
+    second=load_private_snapshots(db,A,aid,page_number=2)
+    assert len(first['snapshots'])==20 and first['has_more']
+    assert len(second['snapshots'])==1 and not second['has_more']
+    assert len({h['id'] for h in first['snapshots']+second['snapshots']})==21
+    with pytest.raises(CorrectionNotFound):load_private_snapshots(db,B,aid)

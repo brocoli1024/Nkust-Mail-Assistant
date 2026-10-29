@@ -26,5 +26,5 @@
   <p data-correction-status role="status" aria-live="polite"></p>
   {% if scope!='private' %}<button class="button" type="button" data-refresh hidden>重新讀取裝置版本（保留輸入）</button>{% endif %}
   {% include 'action_card_editor.html' %}
-  {% if scope == 'private' %}<details><summary>此封郵件的修正歷史</summary>{% for h in view.history %}<p><a class="text-link dark" href="/action-cards/history/{{ h.id }}">查看原快照與修正（版本 {{ h.revision }}）</a></p>{% else %}<p>尚無修正紀錄。</p>{% endfor %}</details>{% endif %}
+  {% if scope == 'private' %}<details><summary>此封郵件的修正歷史</summary><p><a class="text-link dark" href="/action-cards/sources/{{ item.id }}">瀏覽全部原快照（分頁）</a></p>{% for h in view.history %}<p><a class="text-link dark" href="/action-cards/history/{{ h.id }}">查看原快照與修正（版本 {{ h.revision }}）</a></p>{% else %}<p>尚無修正紀錄。</p>{% endfor %}</details>{% endif %}
 </section>

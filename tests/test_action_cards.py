@@ -130,3 +130,13 @@ def test_duplicate_source_dates_and_context_conflicts():
     assert c.fields['event_date'].value=='2026-10-08'
     assert c.fields['deadline'].value=='2026-10-07'
     assert build_action_card(source('報名截止：2026年10月8日 15:30')).time_status=='unparsed'
+
+@pytest.mark.parametrize('text', ['活動日期：2026年10月8日至10日', '活動日期：2026/10/8–10', '報名截止：2026年10月8日至10月10日'])
+def test_abbreviated_ranges_remain_pending(text):
+    card=build_action_card(source(text))
+    assert card.fields['event_date'].state=='pending'
+    assert card.fields['deadline'].state=='pending'
+
+
+def test_tentative_date_is_not_supported():
+    assert build_action_card(source('活動日期：2026年10月8日（暫定）')).fields['event_date'].state=='pending'

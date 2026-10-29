@@ -42,3 +42,5 @@ function factory(){
   assert.equal(evidence.start,1,'evidence offsets use Unicode code points');
   console.log('Action card store contracts passed');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+const {formatLocalHistory}=require('../app/static/web/action-card.js');
+assert.match(formatLocalHistory({baselines:{old:{source:{segments:[{text:'原始來源A'}]}}},revisions:[]}),/原始來源A/);

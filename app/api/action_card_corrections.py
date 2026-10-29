@@ -28,8 +28,8 @@ def card_context(card,scope):
 def render_private(request,user,aid,*,error=None,status=200,submitted=None):
     try:v=load_private_view(request.app.state.database,user,aid)
     except CorrectionNotFound:raise HTTPException(404,'找不到公告。') from None
-    except CorrectionUnavailable:
-        r=page(request,'action_card_error.html',user=user,title='暫時無法讀取修正資料',detail='修正歷史讀取不完整，請稍後重新載入；尚未覆寫任何修正。')
+    except CorrectionUnavailable as exc:
+        r=page(request,'action_card_error.html',user=user,source=exc.source,title='暫時無法讀取修正資料',detail='修正歷史讀取不完整，請稍後重新載入；尚未覆寫任何修正。')
         r.status_code=503;return r
     values={}
     if v.patch:
@@ -95,6 +95,16 @@ async def correct(announcement_id:int,request:Request,user=Depends(current_user)
 def history(snapshot_id:int,request:Request,user=Depends(current_page_user),page_number:int=Query(1,alias='page',ge=1,le=1000000)):
     try:data=load_private_history(request.app.state.database,user,snapshot_id,page_number=page_number)
     except CorrectionNotFound:raise HTTPException(404,'找不到修正歷史。') from None
+    except CorrectionUnavailable as exc:
+        r=page(request,'action_card_error.html',user=user,source=exc.source,title='暫時無法讀取修正歷史',detail='資料讀取失敗，請稍後重試。');r.status_code=503;return r
+    return page(request,'action_card_history.html',user=user,data=data)
+
+
+@router.get('/action-cards/sources/{announcement_id}')
+def snapshot_list(announcement_id:int,request:Request,user=Depends(current_page_user),page_number:int=Query(1,alias='page',ge=1,le=1000000)):
+    from app.services.action_card_corrections import load_private_snapshots
+    try:data=load_private_snapshots(request.app.state.database,user,announcement_id,page_number=page_number)
+    except CorrectionNotFound:raise HTTPException(404,'找不到公告。') from None
     except CorrectionUnavailable:
         r=page(request,'action_card_error.html',user=user,title='暫時無法讀取修正歷史',detail='資料讀取失敗，請稍後重試。');r.status_code=503;return r
-    return page(request,'action_card_history.html',user=user,data=data)
+    return page(request,'action_card_snapshots.html',user=user,data=data)
