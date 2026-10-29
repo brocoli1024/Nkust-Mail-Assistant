@@ -55,3 +55,32 @@ def test_bad_correction_cannot_write(web,update,headers,code):
     payload=form(client,aid);payload.update(update)
     assert client.post(f'/announcements/{aid}/action-card/corrections',data=payload,headers=headers).status_code==code
     with app.state.database.transaction() as s:assert s.scalar(select(func.count()).select_from(R))==0
+
+
+def test_private_save_timestamp_and_error_contracts(web,monkeypatch):
+    from app.services import action_card_corrections as service
+    from app.models.action_cards import PrivateActionSnapshot
+    client,app,google,_=web;login(client);aid=seed(app.state.database)
+    payload=form(client,aid);path=f'/announcements/{aid}/action-card/corrections'
+    assert client.post(path,data=payload).status_code==303
+    assert '保存時間（台灣）' in client.get(f'/announcements/{aid}').text
+    assert client.post(path,content=b'x'* (128*1024+1),headers={'content-type':'application/x-www-form-urlencoded'}).status_code==413
+    assert client.post(path,json=payload).status_code==415
+    assert client.post(path,content='csrf_token=a&csrf_token=b',headers={'content-type':'application/x-www-form-urlencoded'}).status_code==422
+    with app.state.database.transaction() as s:sid=s.scalar(select(PrivateActionSnapshot.id))
+    client.post('/logout',data={'csrf_token':csrf(client)})
+    assert client.post(path,data=payload).status_code==401
+    google.claims={'sub':'google-b','email':'b@example.invalid','name':'B'};login(client)
+    assert client.get(f'/action-cards/history/{sid}').status_code==404
+    payload['csrf_token']=csrf(client)
+    assert client.post(path,data=payload).status_code==404
+
+
+def test_corrupt_saved_patch_is_not_treated_as_empty(web):
+    client,app,_,_=web;login(client);aid=seed(app.state.database)
+    payload=form(client,aid)
+    client.post(f'/announcements/{aid}/action-card/corrections',data=payload)
+    with app.state.database.transaction() as s:s.scalar(select(R)).overrides={'fields':{'owner':{'mode':'value','value':'wrong'}}}
+    r=client.get(f'/announcements/{aid}')
+    assert r.status_code==503 and '修正歷史讀取不完整' in r.text
+    assert 'wrong' not in r.text

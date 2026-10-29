@@ -1,5 +1,6 @@
 """Personal corrections: authenticated source reads and atomic append-only writes."""
 from dataclasses import dataclass
+from pydantic import ValidationError
 from sqlalchemy import select,and_,update
 from sqlalchemy.exc import SQLAlchemyError
 from app.core.session import CurrentUser
@@ -22,6 +23,7 @@ class PrivateCardView:
     revision:int
     history:list[dict]
     stale:bool
+    saved_at:str|None=None
 
 
 def _identity(session,user,lock=False):
@@ -58,6 +60,7 @@ def load_private_view(database,user,announcement_id):
             row,email,base=_source(session,user,announcement_id)
             snap=_snapshots(session,user,row,base)
             patch=None
+            rev=None
             if snap and snap.revision_count:
                 rev=session.scalar(select(R).where(R.user_id==user.id,R.snapshot_id==snap.id,R.revision==snap.revision_count))
                 if not rev:raise CorrectionUnavailable()
@@ -69,8 +72,9 @@ def load_private_view(database,user,announcement_id):
             item['received_at']=((received.replace(tzinfo=timezone.utc) if received.tzinfo is None else received).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M')) if received else '未知'
             item['url']=base.source.url
             return PrivateCardView(item,base,apply_patch(base,patch) if patch else base,patch,
-                snap.revision_count if snap else 0,history,bool(history and not snap))
-    except SQLAlchemyError:raise CorrectionUnavailable() from None
+                snap.revision_count if snap else 0,history,bool(history and not snap),
+                ((rev.created_at.replace(tzinfo=timezone.utc) if rev.created_at.tzinfo is None else rev.created_at).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M')) if rev else None)
+    except (SQLAlchemyError,ValidationError):raise CorrectionUnavailable() from None
 
 
 def save_private_correction(database,user,announcement_id,*,expected_revision,baseline_hash,operation,patch):
@@ -96,7 +100,7 @@ def save_private_correction(database,user,announcement_id,*,expected_revision,ba
             session.add(R(user_id=user.id,snapshot_id=snap.id,revision=expected_revision+1,operation=operation,
                 overrides=patch.model_dump(mode='json') if patch else {}))
             return expected_revision+1
-    except SQLAlchemyError:raise CorrectionUnavailable() from None
+    except (SQLAlchemyError,ValidationError):raise CorrectionUnavailable() from None
 
 
 def load_private_history(database,user,snapshot_id,*,page_number=1):
@@ -111,4 +115,4 @@ def load_private_history(database,user,snapshot_id,*,page_number=1):
             return {'snapshot':{'id':snap.id,'source_text':snap.source_text,'original_card':snap.original_card,'created_at':snap.created_at},
                 'revisions':[{'revision':r.revision,'operation':r.operation,'overrides':r.overrides,'created_at':r.created_at} for r in rows[:20]],
                 'page_number':page_number,'has_more':len(rows)>20}
-    except SQLAlchemyError:raise CorrectionUnavailable() from None
+    except (SQLAlchemyError,ValidationError):raise CorrectionUnavailable() from None

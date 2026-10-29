@@ -195,3 +195,7 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
 .card-editor select { min-height:44px; }
 .card-editor fieldset { min-width:0; border:1px solid var(--line-light); padding:16px; }
 [hidden] { display:none !important; }
+/* Only the outer card fields receive row dividers, not evidence containers. */
+.action-card .detail-grid > div > div { padding:0; border:0; }
+.action-card .field-state { margin:8px 0; }
+.action-card .detail-grid details { margin:4px 0; }

@@ -8,7 +8,7 @@
 {% else %}
 <p>{{ '示範修正只在目前頁面記憶體，重新載入即重設。' if scope == 'demo' else '僅存在此瀏覽器與裝置，不隨 Google 帳號切換；共用此瀏覽器的人可能看到，請勿填入私人郵件內容。' }}</p>
 <noscript><p>閱讀不需要 JavaScript；裝置修正需要 JavaScript 與可用的瀏覽器儲存。</p></noscript>
-<div data-local-editor class="card-editor" hidden>
+<details data-local-editor hidden><summary>修正我的資訊</summary><div class="card-editor">
 {% endif %}
 {% for key,label in labels.items() %}
 <fieldset><legend>{{ label }}</legend>
@@ -22,4 +22,4 @@
 <label>截止種類<select name="deadline_kind">{% for value,label in [('unknown','待確認'),('registration','報名'),('application','申請'),('submission','繳件')] %}<option value="{{ value }}" {% if scope=='private' and form_values.get('deadline_kind','unknown')==value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
 {% if scope=='private' %}<button class="button" type="submit">儲存我的修正</button></form></details>
 <form method="post" action="/announcements/{{ item.id }}/action-card/corrections"><input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="operation" value="reset"><input type="hidden" name="baseline_hash" value="{{ view.base.baseline_hash }}"><input type="hidden" name="expected_revision" value="{{ view.revision }}"><button class="button" type="submit">恢復系統資訊（保留歷史）</button></form>
-{% else %}<button class="button" type="button" data-save>儲存我的修正</button><button class="button" type="button" data-reset>恢復系統資訊（保留歷史）</button>{% if scope=='public' %}<button class="button" type="button" data-erase>刪除此公告裝置修正歷史</button>{% endif %}<details><summary>裝置修正歷史</summary><pre data-local-history>尚無紀錄</pre></details></div>{% endif %}
+{% else %}<button class="button" type="button" data-save>儲存我的修正</button><button class="button" type="button" data-reset>恢復系統資訊（保留歷史）</button>{% if scope=='public' %}<button class="button" type="button" data-erase>刪除此公告裝置修正歷史</button>{% endif %}<details><summary>裝置修正歷史</summary><pre data-local-history>尚無紀錄</pre></details></div></details>{% endif %}
