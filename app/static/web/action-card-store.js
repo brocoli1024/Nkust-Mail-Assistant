@@ -18,8 +18,8 @@ function createActionCardStore(options={}){
   function open(){return new Promise((resolve,reject)=>{
     if(!factory){reject(Error('STORAGE_UNAVAILABLE'));return;}
     let req,done=false;
-    try{req=factory.open('nkust-campus-assistant',1);}catch{reject(Error('STORAGE_UNAVAILABLE'));return;}
-    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('publicActionCards'))req.result.createObjectStore('publicActionCards',{keyPath:'source_ref'});};
+    try{req=factory.open('nkust-campus-assistant',2);}catch{reject(Error('STORAGE_UNAVAILABLE'));return;}
+    req.onupgradeneeded=()=>{for(const name of ['publicActionCards','publicTodos'])if(!req.result.objectStoreNames.contains(name))req.result.createObjectStore(name,{keyPath:'source_ref'});};
     req.onerror=()=>{done=true;reject(Error('STORAGE_UNAVAILABLE'));};
     req.onblocked=()=>{done=true;reject(Error('STORAGE_UNAVAILABLE'));};
     req.onsuccess=()=>{if(done){req.result.close();return;}resolve(req.result);};

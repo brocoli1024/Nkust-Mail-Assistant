@@ -118,7 +118,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
     def is_public_page(request):
         path = request.url.path
         return session_enabled and request.method == 'GET' and (
-            path in ('/', '/public/announcements', '/demo')
+            path in ('/', '/public/announcements', '/demo', '/todos')
             or path.startswith('/public/announcements/')
             or path.startswith('/demo/announcements/'))
 

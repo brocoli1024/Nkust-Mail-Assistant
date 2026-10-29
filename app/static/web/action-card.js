@@ -64,6 +64,7 @@ function init(){
         if(f.evidence?.length){const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent='查看依據';detail.append(summary);for(const e of f.evidence){const quote=document.createElement('blockquote');quote.textContent=e.quote;detail.append(quote);}box.append(detail);}
         const warnings=node.querySelector('[data-card-warnings="'+key+'"]');warnings.replaceChildren();for(const text of f.warnings||[]){const p=document.createElement('p');p.textContent=text;warnings.append(p);}
         node.querySelector('[data-card-field="'+key+'"]').textContent=f.value||'待確認';node.querySelector('[data-card-state="'+key+'"]').textContent=f.origin==='user'?'我的修正 · '+(f.state==='pending'?'待確認':'使用者確認，非系統驗證'):(f.state==='pending'?'待確認':'來源規則辨識');}
+      root.NkustTodoUI?.setCard(node,card);
       const d=card.fields.deadline;node.querySelector('[data-deadline-passed]').hidden=!(d.value&&['supported','user_confirmed'].includes(d.state)&&d.value<payload.taipei_today);
     };
     function render(){
@@ -96,7 +97,7 @@ function init(){
       finally{ready=true;}
     }
     const refresh=node.querySelector('[data-refresh]');if(payload.scope==='public'){refresh.hidden=false;refresh.addEventListener('click',()=>load(!editor.hidden));}
-    editor.addEventListener('input',()=>message('有尚未儲存的修正。'));
+    editor.addEventListener('input',()=>{message('有尚未儲存的修正。');root.NkustTodoUI?.setDirty(node);});
     editor.querySelector('[data-save]').addEventListener('click',()=>commit('save'));
     editor.querySelector('[data-reset]').addEventListener('click',()=>commit('reset'));
     editor.querySelector('[data-erase]')?.addEventListener('click',async()=>{

@@ -5,7 +5,7 @@
   {% include 'pwa_head.html' %}
   <title>{{ title }} · NKUST Mail Assistant</title>
   <link rel="stylesheet" href="/assets/account.css?v=editorial-1">
-</head>
+<script src="/assets/todo-clock.js" defer></script></head>
 <body><div class="site-shell">
   {% set active_page = 'settings' if settings else 'dashboard' %}
   {% include 'site_header.html' %}
@@ -45,7 +45,7 @@
       <div><p class="eyebrow">YOUR CAMPUS, IN FOCUS</p><h1 id="page-title">你的校園公告，<br>一眼掌握。</h1><p>把重要的通知、待處理事項和截止日期，整理在同一個地方。</p></div>
     </section>
     <div class="identity-strip"><strong>你好，{{ user.display_name or user.email }}。</strong><span>{{ user.email }}</span></div>
-    <section class="detail-section" aria-label="我的待辦"><h2>我的待辦 · 私人帳號</h2>
+    {% for t in todo_items %}{% if t.effective_status=='snoozed' %}<span hidden data-snoozed-until="{{ t.snoozed_until.isoformat() }}"></span>{% endif %}{% endfor %}<section class="detail-section" aria-label="我的待辦"><h2>我的待辦 · 私人帳號</h2>
     {% if todo_error %}<p class="notice" role="alert">待辦讀取失敗，請稍後重試；並非沒有待辦。</p>{% else %}
     {% for t in todo_items if t.effective_status=='active' %}<p><a class="text-link dark" href="/my/todos">{{ t.card.source.title }}</a> · {{ t.deadline or '截止待確認' }}{% if t.deadline_group=='overdue' %} · 已逾期{% elif t.deadline_group in ('today','soon') %} · 即將截止{% endif %}</p>{% else %}<p>尚無進行中的待辦。到公告詳情自行加入。</p>{% endfor %}{% endif %}
     <a class="button" href="/my/todos">查看我的待辦</a> <a class="text-link" href="/todos">此裝置的公開待辦（分開保存）</a></section>

@@ -49,3 +49,14 @@ def test_todo_account_isolation_and_errors(web,monkeypatch):
     monkeypatch.setattr(api,'list_private_todos',fail)
     r=c.get('/my/todos')
     assert r.status_code==503 and '讀取失敗' in r.text and '尚無待辦' not in r.text
+
+
+def test_anonymous_todos_and_no_private_device_payload(web,monkeypatch):
+    c,app,_,_=web
+    import app.core.session as sessions
+    def deny(*a,**kw):raise AssertionError('anonymous device page must not resolve sessions')
+    monkeypatch.setattr(sessions.SessionService,'resolve',deny)
+    r=c.get('/todos')
+    assert r.status_code==200 and '此裝置' in r.text and 'todo-store.js' in r.text
+    assert 'data-todo-list' in c.get('/').text
+    assert 'data-device-todo' in c.get('/demo/announcements/demo-event').text

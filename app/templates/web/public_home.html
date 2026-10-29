@@ -5,7 +5,7 @@
   {% include 'pwa_head.html' %}<title>NKUST Mail Assistant · 校園公告</title>
   <meta name="description" content="免登入查看高科大公開公告，搜尋分類與學生相關資訊；私人郵件功能另需授權。">
   <link rel="stylesheet" href="/assets/account.css?v=public-1">
-</head>
+<script src="/assets/todo-store.js" defer></script><script src="/assets/todos.js" defer></script></head>
 <body><div class="site-shell">
   {% include 'site_header.html' %}
   <main id="main-content" class="page-content">
@@ -15,6 +15,7 @@
       <div class="actions"><a class="button" href="/public/announcements">瀏覽公開公告</a><a class="button secondary" href="/demo">體驗合成示範</a></div>
       <p><a class="text-link" href="/login">選用：我的 Gmail 公告</a> · 目前須加入 Google 測試名單；公開瀏覽與示範不受此限制。</p>
     </div></section>
+    {% include 'device_todos.html' %}
     <section class="stats" aria-label="收錄現況">
       <article class="stat-card"><span>已收錄公開公告</span><strong>{{ total }}</strong><small>來源：高科大最新消息</small></article>
       <article class="stat-card"><span>使用方式</span><strong class="public-stat-text">免登入</strong><small>公開公告不讀取你的信箱</small></article>
