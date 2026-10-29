@@ -83,7 +83,9 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         app.include_router(announcements_router)
         app.include_router(account_router)
         from app.api.public_announcements import router as public_router
+        from app.api.demo import router as demo_router
         app.include_router(public_router)
+        app.include_router(demo_router)
         app.mount('/assets', StaticFiles(directory=ROOT / 'app/static/web'), name='web-assets')
 
         @app.get('/manifest.webmanifest', include_in_schema=False)

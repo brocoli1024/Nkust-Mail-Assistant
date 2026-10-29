@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}<title>合成示範 · NKUST Mail Assistant</title>
+  <link rel="stylesheet" href="/assets/account.css?v=phase1">
+  <script src="/assets/announcement-filters.js" defer></script>
+</head>
+<body><div class="site-shell">
+  {% set active_page = 'demo' %}{% include 'site_header.html' %}
+  <main id="main-content" class="page-content">
+    <section class="hero compact" aria-labelledby="page-title"><div><p class="eyebrow">SYNTHETIC DEMO</p><h1 id="page-title">先試試，免設定。</h1><p>用三則合成公告體驗搜尋、分類與閱讀。準備好後，可直接瀏覽公開公告。</p></div></section>
+    {% include 'demo_notice.html' %}
+    <section class="filter-panel" aria-label="搜尋與篩選合成示範">
+      <form method="get" action="/demo" class="filters public-filters" id="announcement-filters" aria-describedby="demo-filter-help">
+        <label>搜尋標題與摘要<input type="search" name="q" value="{{ q }}" maxlength="200" placeholder="例如：獎學金" enterkeyhint="search"></label>
+        <label>分類<select name="category"><option value="">全部分類</option>{% for name in categories %}<option {% if category == name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+        <noscript><button type="submit" class="button">套用篩選</button></noscript><a class="text-link dark" href="/demo">清除篩選</a>
+      </form>
+      <p class="filter-help" id="demo-filter-help">選單變更後立即更新；輸入關鍵字後按 Enter 搜尋。</p>
+    </section>
+    <p class="results-meta" role="status">符合條件的合成示範：{{ items | length }} 則</p>
+    <div class="announcement-list">
+      {% for item in items %}<article class="announcement">
+        <div class="meta-row"><span class="tag">{{ item.category }}</span><span>合成示範</span></div>
+        <h2><a href="/demo/announcements/{{ item.id }}">{{ item.title }}</a></h2>
+        <p class="muted">示範日期：{{ item.published or '未知' }}</p>
+        <p class="public-excerpt">{{ item.excerpt or '這則合成示範未提供摘要，示範資訊不足的狀態。' }}</p>
+      </article>{% else %}<p class="notice">沒有符合篩選的合成示範。請<a href="/demo">清除篩選</a>。</p>{% endfor %}
+    </div>
+    <p><a class="text-link" href="/public/announcements">瀏覽真實公開公告</a></p>
+  </main>
+</div></body></html>

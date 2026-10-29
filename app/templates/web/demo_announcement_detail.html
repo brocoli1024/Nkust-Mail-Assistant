@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  {% include 'pwa_head.html' %}<title>{{ item.title }} · 合成示範</title>
+  <link rel="stylesheet" href="/assets/account.css?v=phase1">
+</head>
+<body><div class="site-shell">
+  {% set active_page = 'demo' %}{% include 'site_header.html' %}
+  <main id="main-content" class="page-content narrow">
+    <section class="hero compact public-detail-hero" aria-labelledby="page-title"><div><p class="eyebrow">SYNTHETIC DEMO</p><h1 id="page-title">{{ item.title }}</h1></div></section>
+    {% include 'demo_notice.html' %}
+    <article class="detail-card">
+      <div class="meta-row"><span class="tag">{{ item.category }}</span><span>示範日期：{{ item.published or '未知' }}</span></div>
+      <h2>合成示範摘要</h2>
+      <p class="public-detail-excerpt">{{ item.excerpt or '這則合成示範未提供摘要，示範資訊不足的狀態。' }}</p>
+      <p class="muted">此內容為虛構，沒有對應的官方公告或有效報名連結。真實公告可能缺少日期、對象或材料，請以來源原文確認。</p>
+      <a class="text-link dark" href="/demo">返回合成示範</a>
+    </article>
+    <p><a class="text-link" href="/public/announcements">瀏覽真實公開公告</a></p>
+  </main>
+</div></body></html>
