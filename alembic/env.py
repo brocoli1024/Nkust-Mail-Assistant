@@ -4,7 +4,7 @@ from alembic import context
 from app.config import Settings
 from app.database.multi_user import create_multi_user_engine, reject_legacy_schema, validate_database_url
 from app.models.multi_user import MultiUserBase
-from app.models import action_cards
+from app.models import action_cards,todos
 from app.models import public_announcements  # register independent public tables
 
 config = context.config

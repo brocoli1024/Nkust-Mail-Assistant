@@ -22,7 +22,7 @@ def test_postgresql_upgrade_and_downgrade_sql():
     assert 'BOOLEAN' in sql and 'JSON' in sql
     output.seek(0)
     output.truncate(0)
-    command.downgrade(config, '0007:base', sql=True)
+    command.downgrade(config, '0008:base', sql=True)
     assert 'DROP TABLE users' in output.getvalue()
 
 
