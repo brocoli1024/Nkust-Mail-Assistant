@@ -15,6 +15,16 @@ Gmail 是選用的私人整合，需登入與唯讀授權，目前仍有 Google 
 
 此階段沒有新增 migration、依賴或自動更新排程。驗證結果與限制見 [第一階段驗證紀錄](campus-action-phase1-validation-2026-10-29.md)。
 
+## 行動資訊與修正保存
+
+公開／私人／示範詳情使用同一行動卡介面。規則與原文支持才呈現確定日期，年份推定／跨年／範圍／角色衝突顯示待確認；截止與活動分欄。來源摘要可能截短；既有 AI 不作唯一依據，不啟用分析、擷取或新權限。
+
+公開修正按儲存才寫入此裝置 IndexedDB（包括用來追溯的公開原文快照），不傳回伺服器，不隨帳號切換；共用瀏覽器可能看到，勿填入私人郵件。額度不足或分頁衝突不會回報成功。可重新讀取版本並保留輸入，來源版本改變時須再核對。清除裝置修正歷史不可還原，但不影響公開公告。
+
+私人修正與原快照存於本人帳號，不進 browser storage；重新解析公告不刪除原快照，帳號刪除會一併刪除本人新資料，備份限制沿用隱私說明。示範修正只用頁面記憶體，重載清空。沒有待辦、ICS 或跨來源合併。
+
+詳見 [第二階段驗證](campus-action-phase2-validation-2026-10-29.md)。
+
 ## 收錄範圍
 
 - 指定清單：https://www.nkust.edu.tw/p/422-1000-1001.php 。
@@ -28,7 +38,7 @@ Gmail 是選用的私人整合，需登入與唯讀授權，目前仍有 Google 
 多人網站仍由 `app.web:app` 啟動，使用 `requirements-web.txt`，新增 `defusedxml==0.7.1`。
 執行開發測試則安裝 `requirements-dev.txt`；鎖定環境使用 `requirements-lock.txt` 時也需有 defusedxml。
 
-本版本 migration head 是 **0006**。請先依 Phase 9 手冊備份資料庫與金鑰，再在確認的目的多人庫執行：
+本分支 migration head 是 **0007**；0006 是公開公告版本，0007 新增私人修正快照／歷史表。本次沒有執行正式遷移。請先依 Phase 9 手冊備份資料庫與金鑰，再在確認的目的多人庫執行：
 
 ```powershell
 .\.venv\Scripts\python.exe -m alembic upgrade head

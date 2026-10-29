@@ -1,13 +1,44 @@
-# 第二階段實作進度（2026-10-29）
+# 第二階段驗證紀錄（2026-10-29）
 
-狀態：進行中。核心初版已建立，尚未完成 Task 1 全部驗收；Task 2–5 尚未實作。不得將本文件或核心模組視為已完成行動卡功能。
+狀態：功能已在隔離工作區實作，獨立審查的重要問題已修正；最終回歸數據見下。未部署、未更新正式資料庫。main、網站分支及歷史發布紀錄不代表本次程式已上線。
 
-已核對隔離工作區乾淨、基準 9a7d18c。合成基線：42 passed、2 warnings、14.56 秒。
+## 功能與保存界線
 
-新增 tests/test_action_cards.py 先重現缺少 schema 模組；初版實作抓到 DateEvidence.end 是整數而非函式，修正後核心與既有解析共 53 passed。新增時間雜湊／型別回歸先得到 2 failed，修正 UTC 正規化與 StrictBool 後相關測試 57 passed、0 warnings、0.98 秒。
+三種公告詳情共用摘要、行動、對象、材料、截止及活動日期資訊卡。原文依據、來源與原解析可展開，AI 僅作未驗證參考。省略年份、日期範圍、角色衝突維持待確認；適用對象不等於使用者符合資格。公開公告只有已收錄標題及摘要，不因此新增全文抓取。
 
-修改均位於已掛載隔離工作區，未改原目錄既有未提交檔案。沒有 UI 接線、migration、正式資料庫、OAuth 或部署變更。完整回歸結果待本輪結束後補記。
+私人修正由伺服器核對登入身分與 owner，保存不可變原快照及追加修正版本；不寫入瀏覽器持久儲存。恢復系統值仍留歷史。重解析、來源或基準改變不自動套用舊修正。公開修正只在同瀏覽器 IndexedDB；共用瀏覽器可見、清除資料會遺失，不隨 Google 帳號隔離。示範修正僅頁面記憶體，重載清空。三者沒有互相搬移原文。
 
-下一項工作：補齊 Task 1 的完整邊界案例與來源轉接驗收，再實作 private_action_snapshots/private_action_revisions 及 migration 0007。沿用已核准 inline 計畫，不需重新取得同一範圍授權。
+migration 0007 僅新增私人快照／修正表，啟動要求相應 schema；本輪只遷移可丟棄合成測試庫。未執行正式 migration、OAuth 變更、新 AI 呼叫、付費服務、推送或部署。不可把降級刪表當成保留修正資料的回復方式。
 
-核心初版完整回歸：454 passed、37 skipped（專用 PostgreSQL 未設定）、2 warnings，111.82 秒；尚未代表第二階段完成。
+## 自動驗證
+
+- 核心：舊日期解析、日期角色／省略年份／範圍／重複文字、可重現雜湊、摘要依據、AI 損壞與引用驗證、嚴格日期／長度／布林檢查。
+- SQL：讀取不建立資料、保存／恢復追加歷史、原文不變、完整 patch 預填、重解析及數字 ID 重用、兩寫入衝突、帳號 owner／Google 身分隔離、刪除 CASCADE；專用 PostgreSQL 未設定時明確略過。
+- HTTP：三類詳情、CSRF／跨站／Origin:null 拒絕、錯 owner、過期登入、413／415／422、409 留輸入、壞保存資料 503；私人不輸出裝置 payload 或儲存腳本。
+- Node：交易完成才成功、put 後 abort、同步與非同步 quota、衝突／損壞紀錄、歷史／恢復、私人輸入拒絕、Unicode 依據位移、日期與長度；既有搜尋與 service worker 檢查一併執行。
+
+完整回歸：修正後一輪 483 passed、43 skipped、2 warnings、107.35 秒；補上歷史讀取失敗仍保留原文後，最終回歸結果續記於文件末。兩項警告是既有 FastAPI／Starlette 測試客戶端棄用訊息。三項 Node 檢查與 git diff --check 通過。略過不是 PostgreSQL 實機通過。
+
+## 實際瀏覽器驗證（僅合成資料）
+
+以 tests/browser/serve_action_cards.py 啟動暫時 SQLite／FakeGoogle 本機 app，不連正式服務。原生 IndexedDB harness 驗證保存重讀、兩寫入只有一方成功、quota／abort 故障注入及版本歷史；故障注入沒有填滿使用者真實磁碟。
+
+公開頁修正後重新載入仍保留；兩分頁衝突顯示錯誤並保留輸入，重新讀版本亦不清空編輯。來源更新顯示舊修正待重新核對、不套用。示範重載清空。私人 A 儲存、正常登出、B 登入不見 A 修正；私人頁不載入裝置保存程式。
+
+320／390px 視窗無水平溢出；Tab 焦點可見，原文依據可展開。截圖只含合成公告：phase2-action-card-mobile.jpg。修正舊共用樣式造成依據區反覆分隔線與過大間距。
+
+未實測實體手機、其他瀏覽器、螢幕閱讀器或瀏覽器完全停用 JavaScript。卡片為伺服器 HTML、私人表單不依賴 JS，相關契約有測試，但不以此宣稱停用 JS 的實機驗收。未設定專用 PostgreSQL，不以 SQLite 或離線 SQL 宣稱 PostgreSQL 併發驗收。
+
+## 審查及後續
+
+一次新上下文唯讀全範圍審查提出 0 個 Critical、4 個 Important，四項皆經重現測試 RED→GREEN：縮寫日期範圍與暫定日期保持待確認、修正／歷史讀取失敗保留已取得的本人原文、全部私人快照有分頁入口、公開歷史展示保存的原始 baseline 與修正（以 textContent 呈現）。沒有 declined-to-judge 項目。
+
+延期小項：JavaScript 重繪依據後未保留「來源標題／來源摘要」種類標籤（引文與完整快照仍在）；私人詳情尚未重新顯示收到時間與原始分類。
+
+裁定：未設定專用 PostgreSQL，亦未執行實際同步／帳號刪除與修正寫入交錯測試；已有 SQLite 兩寫入 CAS、owner／重解析／CASCADE 與既有同步／刪帳號測試，但這些不取代該交錯驗收。錯判的代價是 PostgreSQL 鎖定互動仍需在發布前用隔離測試庫確認，不能以本輪驗證直接批准正式發布。
+
+第三階段「我的待辦」尚未實作；系統辨識行動不代表使用者已加入待辦。第四階段保留確認日期後下載 .ics、第五階段保留可靠來源識別及私人原文隔離需求，皆未實作。
+
+第三階段已建立銜接書面設計：docs/superpowers/specs/2026-10-29-campus-action-phase3-design.md；此文件不代表待辦已實作。
+
+最終驗證：完整 pytest **484 passed、43 skipped、2 warnings、110.83 秒**（exit 0），basetemp=data/audit-cache/phase2-final-verified。Node store／filter／service worker 三項及 git diff --check 均 exit 0。歷史讀取失敗原文保留案例亦先失敗再通過。臨時預覽服務已停止（8766 無監聽）；原目錄原有 Dashboard、字型與 readiness 修改未動。
