@@ -14,6 +14,7 @@ from app.auth.config import OAuthSettings
 from app.database.multi_user import MultiUserDatabase
 from app.models.multi_user import User,Email,Announcement
 from app.models.public_announcements import PublicAnnouncement
+from app.services.source_history import record_public_version,record_private_version
 from app.web import create_app
 from tests.test_auth import FakeGoogle
 from tests.test_multi_user_database import configuration
@@ -29,8 +30,13 @@ with db.transaction() as s:
         s.add(Email(id=uid,user_id=uid,gmail_message_id=f'qa-{uid}',status='processed',received_at=datetime(2026,10,29,tzinfo=timezone.utc)))
     s.flush()
     for uid in (1,2):
-        s.add(Announcement(id=uid,user_id=uid,email_id=uid,source_index=0,source_fingerprint=str(uid)*64,department='合成測試',source_category='活動',title=f'合成私人公告{uid}',original_text=f'PRIVATE-{uid}：請繳交報告。活動日期：2026年11月20日。'))
-    s.add(PublicAnnouncement(id=1,source_key='nkust-latest',canonical_url='https://www.nkust.edu.tw/p/422-1000-1001.php',title='【合成驗收】申請活動',excerpt='請報名參加。申請對象：全校學生。應備文件：在學證明。報名截止：2026年11月10日；活動日期：2026年11月20日。',content_hash='qa-public'))
+        s.add(Announcement(id=uid,user_id=uid,email_id=uid,source_index=0,source_fingerprint=str(uid)*64,department='合成測試',source_category='活動',title=f'合成私人公告{uid}',url='https://www.nkust.edu.tw/p/406-1000-12345.php',original_html=f'<p>合成 PRIVATE-{uid}</p>',original_text=f'PRIVATE-{uid}：請繳交報告。報名截止：2026年11月12日。活動日期：2026年11月20日。'))
+    s.add(PublicAnnouncement(id=1,source_key='nkust-latest',canonical_url='https://www.nkust.edu.tw/p/406-1000-12345.php',title='【合成驗收】申請活動',excerpt='請報名參加。申請對象：全校學生。應備文件：在學證明。報名截止：2026年11月10日；活動日期：2026年11月20日。',content_hash='qa-public'))
+    s.flush()
+    now=datetime.now(timezone.utc)
+    for uid in (1,2):record_private_version(s,s.get(Announcement,uid),s.get(Email,uid),now)
+    p=s.get(PublicAnnouncement,1);record_public_version(s,p,now)
+    p.excerpt=p.excerpt.replace('11月10日','11月11日');record_public_version(s,p,now)
 db.close()
 oauth=OAuthSettings('qa-client','qa-secret','http://127.0.0.1:8766/auth/google/callback','http://127.0.0.1:8766',Fernet.generate_key().decode())
 app=create_app(Settings(database_url=url),oauth,google_factory=FakeGoogle,session_enabled=True,session_secret='synthetic-qa-session-secret-at-least-32-characters')
@@ -43,7 +49,7 @@ async def lifespan(app):
 app.router.lifespan_context=lifespan
 @app.get('/__qa')
 def start():
-    return HTMLResponse('<h1>僅合成資料：第二階段驗收</h1><a href="/public/announcements/1">公開合成公告</a><br><a href="/demo/announcements/demo-event">示範</a><br><a href="/__qa/login/1">登入合成帳號 A</a><br><a href="/__qa/login/2">登入合成帳號 B</a><br><a href="/__qa/harness">儲存測試</a><br><a href="/__qa/change-public">變更合成公開來源</a>')
+    return HTMLResponse('<h1>僅合成資料：第五階段驗收</h1><a href="/public/announcements/1">公開合成公告</a><br><a href="/demo/announcements/demo-event">示範</a><br><a href="/__qa/login/1">登入合成帳號 A</a><br><a href="/__qa/login/2">登入合成帳號 B</a><br><a href="/__qa/harness">儲存測試</a><br><a href="/__qa/change-public">變更合成公開來源</a>')
 @app.get('/__qa/login/{uid}')
 def login(uid:int):
     if uid not in (1,2):return HTMLResponse('Not found',status_code=404)
