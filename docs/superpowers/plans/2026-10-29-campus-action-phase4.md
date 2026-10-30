@@ -34,9 +34,9 @@
 
 JS validateSelection(payload,selection)->normalized；selection={kind:event_date|deadline,mode:all_day|timed,startTime:'HH:MM'|null,endDateTime:'YYYY-MM-DDTHH:MM'|null,confirmed:bool}。buildCalendar(payload,selection,{now=Date(),crypto=globalThis.crypto}={}):Promise<{text,filename}>。export foldLine/escapeText/taipeiToUTC 供測試。確認必須stricttrue，日期ISO有效／非pending，不猜年份；全天次日若超過四位年則拒絕。定時Intl Asia/Taipei解本地時間後輸出UTC，非唯一／不存在拒絕；end晚於start，空白則省略DTEND。
 
-- [ ] 寫payload／Node測試，Expected缺模組RED。斷言不含原文segments／AI／email；pending拒絕、確認拒絕、分別日期、CRLF／UTF8折行完整、注入僅文字、來源安全URL、UTC換日／閏年、UID種別分離、private/demo命名。
-- [ ] 實作映射與序列化；VEVENT含UID/DTSTAMP/DTSTART/SUMMARY/DESCRIPTION/URL(有安全來源時)，全天DTEND次日；固定PRODID/2.0/GREGORIAN；private CLASS:PRIVATE但無安全保證。
-- [ ] pytest tests/test_calendar_payload.py 與 node tests/calendar_ics_check.cjs，Expected exit0；提交 feat: build confirmed calendar export files。
+- [x] 寫payload／Node測試，Expected缺模組RED。斷言不含原文segments／AI／email；pending拒絕、確認拒絕、分別日期、CRLF／UTF8折行完整、注入僅文字、來源安全URL、UTC換日／閏年、UID種別分離、private/demo命名。
+- [x] 實作映射與序列化；VEVENT含UID/DTSTAMP/DTSTART/SUMMARY/DESCRIPTION/URL(有安全來源時)，全天DTEND次日；固定PRODID/2.0/GREGORIAN；private CLASS:PRIVATE但無安全保證。
+- [x] pytest tests/test_calendar_payload.py 與 node tests/calendar_ics_check.cjs，Expected exit0；提交 feat: build confirmed calendar export files。
 
 ## Task 2：共用確認介面與接線
 
@@ -44,18 +44,20 @@ JS validateSelection(payload,selection)->normalized；selection={kind:event_date
 
 **Interfaces:** NkustCalendarUI.setCard(actionCardNode,card)、setDirty(actionCardNode)、mount(parent,payload,{wait=false,dirty=false}={})。current public/demo預設wait，paint成功才設payload；private直接server最小payload，但編輯input或已回傳error停用。todo row mount(snapshotpayload)不讀當前修正。controller取消舊確認，crypto await後再次比對版本／選項，拒絕舊結果。
 
-- [ ] 寫頁面RED：三詳情payload／script；private無裝置store、原文未混入最小payload；兩個owner隔離；私人todo snapshot／公開首頁載入；GET不寫庫，XSS跳脫。Expected缺UI RED。
-- [ ] 元件包含種類select、日期／依據、全天／定時、start time、optional end datetime、Asia/Taipei、來源連結、確認checkbox、下載button、status及noscript。pending顯示修正指引，time_status=unparsed不預選模式；示範／私人／snapshot警語。所有input/change取消確認（確認checkbox本身除外）。
-- [ ] Browser Blob下載固定檔名、延後revoke objectURL；成功只說啟動下載，無持久化／上傳／自動標完成；API不可用與驗證失敗保留輸入並清楚提示。
-- [ ] 跑 calendar頁面及原action-card/todo/public/demo/PWA測試，Node新舊五項與syntax checks Expected exit0；提交 feat: confirm calendar downloads from cards and todos。
+- [x] 寫頁面RED：三詳情payload／script；private無裝置store、原文未混入最小payload；兩個owner隔離；私人todo snapshot／公開首頁載入；GET不寫庫，XSS跳脫。Expected缺UI RED。
+- [x] 元件包含種類select、日期／依據、全天／定時、start time、optional end datetime、Asia/Taipei、來源連結、確認checkbox、下載button、status及noscript。pending顯示修正指引，time_status=unparsed不預選模式；示範／私人／snapshot警語。所有input/change取消確認（確認checkbox本身除外）。
+- [x] Browser Blob下載固定檔名、延後revoke objectURL；成功只說啟動下載，無持久化／上傳／自動標完成；API不可用與驗證失敗保留輸入並清楚提示。
+- [x] 跑 calendar頁面及原action-card/todo/public/demo/PWA測試，Node新舊五項與syntax checks Expected exit0；提交 feat: confirm calendar downloads from cards and todos。
 
 ## Task 3：檔案驗收、全回歸與交付
 
-**Files:** 合成browser harness/QA資料、README/privacy/public-announcements、docs/campus-action-phase4-validation-2026-10-29.md、本計畫。
+**Files:** 合成browser harness/QA資料、README/privacy/public-announcements、docs/campus-action-phase4-validation-2026-10-30.md、本計畫。
 
-- [ ] 真實browser：未確認無下載、pending阻擋、改選／修正重確認、全天/定時實際下載並檢查檔案、snapshot與current差別、private/demo警語；320/390px、焦點、錯誤，僅合成截圖。下載不測外部行事曆匯入。
-- [ ] 完整pytest新basetemp、五項Node、diff --check；PG未設定如實skip。本階段無migration，REQUIRED_REVISION保持0008。
-- [ ] 一次fresh整範圍唯讀審查；Critical/Important一輪RED→GREEN修正及全套回歸；minor裁定記錄延期，不派第二審。
-- [ ] 文件標本機未部署、資料／下載界線及RFC驗證範圍；精確提交、保留工作區、不push；停止QA與清理本計畫scratch，先保存完整rulings/deferred。
+- [x] 真實browser：未確認無下載、pending阻擋、改選／修正重確認、全天/定時實際下載並檢查檔案、snapshot與current差別、private/demo警語；320/390px、焦點、錯誤，僅合成截圖。下載不測外部行事曆匯入。
+- [x] 完整pytest新basetemp、五項Node、diff --check；PG未設定如實skip。本階段無migration，REQUIRED_REVISION保持0008。
+- [x] 一次fresh整範圍唯讀審查；Critical/Important一輪RED→GREEN修正及全套回歸；minor裁定記錄延期，不派第二審。
+- [x] 文件標本機未部署、資料／下載界線及RFC驗證範圍；精確提交、保留工作區、不push；停止QA與清理本計畫scratch，先保存完整rulings/deferred。
 
 Self-review：Task1 payload供Task2 Python/Jinja及JS動態卡；Task2在actioncard paint之後啟用防錯用原始值。todo用snapshot不自動升級日期。五項Review Focus各有負面測試／browser驗收；不以同意功能範圍代替證據。沿用使用者本對話inline及不需重核授權。
+
+執行完成（2026-10-30）：506passed47skipped2warnings158.25s exit0；六項Node（含新增integration邊界）與diff檢查通過。審查三項皆RED→GREEN，實際下載四合成檔並檢查bytes；320/390及焦點通過，外部匯入／實體機／專用PG限制見validation。尚未部署，無migration。
