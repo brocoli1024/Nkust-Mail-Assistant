@@ -1,0 +1,1 @@
+<nav aria-label="來源紀錄分頁">{% if data.page_number>1 %}<a class="button secondary" href="?page={{ data.page_number-1 }}">上一頁</a>{% endif %} <span>第 {{ data.page_number }} 頁</span> {% if data.has_more %}<a class="button secondary" href="?page={{ data.page_number+1 }}">下一頁</a>{% endif %}</nav>

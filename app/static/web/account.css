@@ -210,3 +210,8 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
 .calendar-export label{display:block;margin-block:1rem;overflow-wrap:anywhere}.calendar-export select,.calendar-export input[type=time],.calendar-export input[type=datetime-local]{display:block;min-height:44px;width:100%;max-width:100%;box-sizing:border-box;color:var(--ink);background:var(--light);padding:.5rem}
 .calendar-export button{min-height:44px}.calendar-export input[type=checkbox]{min-width:20px;min-height:20px;margin-right:.5rem}.calendar-export blockquote{overflow-wrap:anywhere;margin-inline:0}
 .calendar-export summary{min-height:44px;padding-block:.6rem;cursor:pointer}.calendar-export button:disabled{opacity:.5;cursor:not-allowed}
+
+.source-history { overflow-wrap: anywhere; }
+.source-history pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+.source-history summary { cursor: pointer; padding: 12px 0; }
+.source-history article { margin-block: 16px; }

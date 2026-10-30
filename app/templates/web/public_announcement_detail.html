@@ -19,6 +19,7 @@
       <h2>來源摘要</h2><p class="public-detail-excerpt">{{ item.excerpt or '來源未提供摘要，請開啟學校原文。' }}</p>
       <p class="muted">這是來源提供的摘要，可能截短；活動日期、截止日與參加資格以學校原文為準。</p>
       {% if item.url %}<p><a class="button" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">閱讀學校原文（另開分頁）</a></p>{% endif %}
+      <p><a class="button secondary" href="/public/announcements/{{ item.id }}/history">查看公開版本紀錄</a></p>
       <a class="text-link dark" href="/public/announcements">返回公開公告</a>
     </article>
     {% include 'public_source_status.html' %}

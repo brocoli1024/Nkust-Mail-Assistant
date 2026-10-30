@@ -93,6 +93,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         app.include_router(correction_router)
         from app.api.todos import router as todo_router
         app.include_router(todo_router)
+        from app.api.source_history import router as source_history_router
+        app.include_router(source_history_router)
         app.mount('/assets', StaticFiles(directory=ROOT / 'app/static/web'), name='web-assets')
 
         @app.get('/manifest.webmanifest', include_in_schema=False)

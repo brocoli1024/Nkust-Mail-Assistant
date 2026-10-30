@@ -1,0 +1,4 @@
+<h3>{{ snapshot.title }}</h3><p>原始來源網址：{{ snapshot.url or '未提供' }}</p>
+<details><summary>查看留存原文與日期依據</summary><pre>{{ snapshot.text }}</pre>
+{% if snapshot.html %}<details><summary>原始 HTML（以文字顯示）</summary><pre>{{ snapshot.html }}</pre></details>{% endif %}
+<details><summary>原始解析與來源資訊</summary><pre>{{ snapshot.metadata | tojson(indent=2) }}</pre><pre>{{ snapshot.card | tojson(indent=2) }}</pre></details></details>
