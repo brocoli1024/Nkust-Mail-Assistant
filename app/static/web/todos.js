@@ -41,7 +41,10 @@ function init(){
    article.append(el('p','加入時的資訊快照，來源後續可能更新；不代表你符合資格。'));
    const url=safeLink(r.card.source.url);if(url){const link=el('a','核對公告來源（另開分頁）');link.href=url;link.target='_blank';link.rel='noopener noreferrer';link.className='text-link dark';article.append(link);}
    const history=el('details'),summary=el('summary','加入時的原文與依據'),pre=el('pre',JSON.stringify(r.card,null,2));history.append(summary,pre);article.append(history);
-   root.NkustCalendarUI?.mount(article,root.NkustCalendar.projectCard(r.card,{snapshot:true}));
+   if(root.NkustCalendarUI?.mount&&root.NkustCalendar?.projectCard){
+    try{root.NkustCalendarUI.mount(article,root.NkustCalendar.projectCard(r.card,{snapshot:true}));}
+    catch{article.append(el('p','行事曆匯出暫時無法使用；待辦仍可操作。'));}
+   }else article.append(el('p','行事曆匯出暫時無法使用；待辦仍可操作。'));
    const controls=el('div');controls.className='actions todo-actions';actions(controls,r);article.append(controls);return article;
   }
   function render(){clockKey=api.renderClockKey(records,new Date());body.replaceChildren();if(!ready){body.append(el('p','尚未完整讀取待辦，請重試。'));return;}

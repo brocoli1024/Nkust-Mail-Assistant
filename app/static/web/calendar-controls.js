@@ -8,7 +8,7 @@ function initialize(node,initial,{wait=false,dirty=false}={}){
  const api=root.NkustCalendar,ui=node.querySelector('[data-calendar-ui]')||node.appendChild(el('div'));ui.hidden=false;
  const status=el('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.dataset.calendarStatus='';
  if(!api){status.textContent='此瀏覽器無法產生行事曆檔案，請更新瀏覽器；原公告仍可閱讀。';ui.append(status);return null;}
- let payload=structuredClone(initial),waiting=wait,changed=dirty,busy=false,version=0;
+ let payload=structuredClone(initial),waiting=wait,changed=dirty,busy=false,version=0,blockedReason='修正尚未保存，請先儲存或重新載入頁面，再核對匯出。';
  const details=el('details'),summary=el('summary','下載行事曆檔案（.ics）');details.append(summary);
  const fields=el('fieldset'),legend=el('legend','選擇並確認日期與時間');fields.append(legend);
  const label=(text,input)=>{const l=el('label',text);l.append(input);fields.append(l);return input;};
@@ -38,7 +38,7 @@ function initialize(node,initial,{wait=false,dirty=false}={}){
   preview.textContent=supported&&mode.value?(mode.value==='all_day'?'預覽：'+field.value+' 全天，不包含時間。':'預覽：'+field.value+' '+(start.value||'開始待填')+' → '+(end.value||'不推定結束時間')+'（Asia/Taipei）')+(payload.context==='snapshot'?' · 待辦加入時快照':' · 目前畫面版本'):'';
   download.disabled=busy||waiting||changed||!supported||!mode.value||!confirm.checked;
   if(waiting)status.textContent='正在等待已保存的行動卡載入；修正讀取失敗時不會改用空白基準匯出。';
-  else if(changed)status.textContent='修正尚未保存，請先儲存或重新載入頁面，再核對匯出。';
+  else if(changed)status.textContent=blockedReason;
   else if(kind.value&&!supported)status.textContent=errors.DATE_PENDING;
  }
  const resetConfirmation=()=>{version++;confirm.checked=false;status.textContent='選項已變更，請重新核對並確認。';render();};
@@ -59,7 +59,7 @@ function initialize(node,initial,{wait=false,dirty=false}={}){
   }catch(e){if(objectURL)URL.revokeObjectURL(objectURL);status.textContent=errors[e.message]||'無法確認下載成功，請檢查選項與瀏覽器下載權限後重試。';}
   finally{busy=false;render();}
  });
- const controller={update(next){version++;payload=structuredClone(next);waiting=false;changed=false;kind.value='';mode.value='';start.value='';end.value='';confirm.checked=false;status.textContent='行動卡已載入，請選擇事項並重新核對。';render();},dirty(){version++;changed=true;confirm.checked=false;render();}};
+ const controller={update(next){version++;payload=structuredClone(next);waiting=false;changed=false;kind.value='';mode.value='';start.value='';end.value='';confirm.checked=false;status.textContent='行動卡已載入，請選擇事項並重新核對。';render();},dirty(reason){version++;changed=true;blockedReason=reason||'修正尚未保存，請先儲存或重新載入頁面，再核對匯出。';confirm.checked=false;render();}};
  controls.set(node,controller);render();
  const parent=node.closest('.action-card');if(parent&&!parent.hasAttribute('data-card-payload'))parent.querySelector('form.card-editor')?.addEventListener('input',()=>controller.dirty());
  return controller;
@@ -70,6 +70,6 @@ function mount(parent,payload,options={}){
  if(payload.source.kind==='private')node.append(el('p','含私人資訊的純文字檔案，請勿隨意轉傳。'));if(payload.source.kind==='demo')node.append(el('p','合成示範，非真實公告。'));
  const ui=el('div');ui.dataset.calendarUi='';node.append(ui);parent.append(node);initialize(node,payload,options);return node;
 }
-root.NkustCalendarUI={mount,setCard(parent,card){const node=parent.querySelector('[data-calendar-payload]');if(node)controls.get(node)?.update(root.NkustCalendar.projectCard(card));},setDirty(parent){const node=parent.querySelector('[data-calendar-payload]');if(node)controls.get(node)?.dirty();}};
+root.NkustCalendarUI={mount,setCard(parent,card){const node=parent.querySelector('[data-calendar-payload]');if(node)controls.get(node)?.update(root.NkustCalendar.projectCard(card));},setDirty(parent,reason){const node=parent.querySelector('[data-calendar-payload]');if(node)controls.get(node)?.dirty(reason);}};
 document.addEventListener('DOMContentLoaded',()=>{for(const node of document.querySelectorAll('[data-calendar-payload]')){try{initialize(node,JSON.parse(node.dataset.calendarPayload),{wait:node.hasAttribute('data-calendar-wait'),dirty:node.hasAttribute('data-calendar-dirty')});}catch{node.append(el('p','匯出資訊無法讀取，請重新載入頁面；尚未下載。'));}}});
 })(window);

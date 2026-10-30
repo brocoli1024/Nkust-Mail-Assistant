@@ -26,6 +26,7 @@ const prop=(text,key)=>unfold(text).split('\r\n').find(l=>l.startsWith(key+':'))
  for(const startTime of ['24:00','09:60','9:00',''])await assert.rejects(buildCalendar(payload,{...choose,mode:'timed',startTime},options));
  await assert.rejects(buildCalendar(payload,{...choose,mode:'timed',startTime:'09:00',endDateTime:'2026-11-20T08:59'},options),/END/);
  assert.equal(taipeiToUTC('2026-01-01','00:30').toISOString(),'2025-12-31T16:30:00.000Z');
+ assert.throws(()=>taipeiToUTC('1895-12-31','23:55'),/TIME_NOT_UNIQUE/);
  assert.throws(()=>taipeiToUTC('1979-07-01','00:30'),/TIME_NOT_UNIQUE/);
  assert.throws(()=>taipeiToUTC('1979-09-30','23:30'),/TIME_NOT_UNIQUE/);
  const unsafe=structuredClone(payload);unsafe.source.title='公告😀\\,;\r\nBEGIN:VEVENT';unsafe.summary='字😀'.repeat(100);unsafe.source.url='https://www.nkust.edu.tw/\r\nATTENDEE:bad';

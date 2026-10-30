@@ -25,7 +25,11 @@ function taipeiToUTC(date,time){
  let candidate=wall-8*3600000;
  for(let i=0;i<4&&local(candidate)!==wanted;i++)candidate+=wall-Date.parse(local(candidate)+'Z');
  if(local(candidate)!==wanted)throw Error('TIME_NOT_UNIQUE');
- for(const delta of [-7200000,-3600000,3600000,7200000])if(local(candidate+delta)===wanted)throw Error('TIME_NOT_UNIQUE');
+ // Obtain nearby actual offsets: historical Taipei changes include six minutes.
+ for(const delta of [-172800000,-86400000,-3600000,0,3600000,86400000,172800000]){
+  const sample=candidate+delta,offset=Date.parse(local(sample)+'Z')-sample,other=wall-offset;
+  if(other!==candidate&&local(other)===wanted)throw Error('TIME_NOT_UNIQUE');
+ }
  const result=new Date(candidate);if(result.getUTCFullYear()<1||result.getUTCFullYear()>9999)throw Error('DATE_RANGE');return result;
 }
 function validateSelection(payload,selection){

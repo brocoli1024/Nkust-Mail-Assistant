@@ -13,7 +13,7 @@
   {% endfor %}
   </dl>
   <p>公告列出的適用對象不代表你已符合資格，請核對完整條件。</p>
-  <p>時間尚未完整解析，請核對原文；不能直接據此匯出行事曆。</p>
+  <p>匯出行事曆前仍須核對原文日期與時間；系統不會猜測開始時間或持續長度。</p>
   {% if link_unverified %}<p>公告提供的連結，官方性待確認。</p>{% endif %}
   <p class="notice" data-deadline-passed {% if not card_context.deadline_passed %}hidden{% endif %}>此截止日期已過；其他條件與期限仍請核對原文。</p>
   {% if scope == 'private' and view.stale %}<p class="notice">來源或解析版本已變更，過往修正尚未套用，請重新核對。</p>{% endif %}

@@ -53,6 +53,7 @@ function init(){
     if(!editor)continue;
     let record=null,expected=0,ready=false,store=null;
     const message=text=>{status.textContent=text;};
+    const invalidate=reason=>{root.NkustCalendarUI?.setDirty(node,reason);root.NkustTodoUI?.setDirty(node);};
     const control=name=>Array.from(editor.querySelectorAll('[name]')).find(e=>e.name===name);
     const fill=patch=>{
       for(const key of keys){const c=patch?.fields?.[key];control(key+'.mode').value=c?.mode||'inherit';control(key+'.value').value=c?.value||'';control(key+'.quote').value=c?.quote||'';const check=control(key+'.confirmed');if(check)check.checked=!!c?.confirmed;}
@@ -76,11 +77,11 @@ function init(){
       if(latest&&!same)message('來源或解析版本已變更，舊修正未套用，請重新核對後儲存。');
     }
     async function load(preserveInputs=false){
-      ready=false;
+      ready=false;invalidate('正在重新讀取修正，先前的匯出確認已取消；請完成核對後再確認。');
       try{
         if(payload.scope==='public'){store=root.NkustActionCardStore.createActionCardStore();record=await store.read(base.source.source_ref);}
         expected=record?.revision||0;if(!preserveInputs)render();else{node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);message('已讀取裝置最新版本，輸入仍保留，請核對歷史後再儲存。');}ready=true;editor.hidden=false;
-      }catch(e){message('無法讀取裝置修正，尚未清除既有資料。請重新載入重試。');}
+      }catch(e){invalidate('修正讀取失敗，無法確認目前版本，匯出已停用；請重新載入頁面核對。');message('無法讀取裝置修正，尚未清除既有資料。請重新載入重試。');}
     }
     function readPatch(){
       const fields={};for(const key of keys){const mode=control(key+'.mode').value;fields[key]={mode};if(mode==='value')fields[key]={mode,value:control(key+'.value').value,quote:control(key+'.quote').value||null,confirmed:!!control(key+'.confirmed')?.checked};}
@@ -88,6 +89,7 @@ function init(){
     }
     async function commit(operation){
       if(!ready)return;
+      invalidate('正在更新修正，先前的匯出確認已取消；成功後請重新核對。');
       try{
         const patch=operation==='save'?readPatch():null;
         ready=false;message('正在儲存，請稍候。');
@@ -103,7 +105,8 @@ function init(){
     editor.querySelector('[data-reset]').addEventListener('click',()=>commit('reset'));
     editor.querySelector('[data-erase]')?.addEventListener('click',async()=>{
       if(!ready||!root.confirm('永久刪除此公告在此裝置的修正歷史？不影響公開公告。'))return;
-      try{await store.erase(base.source.source_ref,expected);record=null;expected=0;render();message('此公告的裝置修正已刪除。');}catch{message('未能刪除；可能已有其他分頁更新，請重新載入核對。');}
+      ready=false;invalidate('正在刪除裝置修正，先前匯出確認已取消；完成後請重新核對。');
+      try{await store.erase(base.source.source_ref,expected);record=null;expected=0;render();message('此公告的裝置修正已刪除。');}catch{invalidate('無法確認修正刪除結果，匯出已停用；請重新載入頁面核對。');message('未能刪除；可能已有其他分頁更新，請重新載入核對。');}finally{ready=true;}
     });
     load();
   }
