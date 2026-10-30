@@ -31,34 +31,34 @@
 **Files:** app/services/source_history.py、tests/test_source_identity.py。
 **Interfaces:** official_identity(url)->str|None；public_snapshot(row)->dict；private_snapshot(row,email,parser_version=None)->dict；snapshot_changes(old,new)->list[str]。snapshot={source_kind,url,title,text,html,metadata,card}，public html永遠null，private保留原HTML但只以escaped pre顯示。metadata含原發布或收到時間、來源parser及原解析，排除last_seen/captured等揮發欄位；card是未套個人修正的純原文解析。
 
-- [ ] 寫URL及差異測試Expected缺module RED：可信文章fragment相同、不同query/path/host不相同、列表／http／外站／同標題不關聯、明確期限舊新與pending/parser-only文案。
-- [ ] 實作上述接口，沿用normalize_public_url／build_action_card，不連網或呼叫AI。
-- [ ] 跑pytest tests/test_source_identity.py Expected exit0，提交feat: identify conservative official source groups。
+- [x] 寫URL及差異測試Expected缺module RED：可信文章fragment相同、不同query/path/host不相同、列表／http／外站／同標題不關聯、明確期限舊新與pending/parser-only文案。
+- [x] 實作上述接口，沿用normalize_public_url／build_action_card，不連網或呼叫AI。
+- [x] 跑pytest tests/test_source_identity.py Expected exit0，提交feat: identify conservative official source groups。
 
 ## Task2：版本模型與同步交易
 
 **Files:** app/models/source_history.py、alembic/versions/0009_source_history.py、tests/test_source_versions.py、可選tests/test_source_history_postgresql.py；修改alembic/env.py、schema.py、public_sync.store_entries、UserMailRepository.save_processed、PG offline downgrade範圍。
 **Interfaces:** record_public_version(session,row,now,*,baseline=False)->None；record_private_version(session,row,email,now,*,parser_version=None,baseline=False)->None。V={id,source_key/url(public)或user_id/email_id/source_index/source_fingerprint(private),snapshot_hash,snapshotJSON,captured_at,baseline bool}；private owner FK Email CASCADE，無Announcement FK。最新相同snapshot不追加，重返舊內容仍追加。Public helper拒絕非PublicAnnouncement。
 
-- [ ] 寫新版本測試RED：公開A/B/A／重跑／preexisting基準／fail不改；private實際repo force重新解析留舊／新、原HTML與parser、他人URL不相混、刪帳號不動public/B；inject留存失敗rollback；版本皆有captured時間。
-- [ ] 實作additive0009及metadata註冊，schema要求0009。public舊row變更前留基準、更新後留新；private copy email前留舊、加入新announcement後留新（傳正確新parser）；同一現有lease交易，不額外commit。
-- [ ] 跑 source_versions + public_sync + sync_multi_user + multi_user_database + postgresql_readiness Expected exit0；專用PG缺少明列skip。提交feat: preserve isolated public and private source versions。
+- [x] 寫新版本測試RED：公開A/B/A／重跑／preexisting基準／fail不改；private實際repo force重新解析留舊／新、原HTML與parser、他人URL不相混、刪帳號不動public/B；inject留存失敗rollback；版本皆有captured時間。
+- [x] 實作additive0009及metadata註冊，schema要求0009。public舊row變更前留基準、更新後留新；private copy email前留舊、加入新announcement後留新（傳正確新parser）；同一現有lease交易，不額外commit。
+- [x] 跑 source_versions + public_sync + sync_multi_user + multi_user_database + postgresql_readiness Expected exit0；專用PG缺少明列skip。提交feat: preserve isolated public and private source versions。
 
 ## Task3：權限查詢、變更與分頁頁面
 
 **Files:** app/services/source_views.py、app/api/source_history.py、source_history.html、source_group.html、source_version_detail.html、tests/test_source_history_pages.py；修改web.py、兩種detail模板、site_header、CSS。
 **Interfaces:** public_history(database,pid,page_number=1)->dict（只P/PublicVersion）；private_history(database,user,page_number=1)->dict；private_version(database,user,vid)->dict；related_sources(database,user,aid,page_number=1)->dict。沿用_identity驗證Google subject，錯owner CorrectionNotFound，SQL/schema／壞snapshot CorrectionUnavailable。所有page>=1 le1000000，20+1取頁有has_more，版本詳細來源清楚且escaped。關聯頁查本人URL候選後以official_identity再次驗證精確相等，query不模糊合併；公資料仍只SOURCE_KEY來源。
 
-- [ ] 頁面／查詢RED測試：同URLpublic+A、排B，同標題不同URL分開；invalidURL無關聯；匿名publichistory不讀session/private；privateowner404、invalidsubject404、GET不寫、503不假空白；21筆各頁可發現；期限／原文／HTML跳脫與版本解析標示。
-- [ ] 實作上述四個GET路由／模板與detail/nav入口；不加寫入API。來源與歷史只展示被授權的資料，不改原card／todo。
-- [ ] 跑source_history_pages及前四階段頁面／安全回歸Expected exit0，提交feat: show owner-scoped related sources and history。
+- [x] 頁面／查詢RED測試：同URLpublic+A、排B，同標題不同URL分開；invalidURL無關聯；匿名publichistory不讀session/private；privateowner404、invalidsubject404、GET不寫、503不假空白；21筆各頁可發現；期限／原文／HTML跳脫與版本解析標示。
+- [x] 實作上述四個GET路由／模板與detail/nav入口；不加寫入API。來源與歷史只展示被授權的資料，不改原card／todo。
+- [x] 跑source_history_pages及前四階段頁面／安全回歸Expected exit0，提交feat: show owner-scoped related sources and history。
 
 ## Task4：合成瀏覽器、審查、文件
 
 **Files:** tests/browser QA僅合成資料入口、README/privacy/public-announcements、phase5驗證文件、此計畫。
-- [ ] QA seed同官方文章URL的公開及A/B私人不同原文，留public前後期限及private版本；browser驗證分區、差異、版本、A登出B隔離、320/390與焦點及合成截圖。
-- [ ] 完整pytest新basetemp、原六Node及diff --check；migration0009限定測試，明列PGskip。
-- [ ] 一次fresh唯讀全range reviewer，Critical/Important一輪RED→GREEN+全回歸，minor延期；不重派review。
-- [ ] 文件寫首次留存基準非完整歷史、文章URL保守範圍、日期與先後不確定、owner刪除／備份；本機提交保留worktree，停止QA、不push。先保存rulings再清本計畫scratch。
+- [x] QA seed同官方文章URL的公開及A/B私人不同原文，留public前後期限及private版本；browser驗證分區、差異、版本、A登出B隔離、320/390與焦點及合成截圖。
+- [x] 完整pytest新basetemp、原六Node及diff --check；migration0009限定測試，明列PGskip。
+- [x] 一次fresh唯讀全range reviewer，Critical/Important一輪RED→GREEN+全回歸，minor延期；不重派review。
+- [x] 文件寫首次留存基準非完整歷史、文章URL保守範圍、日期與先後不確定、owner刪除／備份；本機提交保留worktree，停止QA、不push。先保存rulings再清本計畫scratch。
 
 Self-review：純snapshot feed同步與diff；public/private記錄helper獨立表不可交叉，group只讀本人。versions不依重用AID；ownerFK維持刪帳號隱私。既有資料不偽造回溯，public匿名不加private count。需求及inline已由使用者本對話指定，沿用不重核授權。
