@@ -49,3 +49,36 @@ def snapshot_changes(old,new):
             show=lambda f:f['value'] if f['state'] in ('supported','user_confirmed') and f['value'] else '待確認'
             changes.append(label+'：'+show(a)+' → '+show(b)+'；這是來源／解析差異，請核對原文。')
     return changes
+
+
+def _digest(snapshot):
+    import hashlib,json
+    return hashlib.sha256(json.dumps(snapshot,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+
+
+def record_public_version(session,row,now,*,baseline=False):
+    """Caller must hold the public source lease in the same transaction."""
+    from sqlalchemy import select
+    from app.models.source_history import PublicSourceVersion as V
+    snapshot=public_snapshot(row)
+    latest=session.scalar(select(V).where(V.source_key==row.source_key,V.canonical_url==row.canonical_url).order_by(V.id.desc()).limit(1))
+    fingerprint=_digest(snapshot)
+    if latest and latest.snapshot_hash==fingerprint:return
+    session.add(V(source_key=row.source_key,canonical_url=row.canonical_url,snapshot_hash=fingerprint,
+        snapshot=snapshot,captured_at=now,baseline=baseline and latest is None))
+    session.flush()
+
+
+def record_private_version(session,row,email,now,*,parser_version=None,baseline=False):
+    """Caller must hold the owner's sync lease; fingerprint is not a dedup key."""
+    from sqlalchemy import select
+    from app.models.source_history import PrivateSourceVersion as V
+    snapshot=private_snapshot(row,email,parser_version)
+    latest=session.scalar(select(V).where(V.user_id==row.user_id,V.email_id==row.email_id,
+        V.source_index==row.source_index).order_by(V.id.desc()).limit(1))
+    fingerprint=_digest(snapshot)
+    if latest and latest.snapshot_hash==fingerprint:return
+    session.add(V(user_id=row.user_id,email_id=row.email_id,source_index=row.source_index,
+        source_fingerprint=row.source_fingerprint,canonical_url=official_identity(row.url),snapshot_hash=fingerprint,
+        snapshot=snapshot,captured_at=now,baseline=baseline and latest is None))
+    session.flush()

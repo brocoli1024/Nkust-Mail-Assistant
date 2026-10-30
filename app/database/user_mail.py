@@ -123,6 +123,7 @@ class UserMailRepository:
         row.text_body = email.text_body
 
     def save_processed(self, email, result, version, *, force=False):
+        from app.services.source_history import record_private_version
         if not result.announcements:
             raise ValueError('EMPTY_PARSE_RESULT: no announcements')
         now = datetime.now(timezone.utc)
@@ -135,11 +136,14 @@ class UserMailRepository:
                 row = Email(user_id=self.user_id, gmail_message_id=email.gmail_message_id, status='failed')
                 session.add(row)
                 session.flush()
+            for previous in session.scalars(select(Announcement).where(
+                    Announcement.user_id==self.user_id,Announcement.email_id==row.id)).all():
+                record_private_version(session,previous,row,now,baseline=True)
             self._copy_email(row, email)
             session.execute(delete(Announcement).where(
                 Announcement.user_id == self.user_id, Announcement.email_id == row.id))
             for item in result.announcements:
-                session.add(Announcement(
+                announcement=Announcement(
                     user_id=self.user_id, email_id=row.id, source_index=item.source_index,
                     source_fingerprint=item.source_fingerprint, department=item.department,
                     source_category=item.source_category,
@@ -151,7 +155,10 @@ class UserMailRepository:
                     date_evidence=[asdict(e) for e in item.date_evidence],
                     date_inferred=any(e.year_inferred for e in item.date_evidence),
                     created_at=now, updated_at=now,
-                ))
+                )
+                session.add(announcement)
+                session.flush()
+                record_private_version(session,announcement,row,now,parser_version=version)
             row.status = 'processed'
             row.processed_at = now
             row.parser_version = version

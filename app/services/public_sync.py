@@ -69,10 +69,13 @@ class SourceLease:
 
 def store_entries(session, entries, now, result):
     """Call only while holding and verifying a SourceLease in this transaction."""
+    from app.services.source_history import record_public_version
     dates = []
     for entry in entries:
         url = normalize_public_url(entry.url)
         row = session.scalar(select(P).where(P.source_key == SOURCE_KEY, P.canonical_url == url))
+        if row is not None:
+            record_public_version(session,row,now,baseline=True)
         # A listing without an excerpt/date must not erase richer RSS data.
         excerpt = entry.excerpt or (row.excerpt if row else '')
         published = aware(entry.published_at) or (aware(row.published_at) if row else None)
@@ -106,6 +109,7 @@ def store_entries(session, entries, now, result):
         if published:
             dates.append(published)
         session.flush()  # same-response duplicate URLs see the newly inserted row
+        record_public_version(session,row,now)
     return min(dates) if dates else None
 
 
