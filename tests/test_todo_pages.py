@@ -58,7 +58,8 @@ def test_anonymous_todos_and_no_private_device_payload(web,monkeypatch):
     monkeypatch.setattr(sessions.SessionService,'resolve',deny)
     r=c.get('/todos')
     assert r.status_code==200 and '此裝置' in r.text and 'todo-store.js' in r.text
-    assert 'data-todo-list' in c.get('/').text
+    assert 'data-todo-list' in c.get('/todos').text
+    assert c.get('/').headers['location']=='/public/announcements'
     assert 'data-device-todo' in c.get('/demo/announcements/demo-event').text
 
 

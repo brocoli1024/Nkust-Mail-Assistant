@@ -36,7 +36,7 @@ def test_anonymous_public_pages_never_resolve_private_sessions(web,monkeypatch):
         client.cookies.clear()
         if cookie: client.cookies.set(app.state.sessions.cookie_name,cookie)
         for path in ('/','/public/announcements','/public/announcements/1'):
-            r=client.get(path)
+            r=client.get(path,follow_redirects=True)
             assert r.status_code==200
             assert 'PRIVATE-MARKER' not in r.text and 'PRIVATE-BODY' not in r.text
         assert client.get('/public/announcements/900').status_code==404
@@ -101,7 +101,7 @@ def test_source_status_is_visible_on_all_public_pages(web, run_status):
         s.add(PublicSyncRun(source_key='nkust-latest', mode='recent', status=run_status,
             started_at=datetime(2026, 10, 29, 2, 0, tzinfo=timezone.utc)))
     for path in ('/', '/public/announcements', '/public/announcements/1'):
-        response = client.get(path)
+        response = client.get(path,follow_redirects=True)
         assert response.status_code == 200
         soup = BeautifulSoup(response.text, 'html.parser')
         status = soup.select_one('[aria-label="公告來源與更新狀態"]')
@@ -120,13 +120,13 @@ def test_missing_success_is_not_invented(web):
     client, app, _, _ = web
     seed(app)
     for path in ('/', '/public/announcements', '/public/announcements/1'):
-        assert '尚無成功更新紀錄' in client.get(path).text
+        assert '尚無成功更新紀錄' in client.get(path,follow_redirects=True).text
 
 
 def test_empty_source_differs_from_empty_search(web):
     client, app, _, _ = web
     response = client.get('/public/announcements')
-    assert '目前尚無收錄資料' in response.text and 'href="/demo"' in response.text
+    assert '目前尚無收錄資料' in response.text and 'href="/demo"' not in response.text
     seed(app)
     response = client.get('/public/announcements?q=does-not-match')
     assert '沒有符合篩選的公告' in response.text
@@ -146,7 +146,7 @@ def test_empty_source_differs_from_empty_search(web):
 ])
 def test_public_page_errors_are_safe_html(web, path, code):
     client, _, _, _ = web
-    r = client.get(path)
+    r = client.get(path,follow_redirects=True)
     assert r.status_code == code
     assert r.headers['content-type'].startswith('text/html')
     assert '返回合成示範' in r.text if path.startswith('/demo') else '返回公開公告' in r.text
@@ -157,19 +157,19 @@ def test_public_page_errors_are_safe_html(web, path, code):
         assert '合成示範資料，非高科大真實公告' in r.text
 
 
-@pytest.mark.parametrize('path', ['/', '/public/announcements', '/public/announcements/1'])
+@pytest.mark.parametrize('path', ['/public/announcements', '/public/announcements/1'])
 def test_public_database_failure_has_retry_without_exposing_error(web, monkeypatch, path):
     from sqlalchemy.exc import SQLAlchemyError
     client, app, _, _ = web
     def fail(*args, **kwargs):
         raise SQLAlchemyError('PRIVATE-SQL-MARKER')
     monkeypatch.setattr(app.state.database, 'transaction', fail)
-    r = client.get(path)
+    r = client.get(path,follow_redirects=True)
     assert r.status_code == 503
     assert r.headers['content-type'].startswith('text/html')
     assert '暫時無法讀取公告' in r.text and '重新載入' in r.text
     assert 'PRIVATE-SQL-MARKER' not in r.text
-    assert 'href="/demo"' in r.text
+    assert 'href="/public/announcements"' in r.text
 
 
 def test_public_errors_do_not_change_private_api_contracts(web):
@@ -186,7 +186,7 @@ def test_public_filter_form_preserves_get_and_no_old_page(web):
     client, app, _, _ = web
     seed(app)
     for path in ('/public/announcements?page=2&category=獎學金', '/demo?category=活動'):
-        r = client.get(path)
+        r = client.get(path,follow_redirects=True)
         soup = BeautifulSoup(r.text, 'html.parser')
         form = soup.select_one('#announcement-filters')
         assert form['method'] == 'get' and not form.select('[name="page"]')

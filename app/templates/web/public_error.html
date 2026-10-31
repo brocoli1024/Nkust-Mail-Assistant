@@ -14,7 +14,7 @@
       <p role="alert">{{ detail }}</p>
       <div class="actions">
         <a class="button" href="{{ return_url }}">{% if retry %}重新載入{% elif demo %}返回合成示範{% else %}返回公開公告{% endif %}</a>
-        {% if retry %}<a class="text-link dark" href="/demo">先體驗合成示範</a>{% endif %}
+        {% if retry %}<a class="text-link dark" href="/public/announcements">返回公開公告</a>{% endif %}
       </div>
     </section>
   </main>

@@ -1,8 +1,9 @@
 <section class="public-source-status" aria-label="公告來源與更新狀態">
   <h2>來源與更新狀態</h2>
   <p>來源：<a class="text-link" href="{{ source_url }}" target="_blank" rel="noopener noreferrer">高科大最新消息（學校原始清單，另開分頁）</a></p>
-  <p>最後成功更新：{{ last_success }}（台灣時間）。由維護者更新，非即時同步。</p>
-  {% if last_run_status in ('failed','partial') %}<p class="notice" role="status">最近維護更新{% if last_run_status == 'partial' %}有部分失敗{% else %}失敗{% endif %}；目前保留先前取得的資料。</p>{% endif %}
+  <p>最後成功更新：{{ last_success }}（台灣時間）。每小時排程更新，非即時同步；執行時間可能延後。</p>
+  {% if is_stale %}<p class="notice" role="status">超過 2 小時未成功更新或尚無成功紀錄，排程可能延後或失敗；目前保留既有資料。</p>{% endif %}
+  {% if last_run_status in ('failed','partial') %}<p class="notice" role="status">最近來源更新{% if last_run_status == 'partial' %}有部分失敗{% else %}失敗{% endif %}；目前保留先前取得的資料。</p>{% endif %}
   <p>僅涵蓋指定來源已取得的資料，不保證全校、全歷史或所有 Gmail 通知皆已收錄。來源摘要可能截短，日期與資格請核對學校原文。</p>
   <details><summary>歷史補收與收錄範圍</summary>
     <p>最早已收錄發布時間：{{ oldest }}（台灣時間）。</p>

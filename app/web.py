@@ -40,7 +40,7 @@ class RedactQuery(logging.Filter):
 
 
 def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth,
-               session_enabled=False, session_secret=None):
+               session_enabled=False, session_secret=None, demo_enabled=False):
     """OAuth-only default preserves Phase 2 callers; app below enables sessions."""
     @asynccontextmanager
     async def lifespan(app):
@@ -88,7 +88,13 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         from app.api.public_announcements import router as public_router
         from app.api.demo import router as demo_router
         app.include_router(public_router)
-        app.include_router(demo_router)
+        if demo_enabled:
+            app.include_router(demo_router)
+        else:
+            @app.get('/demo')
+            @app.get('/demo/announcements/{demo_id}')
+            def legacy_demo_redirect(demo_id: str = ''):
+                return RedirectResponse('/public/announcements',status_code=303)
         from app.api.action_card_corrections import router as correction_router
         app.include_router(correction_router)
         from app.api.todos import router as todo_router
@@ -113,8 +119,9 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
     @app.get('/')
     def root(request: Request):
         if session_enabled:
-            from app.api.public_announcements import home
-            return home(request)
+            target='/public/announcements'
+            if request.url.query:target+='?'+request.url.query
+            return RedirectResponse(target,status_code=303)
         return RedirectResponse('/login', status_code=303)
 
     def is_public_page(request):
@@ -130,7 +137,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         messages = {
             404: ('找不到這則公告', '公告可能不存在，請返回清單重新選擇。'),
             422: ('請檢查搜尋與篩選條件', '請回到清單，縮短關鍵字或重新選擇分類。'),
-            503: ('暫時無法讀取公告', '目前無法連接資料服務，請稍後重試；你也可以先體驗合成示範。'),
+            503: ('暫時無法讀取公告', '目前無法連接資料服務，請稍後重試；現有資料不會因此清除。'),
             500: ('暫時無法顯示這個頁面', '請稍後重試，或返回公告清單。'),
         }
         title, detail = messages[status_code]

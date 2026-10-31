@@ -39,7 +39,7 @@ with db.transaction() as s:
     p.excerpt=p.excerpt.replace('11月10日','11月11日');record_public_version(s,p,now)
 db.close()
 oauth=OAuthSettings('qa-client','qa-secret','http://127.0.0.1:8766/auth/google/callback','http://127.0.0.1:8766',Fernet.generate_key().decode())
-app=create_app(Settings(database_url=url),oauth,google_factory=FakeGoogle,session_enabled=True,session_secret='synthetic-qa-session-secret-at-least-32-characters')
+app=create_app(Settings(database_url=url),oauth,google_factory=FakeGoogle,session_enabled=True,demo_enabled=True,session_secret='synthetic-qa-session-secret-at-least-32-characters')
 original_lifespan=app.router.lifespan_context
 @asynccontextmanager
 async def lifespan(app):

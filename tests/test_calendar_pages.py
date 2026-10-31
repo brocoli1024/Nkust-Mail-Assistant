@@ -62,6 +62,6 @@ def test_private_todo_calendar_uses_joined_snapshot_not_new_source(web):
 
 def test_device_todo_pages_load_only_shared_calendar_modules(web):
     c,_,_,_=web
-    for path in ('/','/todos'):
+    for path in ('/todos',):
         r=c.get(path);assert r.status_code==200
         assert 'calendar-ics.js' in r.text and 'calendar-controls.js' in r.text

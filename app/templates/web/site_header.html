@@ -7,7 +7,7 @@
   {% if user is defined %}
   <nav class="main-nav" aria-label="主要導覽">
     <a href="/public/announcements">公開公告</a>
-    <a href="/demo" {% if active_page == 'demo' %}aria-current="page"{% endif %}>合成示範</a>
+
     <a href="/dashboard" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>總覽</a>
     <a href="/my/todos">我的待辦</a>
     <a href="/announcements" {% if active_page == 'announcements' %}aria-current="page"{% endif %}>我的公告</a>
@@ -15,6 +15,6 @@
     <a href="/settings" {% if active_page == 'settings' %}aria-current="page"{% endif %}>帳號設定</a>
   </nav>
   {% else %}
-  <nav class="main-nav" aria-label="主要導覽"><a href="/public/announcements" {% if active_page == 'public' %}aria-current="page"{% endif %}>公開公告</a><a href="/demo" {% if active_page == 'demo' %}aria-current="page"{% endif %}>合成示範</a><a href="/todos">我的待辦（裝置）</a><a href="/login">Gmail（選用）</a></nav>
+  <nav class="main-nav" aria-label="主要導覽"><a href="/public/announcements" {% if active_page == 'public' %}aria-current="page"{% endif %}>公開公告</a><a href="/todos">我的待辦（裝置）</a><a href="/login">Gmail（選用）</a></nav>
   {% endif %}
 </header>

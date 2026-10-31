@@ -1,5 +1,6 @@
 """Anonymous public-table views. Never resolve sessions or fetch external data."""
 from typing import Literal
+from datetime import datetime, timedelta, timezone
 from app.services.action_cards import build_action_card, public_source
 from app.api.action_card_corrections import card_context
 from urllib.parse import urlencode
@@ -18,10 +19,12 @@ def display_time(value):
     return aware(value).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M') if value else '尚無紀錄'
 
 
-def status_data(session):
+def status_data(session, *, now=None):
     state = session.get(S, SOURCE_KEY)
     run = session.scalar(select(R).where(R.source_key == SOURCE_KEY).order_by(R.id.desc()).limit(1))
-    return dict(last_success=display_time(state.last_success_at) if state and state.last_success_at else '尚無成功更新紀錄',
+    last_success_at = state.last_success_at if state else None
+    is_stale = not last_success_at or aware(now or datetime.now(timezone.utc)) - aware(last_success_at) > timedelta(hours=2)
+    return dict(is_stale=is_stale, last_success=display_time(state.last_success_at) if state and state.last_success_at else '尚無成功更新紀錄',
                 oldest=display_time(state.oldest_seen_at if state else None),
                 history_status=state.history_status if state else 'not_started',
                 history_completed=display_time(state.history_completed_at if state else None),

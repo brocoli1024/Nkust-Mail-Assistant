@@ -95,9 +95,10 @@ def test_demo_source_data_is_immutable_and_search_is_literal():
     assert get_demo_announcement('unknown') is None
 
 
-def test_public_home_and_login_explain_optional_gmail(web):
+def test_production_entry_and_login_explain_optional_gmail(web):
     client, _, _, _ = web
     for path in ('/', '/login'):
-        r = client.get(path)
-        assert 'href="/demo"' in r.text
-        assert '選用' in r.text and 'Google 測試名單' in r.text
+        r = client.get(path,follow_redirects=True)
+        assert 'href="/demo"' not in r.text
+        assert '選用' in r.text
+        if path=='/login':assert 'Google 測試名單' in r.text

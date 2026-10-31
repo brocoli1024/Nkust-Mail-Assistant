@@ -28,7 +28,7 @@
         <h2><a href="/public/announcements/{{ item.id }}">{{ item.title }}</a></h2>
         <p class="muted">發布：{{ item.published }}{% if item.published != '未知' %}（台灣時間）{% endif %}</p>
         {% if item.excerpt %}<p class="public-excerpt">{{ item.excerpt }}</p>{% endif %}
-      </article>{% else %}{% if source_total == 0 %}<p class="notice">目前尚無收錄資料。你可以先<a href="/demo">體驗合成示範</a>。</p>{% else %}<p class="notice">沒有符合篩選的公告。請<a href="/public/announcements">清除篩選</a>，或更換關鍵字。</p>{% endif %}{% endfor %}
+      </article>{% else %}{% if source_total == 0 %}<p class="notice">目前尚無收錄資料。請稍後重新整理，或查看下方官方來源。</p>{% else %}<p class="notice">沒有符合篩選的公告。請<a href="/public/announcements">清除篩選</a>，或更換關鍵字。</p>{% endif %}{% endfor %}
     </div>
     <nav class="pagination" aria-label="公開公告分頁">{% if previous %}<a href="{{ previous }}">上一頁</a>{% endif %}{% if following %}<a href="{{ following }}">下一頁</a>{% endif %}</nav>
   </main>
