@@ -1,0 +1,27 @@
+name: Update public announcements
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: public-announcement-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/web-deployment
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements-web.txt
+      - name: Sync official public feed
+        env:
+          DATABASE_URL: ${{ secrets.NKUST_PUBLIC_SYNC_DATABASE_URL }}
+        run: python -m app.public_cli sync --source nkust-latest
