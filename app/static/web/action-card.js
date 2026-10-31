@@ -62,7 +62,7 @@ function init(){
     const paint=card=>{
       for(const key of keys){const f=card.fields[key];
         const box=node.querySelector('[data-card-evidence="'+key+'"]');box.replaceChildren();
-        if(f.evidence?.length){const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent='查看依據';detail.append(summary);for(const e of f.evidence){const quote=document.createElement('blockquote');quote.textContent=e.quote;detail.append(quote);}box.append(detail);}
+        if(f.evidence?.length){const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent='查看依據';detail.append(summary);for(const e of f.evidence){const quote=document.createElement('blockquote');quote.textContent=e.quote;detail.append(quote);const label=document.createElement('p');label.textContent='依據：'+({title:'來源標題',excerpt:'來源摘要',original:'郵件公告原文'}[card.source.segments?.[e.segment]?.kind]||'來源待確認');detail.append(label);}box.append(detail);}
         const warnings=node.querySelector('[data-card-warnings="'+key+'"]');warnings.replaceChildren();for(const text of f.warnings||[]){const p=document.createElement('p');p.textContent=text;warnings.append(p);}
         node.querySelector('[data-card-field="'+key+'"]').textContent=f.value||'待確認';node.querySelector('[data-card-state="'+key+'"]').textContent=f.origin==='user'?'我的修正 · '+(f.state==='pending'?'待確認':'使用者確認，非系統驗證'):(f.state==='pending'?'待確認':'來源規則辨識');}
       root.NkustTodoUI?.setCard(node,card);

@@ -121,3 +121,15 @@ def test_history_read_failure_keeps_owned_snapshot(web,monkeypatch):
     r=client.get(f'/action-cards/history/{sid}')
     assert r.status_code==503 and '合成本文' in r.text
     assert 'synthetic read failure' not in r.text
+
+
+def test_private_detail_displays_received_and_original_category(web):
+    from app.models.multi_user import Announcement,Email
+    from datetime import datetime,timezone
+    c,app,_,_=web;login(c);aid=seed(app.state.database)
+    with app.state.database.transaction() as s:
+        a=s.get(Announcement,aid);a.source_category='<原始分類>'
+        s.get(Email,a.email_id).received_at=datetime(2026,10,30,1,2,tzinfo=timezone.utc)
+    r=c.get(f'/announcements/{aid}')
+    assert '收到時間：2026-10-30 09:02' in r.text
+    assert '原始分類：&lt;原始分類&gt;' in r.text

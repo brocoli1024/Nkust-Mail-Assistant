@@ -2,7 +2,7 @@
 from datetime import timezone
 from functools import wraps
 from zoneinfo import ZoneInfo
-from sqlalchemy import select,and_
+from sqlalchemy import select,and_,or_
 from sqlalchemy.exc import SQLAlchemyError
 from pydantic import ValidationError
 from app.models.multi_user import Announcement as A,Email as E
@@ -95,7 +95,11 @@ def related_sources(database,user,aid,page_number=1):
         pubs=s.scalars(select(P).where(P.source_key==SOURCE_KEY,P.canonical_url==key).order_by(P.id).offset((page_number-1)*20).limit(21)).all()
         # Fetch only the owner's URL-prefix candidates; exact normalized validation precedes pagination.
         from sqlalchemy import func
-        candidates=s.execute(join.where(func.lower(A.url).startswith(key.lower(),autoescape=True)).order_by(A.id)).all()
+        from urllib.parse import urlsplit,urlunsplit
+        parsed=urlsplit(key)
+        port_key=urlunsplit((parsed.scheme,parsed.netloc+':443',parsed.path,parsed.query,''))
+        candidates=s.execute(join.where(or_(func.lower(A.url).startswith(key.lower(),autoescape=True),
+            func.lower(A.url).startswith(port_key.lower(),autoescape=True))).order_by(A.id)).all()
         matches=[(a,e) for a,e in candidates if official_identity(a.url)==key]
         privs=matches[(page_number-1)*20:page_number*20+1]
         result['has_more']=len(privs)>20 or len(pubs)>20

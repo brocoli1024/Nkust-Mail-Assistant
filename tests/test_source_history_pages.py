@@ -94,3 +94,14 @@ def test_public_history_pagination_empty_and_corrupt_fail_closed(web):
     assert '尚無留存版本' in c.get('/public/announcements/1/history?page=10').text
     with app.state.database.transaction() as s:s.get(PV,1).snapshot={'broken':True}
     assert c.get('/public/announcements/1/history?page=2').status_code==503
+
+
+def test_related_sources_include_default_https_port_from_both_anchors(web):
+    c,app,_,_=web;aid=setup(c,app)
+    with app.state.database.transaction() as s:
+        a=s.get(Announcement,aid)
+        b=Announcement(user_id=1,email_id=a.email_id,source_index=7,source_fingerprint='port',department='test',source_category='test',title='PORT-443',original_text='synthetic',url=URL.replace('.tw/','.tw:443/'))
+        s.add(b);s.flush();bid=b.id
+    for anchor in (aid,bid):
+        r=c.get(f'/announcements/{anchor}/sources')
+        assert f'href="/announcements/{aid}"' in r.text and f'href="/announcements/{bid}"' in r.text

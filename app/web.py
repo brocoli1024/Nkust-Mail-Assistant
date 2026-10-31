@@ -134,8 +134,15 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             500: ('暫時無法顯示這個頁面', '請稍後重試，或返回公告清單。'),
         }
         title, detail = messages[status_code]
+        return_url='/demo' if demo else '/public/announcements'
+        if status_code >= 500:
+            # Relative origin-local URL; encode decoded path delimiters and backslashes.
+            from urllib.parse import quote
+            path=quote(request.url.path,safe='/')
+            if path.startswith('/') and not path.startswith('//'):
+                return_url=path+('?' + request.url.query if request.url.query else '')
         response = page(request, 'public_error.html', title=title, detail=detail,
-                        demo=demo, return_url='/demo' if demo else '/public/announcements',
+                        demo=demo, return_url=return_url,
                         retry=status_code >= 500)
         response.status_code = status_code
         return response

@@ -193,3 +193,15 @@ def test_public_filter_form_preserves_get_and_no_old_page(web):
         assert form.select_one('noscript button[type="submit"]')
         assert form.select_one('option[selected]').text in ('全部公告', '獎學金', '活動')
         assert soup.select_one('#filter-status[role="status"][aria-live="polite"]')
+
+
+@pytest.mark.parametrize('path',['/public/announcements?q=test&category=活動&page=2','/public/announcements/1'])
+def test_retry_preserves_local_path_and_query(web,monkeypatch,path):
+    from sqlalchemy.exc import SQLAlchemyError
+    from urllib.parse import unquote
+    c,app,_,_=web
+    def fail(*a,**kw):raise SQLAlchemyError('synthetic')
+    monkeypatch.setattr(app.state.database,'transaction',fail)
+    r=c.get(path);assert r.status_code==503
+    link=BeautifulSoup(r.text,'html.parser').find('a',string='重新載入')
+    assert unquote(link['href'])==path

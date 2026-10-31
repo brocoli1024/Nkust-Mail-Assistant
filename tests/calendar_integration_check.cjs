@@ -12,6 +12,7 @@ function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve
 async function actionCardBoundary(){
  const keys=['summary','action','audience','materials','deadline','event_date'];
  const base={source:{kind:'public',source_ref:'synthetic',segments:[]},baseline_hash:'a'.repeat(64),fields:Object.fromEntries(keys.map(k=>[k,{value:k==='event_date'?'2026-11-20':null,state:k==='event_date'?'supported':'pending',evidence:[],warnings:[]}])),requires_action:null,deadline_kind:'unknown'};
+ base.source.segments=[{kind:'excerpt',text:'合成依據'}];base.fields.summary.evidence=[{segment:0,quote:'合成依據'}];
  const root=new Element(),editor=new Element(),nodes=new Map();editor.hidden=true;
  root.dataset.cardPayload=JSON.stringify({scope:'public',base_card:base,taipei_today:'2026-10-30'});
  const inputs=keys.flatMap(k=>['mode','value','quote','confirmed'].map(part=>{const n=new Element();n.name=k+'.'+part;n.value=part==='mode'?'inherit':'';return n;}));
@@ -24,6 +25,7 @@ async function actionCardBoundary(){
  const window={confirm:()=>true,NkustActionCardStore:{createActionCardStore:()=>store},NkustCalendarUI:{setCard(){calendarReady=true;},setDirty(){calendarReady=false;}}};
  const document={querySelectorAll:()=>[root],createElement:()=>new Element(),addEventListener(_name,fn){init=fn;}};
  vm.runInNewContext(fs.readFileSync('app/static/web/action-card.js','utf8'),{window,document,structuredClone,Intl,Date,module:undefined});init();await tick();assert.equal(calendarReady,true,'initial saved card enables confirmation');
+ assert.equal(find('[data-card-evidence="summary"]').children[0].children[2]?.textContent,'依據：來源摘要');
  commitTask=deferred();const resetting=find('[data-reset]').fire('click');await tick();assert.equal(calendarReady,false,'reset in flight must invalidate old export confirmation');
  commitTask.resolve({revision:1,revisions:[{baseline_hash:base.baseline_hash,operation:'reset'}]});await resetting;assert.equal(calendarReady,true,'successful reset paints and requires fresh confirmation');
  eraseTask=deferred();const erasing=find('[data-erase]').fire('click');await tick();assert.equal(calendarReady,false,'erase in flight must invalidate confirmation');eraseTask.resolve();await erasing;assert.equal(calendarReady,true);

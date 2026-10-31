@@ -14,6 +14,8 @@
     <section class="hero compact" aria-labelledby="page-title">
       <div><p class="eyebrow">ANNOUNCEMENT DETAIL</p><h1 id="page-title">{{ item.title }}</h1><p>{{ item.department }} · {{ item.category or '未分類' }}</p></div>
     </section>
+    <p>收到時間：{{ item.received_at }}（台灣時間）</p>
+    <p>原始分類：{{ item.source_category or '未提供' }}</p>
     {% include 'action_card.html' %}
     <p><a class="button secondary" href="/announcements/{{ item.id }}/sources">查看相關來源與差異</a></p>
     <section class="detail-section" aria-labelledby="original-title"><h2 id="original-title">公告原文</h2><div class="original">{{ item.original_text }}</div></section>
