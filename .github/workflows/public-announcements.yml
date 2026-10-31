@@ -24,4 +24,6 @@ jobs:
       - name: Sync official public feed
         env:
           DATABASE_URL: ${{ secrets.NKUST_PUBLIC_SYNC_DATABASE_URL }}
-        run: python -m app.public_cli sync --source nkust-latest
+        run: |
+          python -m app.public_cli sync --source nkust-latest
+          python -m app.public_cli articles --limit 8
