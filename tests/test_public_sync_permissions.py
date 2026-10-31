@@ -24,8 +24,10 @@ def test_scheduled_role_can_sync_but_not_read_private_or_delete(database):
                 s.execute(text(statement.replace('public.',f'"{schema}".')))
     limited=MultiUserDatabase(make_url(raw).update_query_dict({'options':f'-csearch_path={schema}'}))
     try:
-        assert sync_recent(limited,source=lambda:feed(item())).status=='success'
+        assert sync_recent(limited,source=lambda:feed(item(url='https://ord.nkust.edu.tw/p/404-1009-108001.php'))).status=='success'
         with limited.transaction() as s:assert s.scalar(text('select count(*) from public_source_versions'))==1
+        from app.services.public_articles import refresh_articles
+        assert refresh_articles(limited,source=lambda url:'活動日期：2026年10月31日',sleep=lambda _:None).updated==1
         for query in ['select * from emails','select * from users','select * from private_todos',
             'select * from private_action_snapshots','select * from private_source_versions',
             'delete from public_announcements','create table forbidden(id int)']:

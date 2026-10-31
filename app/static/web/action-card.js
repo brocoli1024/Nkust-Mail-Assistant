@@ -41,8 +41,19 @@ function applyLocalPatch(card,raw){
   }
   return out;
 }
+function fieldDisplay(card,key){
+  const f=card.fields[key];
+  if(f.state==='stale')return {value:f.value||'資訊待重新核對',state:'RSS內容已變更，本文待更新；舊解析結果僅供參考。'};
+  if(f.value)return {value:f.value,state:f.origin==='user'?'我的修正 · 使用者確認，非系統驗證':'來源規則辨識'};
+  if(f.origin==='user')return {value:'待確認',state:'我的修正 · 保留待確認'};
+  const article=card.source.metadata?.article||{};
+  if(card.source.kind==='public'&&!article.text)return {value:'尚待讀取完整原文',state:article.error?'本文讀取失敗，稍後重試；目前僅有來源摘要。':'目前僅有來源摘要，完整資訊尚未讀取。'};
+  if(f.evidence?.length||(['deadline','event_date'].includes(key)&&(card.candidates||[]).some(e=>e.role===null&&card.source.segments[e.segment].kind!=='title')))return {value:'資訊待核對',state:'日期年份、用途或多個候選資訊尚未能確定，請查看依據。'};
+  const labels={deadline:'截止說明',event_date:'活動日期',materials:'材料說明',audience:'適用對象',action:'行動說明',summary:'摘要'};
+  return {value:'本文未找到'+labels[key],state:'請核對完整公告、附件或報名頁；不代表沒有相關規定。'};
+}
 function formatLocalHistory(record){return record?JSON.stringify({baselines:record.baselines,revisions:record.revisions},null,2):'尚無紀錄';}
-const api={validateCorrectionPatch,applyLocalPatch,formatLocalHistory};root.NkustActionCards=api;
+const api={validateCorrectionPatch,applyLocalPatch,formatLocalHistory,fieldDisplay};root.NkustActionCards=api;
 if(typeof module!=='undefined')module.exports=api;
 if(typeof document==='undefined')return;
 function init(){
@@ -62,9 +73,10 @@ function init(){
     const paint=card=>{
       for(const key of keys){const f=card.fields[key];
         const box=node.querySelector('[data-card-evidence="'+key+'"]');box.replaceChildren();
-        if(f.evidence?.length){const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent='查看依據';detail.append(summary);for(const e of f.evidence){const quote=document.createElement('blockquote');quote.textContent=e.quote;detail.append(quote);const label=document.createElement('p');label.textContent='依據：'+({title:'來源標題',excerpt:'來源摘要',original:'郵件公告原文'}[card.source.segments?.[e.segment]?.kind]||'來源待確認');detail.append(label);}box.append(detail);}
-        const warnings=node.querySelector('[data-card-warnings="'+key+'"]');warnings.replaceChildren();for(const text of f.warnings||[]){const p=document.createElement('p');p.textContent=text;warnings.append(p);}
-        node.querySelector('[data-card-field="'+key+'"]').textContent=f.value||'待確認';node.querySelector('[data-card-state="'+key+'"]').textContent=f.origin==='user'?'我的修正 · '+(f.state==='pending'?'待確認':'使用者確認，非系統驗證'):(f.state==='pending'?'待確認':'來源規則辨識');}
+        if(f.evidence?.length){const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent='查看依據';detail.append(summary);for(const e of f.evidence){const quote=document.createElement('blockquote');quote.textContent=e.quote;detail.append(quote);const label=document.createElement('p');label.textContent='依據：'+({title:'來源標題',excerpt:'來源摘要',original:'郵件公告原文',official_text:'官方公告本文'}[card.source.segments?.[e.segment]?.kind]||'來源待確認');detail.append(label);}box.append(detail);}
+        const warnings=node.querySelector('[data-card-warnings="'+key+'"]');warnings.replaceChildren();for(const text of (f.warnings||[]).filter(x=>x!=='日期或角色待確認')){const p=document.createElement('p');p.textContent=text;warnings.append(p);}
+        const display=fieldDisplay(card,key);node.querySelector('[data-card-field="'+key+'"]').textContent=display.value;node.querySelector('[data-card-state="'+key+'"]').textContent=display.state;}
+
       root.NkustTodoUI?.setCard(node,card);
       root.NkustCalendarUI?.setCard(node,card);
       const d=card.fields.deadline;node.querySelector('[data-deadline-passed]').hidden=!(d.value&&['supported','user_confirmed'].includes(d.state)&&d.value<payload.taipei_today);

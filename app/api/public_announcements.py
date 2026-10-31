@@ -82,6 +82,10 @@ def detail(announcement_id: int, request: Request):
         if row is None:
             raise HTTPException(404, '找不到公開公告。')
         item = public_item(row)
-        card = build_action_card(public_source(row))
+        from app.services.public_articles import latest_article
+        article = latest_article(session,row)
+        item['article'] = article
+        item['article_time'] = display_time(datetime.fromisoformat(article['fetched_at'])) if article and article.get('fetched_at') else None
+        card = build_action_card(public_source(row,article=article))
         status = status_data(session)
     return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, **status, **card_context(card,'public'))

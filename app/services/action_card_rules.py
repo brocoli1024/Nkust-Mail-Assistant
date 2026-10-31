@@ -6,7 +6,7 @@ from app.services.date_parser import parse_dates
 
 CLAUSE = re.compile(r'[^，,。；;\n]+')
 NEGATIVE = re.compile(r'無須|無需|不須|不需|不用|免(?:予)?(?:報名|申請)')
-ACTION = re.compile(r'(?:請|應|須|需|開放|受理).{0,30}?(?:報名|申請|繳交|繳件|提交)')
+ACTION = re.compile(r'(?:請|應|須|需|開放|受理|使用|索取).{0,40}?(?:報名|申請|繳交|繳件|提交|邀請碼)')
 
 
 def extract(source):
@@ -25,6 +25,9 @@ def extract(source):
                 return Evidence(segment=index, quote=clause, start=c.start(), end=c.end(), role=role, year_inferred=inferred)
             if ACTION.search(clause) and not NEGATIVE.search(clause):
                 actions.append(evidence('action'))
+            audience_match=re.search(r'(本校師生|高科大師生|全校學生|本校學生)(?=.{0,30}(?:可|歡迎|得|報名|參加))',clause)
+            if audience_match:
+                audience.append(Evidence(segment=index,quote=audience_match[1],start=c.start()+audience_match.start(1),end=c.start()+audience_match.end(1),role='audience'))
             for pattern, target, role in ((r'(?:申請對象|適用對象|參加對象|對象|申請資格)\s*[:：]\s*(.+)', audience,'audience'),
                 (r'(?:應備文件|所需材料|應備資料|申請文件)\s*[:：]\s*(.+)',materials,'materials')):
                 m = re.search(pattern, clause)
@@ -56,7 +59,7 @@ def extract(source):
         confirmed = len(valid)==1 and all(v and not e.year_inferred and not a for v,e,a in values)
         fields[role]=CardField(value=next(iter(valid)) if confirmed else None,
             state='supported' if confirmed else 'pending',evidence=tuple(e for v,e,a in values),
-            warnings=() if confirmed else ('日期或角色待確認',))
+            warnings=() if confirmed or not values else ('日期或角色待確認',))
     for role, values in (('action',actions),('audience',audience),('materials',materials)):
         unique = tuple(dict.fromkeys(e.quote for e in values))
         fields[role]=CardField(value='；'.join(unique) if unique else None,

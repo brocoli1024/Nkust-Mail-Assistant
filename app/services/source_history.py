@@ -20,11 +20,11 @@ def stamp(value):
     return value.isoformat() if value is not None and hasattr(value,'isoformat') else value
 
 
-def public_snapshot(row):
+def public_snapshot(row, *, article=None):
     if not isinstance(row,PublicAnnouncement):raise TypeError('Public announcement required')
     return {'source_kind':'public','url':row.canonical_url,'title':row.title,'text':row.excerpt or '', 'html':None,
-        'metadata':{'source_key':row.source_key,'external_id':row.external_id,'published_at':stamp(row.published_at)},
-        'card':build_action_card(public_source(row)).model_dump(mode='json')}
+        'metadata':{'source_key':row.source_key,'external_id':row.external_id,'published_at':stamp(row.published_at), **({'article':article} if article else {})},
+        'card':build_action_card(public_source(row,article=article)).model_dump(mode='json')}
 
 
 def private_snapshot(row,email,parser_version=None):
@@ -41,6 +41,8 @@ def snapshot_changes(old,new):
     changes=[]
     for key,label in (('title','來源標題'),('text','來源原文／摘要'),('html','原始HTML'),('url','來源網址')):
         if old.get(key)!=new.get(key):changes.append(label+'不同，請核對兩個版本。')
+    if old.get('metadata',{}).get('article',{}).get('text')!=new.get('metadata',{}).get('article',{}).get('text'):
+        changes.append('官方本文不同，請核對兩個版本。')
     parser_changed=(old.get('metadata',{}).get('source_parser_version')!=new.get('metadata',{}).get('source_parser_version') or old['card']['parser_version']!=new['card']['parser_version'])
     if parser_changed:changes.append('解析版本不同，不代表官方內容已更新。')
     for key,label in (('deadline','截止日期'),('event_date','活動日期')):
@@ -56,12 +58,14 @@ def _digest(snapshot):
     return hashlib.sha256(json.dumps(snapshot,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
-def record_public_version(session,row,now,*,baseline=False):
+def record_public_version(session,row,now,*,baseline=False,article=None):
     """Caller must hold the public source lease in the same transaction."""
     from sqlalchemy import select
     from app.models.source_history import PublicSourceVersion as V
-    snapshot=public_snapshot(row)
     latest=session.scalar(select(V).where(V.source_key==row.source_key,V.canonical_url==row.canonical_url).order_by(V.id.desc()).limit(1))
+    if article is None and latest:
+        article=latest.snapshot.get('metadata',{}).get('article')
+    snapshot=public_snapshot(row,article=article)
     fingerprint=_digest(snapshot)
     if latest and latest.snapshot_hash==fingerprint:return
     session.add(V(source_key=row.source_key,canonical_url=row.canonical_url,snapshot_hash=fingerprint,

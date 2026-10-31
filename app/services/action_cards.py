@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from app.schemas.action_cards import SourceDocument, SourceSegment, CardField, ActionCard, Evidence
 from app.services.action_card_rules import extract
 
-PARSER_VERSION='action-card-v1'
+PARSER_VERSION='action-card-v2'
 TAIPEI=timezone(timedelta(hours=8))
 
 
@@ -17,7 +17,10 @@ def digest(value):
 
 def build_action_card(source, *, legacy=None, ai_references=()):
     fields,candidates,warnings=extract(source)
-    content=next((s for s in source.segments if s.kind!='title' and s.text),None)
+    if source.kind=='public' and source.metadata.get('article',{}).get('stale'):
+        fields={key:field.model_copy(update={'state':'stale','warnings':(*field.warnings,'RSS內容已變更，本文尚待重新讀取。')}) for key,field in fields.items()}
+    content=next((s for s in source.segments if s.kind=='official_text' and s.text),None)
+    content=content or next((s for s in source.segments if s.kind!='title' and s.text),None)
     content=content or next((s for s in source.segments if s.text),None)
     fields['summary']=CardField(value=(content.text[:160] if content else None),
         state='supported' if content else 'pending',origin='source_excerpt',
@@ -45,6 +48,8 @@ def build_action_card(source, *, legacy=None, ai_references=()):
         refs.append({'status':ref.get('status') if ref.get('status') in ('completed','failed','pending') else 'unknown',
             'version':str(ref.get('version') or '')[:255],'result':result,'warning':warning})
     payload=source.model_dump(mode='json')
+    if source.kind=='public' and 'article' in payload['metadata']:
+        payload['metadata']['article'].pop('error',None)  # Fetch failures do not invalidate edits to unchanged text.
     if source.anchor:
         anchor=source.anchor.replace(tzinfo=timezone.utc) if source.anchor.tzinfo is None else source.anchor
         payload['anchor']=anchor.astimezone(timezone.utc).isoformat()
@@ -90,14 +95,16 @@ def display_context(card, *, now):
     return {'taipei_today':today,'deadline_passed':bool(deadline.value and deadline.state in ('supported','user_confirmed') and deadline.value<today)}
 
 
-def public_source(row):
+def public_source(row, *, article=None):
     from app.services.public_source import normalize_public_url, PublicSourceError
     try:
         url=normalize_public_url(row.canonical_url)
     except PublicSourceError:
         url=None
     return SourceDocument(kind='public',source_ref=json.dumps([row.source_key,url or ("invalid:"+digest(row.canonical_url))],ensure_ascii=False),title=row.title,
-        segments=(SourceSegment(kind='title',text=row.title),SourceSegment(kind='excerpt',text=row.excerpt or '')),url=url)
+        segments=(SourceSegment(kind='title',text=row.title),SourceSegment(kind='excerpt',text=row.excerpt or '')) +
+            ((SourceSegment(kind='official_text',text=article['text']),) if article and article.get('text') else ()),
+        url=url,metadata={'article':{'text':bool(article.get('text')),'error':article.get('error'),'stale':bool(article.get('rss_hash') and article['rss_hash']!=getattr(row,'content_hash',None))}} if article else {})
 
 
 def private_source(row, received_at, *, email_parser_version=None):
@@ -119,3 +126,17 @@ def private_source(row, received_at, *, email_parser_version=None):
 def demo_source(item):
     return SourceDocument(kind='demo',source_ref='demo:'+item.id,title=item.title,
         segments=(SourceSegment(kind='title',text=item.title),SourceSegment(kind='excerpt',text=item.excerpt)))
+
+
+def field_display(card,key):
+    field=card.fields[key]
+    if field.state=='stale':return {'value':field.value or '資訊待重新核對','state':'RSS內容已變更，本文待更新；舊解析結果僅供參考。'}
+    if field.value:return {'value':field.value,'state':'我的修正 · 使用者確認，非系統驗證' if field.origin=='user' else '來源規則辨識'}
+    if field.origin=='user':return {'value':'待確認','state':'我的修正 · 保留待確認'}
+    article=card.source.metadata.get('article') or {}
+    if card.source.kind=='public' and not article.get('text'):
+        return {'value':'尚待讀取完整原文','state':'本文讀取失敗，稍後重試；目前僅有來源摘要。' if article.get('error') else '目前僅有來源摘要，完整資訊尚未讀取。'}
+    if field.evidence or key in ('deadline','event_date') and any(e.role is None and card.source.segments[e.segment].kind!='title' for e in card.candidates):
+        return {'value':'資訊待核對','state':'日期年份、用途或多個候選資訊尚未能確定，請查看依據。'}
+    labels={'deadline':'截止說明','event_date':'活動日期','materials':'材料說明','audience':'適用對象','action':'行動說明','summary':'摘要'}
+    return {'value':'本文未找到'+labels[key],'state':'請核對完整公告、附件或報名頁；不代表沒有相關規定。'}

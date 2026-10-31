@@ -5,10 +5,10 @@
   {% if scope=='private' and view.saved_at %}<p>保存時間（台灣）：{{ view.saved_at }}</p>{% endif %}
   <dl class="detail-grid">
   {% for key,label in labels.items() %}{% set field=card.fields[key] %}
-    <div><dt>{{ label }}</dt><dd data-card-field="{{ key }}">{{ field.value if field.value else '待確認' }}</dd>
-    <p class="field-state" data-card-state="{{ key }}">{% if field.origin == 'user' %}我的修正 · {% endif %}{{ '待確認' if field.state in ('pending','stale') else ('使用者確認，非系統驗證' if field.state == 'user_confirmed' else '來源規則辨識') }}</p>
-    <div data-card-warnings="{{ key }}">{% for warning in field.warnings %}<p>{{ warning }}</p>{% endfor %}</div>
-    <div data-card-evidence="{{ key }}">{% if field.evidence %}<details><summary>查看依據</summary>{% for e in field.evidence %}<blockquote>{{ e.quote }}</blockquote><p>依據：{{ {'title':'來源標題','excerpt':'來源摘要','original':'郵件公告原文'}.get(card.source.segments[e.segment].kind) }}</p>{% endfor %}</details>{% endif %}</div>
+    <div><dt>{{ label }}</dt><dd data-card-field="{{ key }}">{{ field_displays[key].value }}</dd>
+    <p class="field-state" data-card-state="{{ key }}">{{ field_displays[key].state }}</p>
+    <div data-card-warnings="{{ key }}">{% for warning in field.warnings if warning != '日期或角色待確認' %}<p>{{ warning }}</p>{% endfor %}</div>
+    <div data-card-evidence="{{ key }}">{% if field.evidence %}<details><summary>查看依據</summary>{% for e in field.evidence %}<blockquote>{{ e.quote }}</blockquote><p>依據：{{ {'title':'來源標題','excerpt':'來源摘要','original':'郵件公告原文','official_text':'官方公告本文'}.get(card.source.segments[e.segment].kind) }}</p>{% endfor %}</details>{% endif %}</div>
     </div>
   {% endfor %}
   </dl>

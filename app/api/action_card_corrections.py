@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from app.api.session import page
 from app.core.session import current_user,current_page_user
 from app.schemas.action_cards import CorrectionPatch
-from app.services.action_cards import display_context
+from app.services.action_cards import display_context,field_display
 from app.services.action_card_corrections import (load_private_view,save_private_correction,load_private_history,CorrectionNotFound,CorrectionConflict,CorrectionUnavailable)
 
 router=APIRouter()
@@ -17,6 +17,7 @@ LABELS={'summary':'摘要','action':'需要採取的行動','audience':'適用�
 
 def card_context(card,scope):
     context={'card':card,'scope':scope,'labels':LABELS,'card_context':display_context(card,now=datetime.now(timezone.utc))}
+    context['field_displays']={key:field_display(card,key) for key in LABELS}
     host=urlsplit(card.source.url or '').hostname or ''
     context['link_unverified']=bool(card.source.url and not (host=='nkust.edu.tw' or host.endswith('.nkust.edu.tw')))
     if scope!='private':
