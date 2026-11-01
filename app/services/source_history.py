@@ -43,6 +43,11 @@ def snapshot_changes(old,new):
         if old.get(key)!=new.get(key):changes.append(label+'不同，請核對兩個版本。')
     if old.get('metadata',{}).get('article',{}).get('text')!=new.get('metadata',{}).get('article',{}).get('text'):
         changes.append('官方本文不同，請核對兩個版本。')
+    def linked_content(snapshot):
+        docs=(snapshot.get('metadata',{}).get('article') or {}).get('related',[])
+        return sorted(({k:v for k,v in d.items() if k not in ('error','checked_at','fetched_at')} for d in docs),key=lambda d:d.get('url',''))
+    if linked_content(old)!=linked_content(new):
+        changes.append('報名表單或票券來源資訊不同，請依各自流程核對新舊版本。')
     parser_changed=(old.get('metadata',{}).get('source_parser_version')!=new.get('metadata',{}).get('source_parser_version') or old['card']['parser_version']!=new['card']['parser_version'])
     if parser_changed:changes.append('解析版本不同，不代表官方內容已更新。')
     for key,label in (('deadline','截止日期'),('event_date','活動日期')):

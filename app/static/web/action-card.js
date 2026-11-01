@@ -43,12 +43,16 @@ function applyLocalPatch(card,raw){
 }
 function fieldDisplay(card,key){
   const f=card.fields[key];
+  if(f.state==='stale'&&f.origin==='linked_form')return {value:f.value||'填表資料待核對',state:'報名來源最近讀取失敗；保留上次資料，請核對最新表單。'};
   if(f.state==='stale')return {value:f.value||'資訊待重新核對',state:'RSS內容已變更，本文待更新；舊解析結果僅供參考。'};
-  if(f.value)return {value:f.value,state:f.origin==='user'?'我的修正 · 使用者確認，非系統驗證':'來源規則辨識'};
+  if(f.value)return {value:f.value,state:f.origin==='user'?'我的修正 · 使用者確認，非系統驗證':f.origin==='linked_form'?'公告連結的兌換表單':'來源規則辨識'};
   if(f.origin==='user')return {value:'待確認',state:'我的修正 · 保留待確認'};
   const article=card.source.metadata?.article||{};
   if(card.source.kind==='public'&&!article.text)return {value:'尚待讀取完整原文',state:article.error?'本文讀取失敗，稍後重試；目前僅有來源摘要。':'目前僅有來源摘要，完整資訊尚未讀取。'};
   if(f.evidence?.length||(['deadline','event_date'].includes(key)&&(card.candidates||[]).some(e=>e.role===null&&card.source.segments[e.segment].kind!=='title')))return {value:'資訊待核對',state:'日期年份、用途或多個候選資訊尚未能確定，請查看依據。'};
+  const ticket=card.source.metadata?.registration_ticket;
+  const ticketFailed=ticket&&(card.source.metadata?.related||[]).some(d=>d.url===ticket.source_url&&d.error);
+  if(key==='deadline'&&ticket)return {value:ticket.name+'販售截止：'+ticket.ends_at.slice(0,16).replace('T',' ')+'（台灣時間）',state:(ticketFailed?'票券來源最近讀取失敗，這是上次成功資料。':'')+'這是票券販售期限；兌換表單截止尚未確認。'};
   const labels={deadline:'截止說明',event_date:'活動日期',materials:'材料說明',audience:'適用對象',action:'行動說明',summary:'摘要'};
   return {value:'本文未找到'+labels[key],state:'請核對完整公告、附件或報名頁；不代表沒有相關規定。'};
 }
@@ -73,7 +77,9 @@ function init(){
     const paint=card=>{
       for(const key of keys){const f=card.fields[key];
         const box=node.querySelector('[data-card-evidence="'+key+'"]');box.replaceChildren();
-        if(f.evidence?.length){const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent='查看依據';detail.append(summary);for(const e of f.evidence){const quote=document.createElement('blockquote');quote.textContent=e.quote;detail.append(quote);const label=document.createElement('p');label.textContent='依據：'+({title:'來源標題',excerpt:'來源摘要',original:'郵件公告原文',official_text:'官方公告本文'}[card.source.segments?.[e.segment]?.kind]||'來源待確認');detail.append(label);}box.append(detail);}
+        if(f.evidence?.length){const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent='查看依據';detail.append(summary);for(const e of f.evidence){const quote=document.createElement('blockquote');quote.textContent=e.quote;detail.append(quote);const label=document.createElement('p');label.textContent='依據：'+({title:'來源標題',excerpt:'來源摘要',original:'郵件公告原文',official_text:'官方公告本文',linked_form:'公告連結的兌換表單'}[card.source.segments?.[e.segment]?.kind]||'來源待確認');detail.append(label);const ref=card.source.metadata?.source_links?.[String(e.segment)];if(ref&&/^https:\/\/(?:docs\.google\.com|[a-z0-9-]+\.kktix\.cc)\//.test(ref.url)){const link=document.createElement('a');link.href=ref.url;link.textContent='開啟這份來源';link.target='_blank';link.rel='noopener noreferrer';detail.append(link);}}box.append(detail);}
+        const ticket=key==='deadline'&&!f.value&&f.origin!=='user'?card.source.metadata?.registration_ticket:null;
+        if(!f.evidence?.length&&ticket){const detail=document.createElement('details'),summary=document.createElement('summary'),quote=document.createElement('blockquote'),scope=document.createElement('p');summary.textContent='查看票券販售依據';quote.textContent=ticket.quote;scope.textContent='票種：'+ticket.name+'；這不是兌換表單截止。';detail.append(summary,scope,quote);if(/^https:\/\/[a-z0-9-]+\.kktix\.cc\//.test(ticket.source_url)){const link=document.createElement('a');link.href=ticket.source_url;link.textContent='開啟票券來源';link.target='_blank';link.rel='noopener noreferrer';detail.append(link);}box.append(detail);}
         const warnings=node.querySelector('[data-card-warnings="'+key+'"]');warnings.replaceChildren();for(const text of (f.warnings||[]).filter(x=>x!=='日期或角色待確認')){const p=document.createElement('p');p.textContent=text;warnings.append(p);}
         const display=fieldDisplay(card,key);node.querySelector('[data-card-field="'+key+'"]').textContent=display.value;node.querySelector('[data-card-state="'+key+'"]').textContent=display.state;}
 

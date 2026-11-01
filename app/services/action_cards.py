@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 from app.schemas.action_cards import SourceDocument, SourceSegment, CardField, ActionCard, Evidence
 from app.services.action_card_rules import extract
 
-PARSER_VERSION='action-card-v2'
+PARSER_VERSION='action-card-v3'
 TAIPEI=timezone(timedelta(hours=8))
 
 
@@ -16,8 +16,26 @@ def digest(value):
 
 
 def build_action_card(source, *, legacy=None, ai_references=()):
+    version=PARSER_VERSION if source.kind=='public' else 'action-card-v2'
     fields,candidates,warnings=extract(source)
+    if source.kind=='public':
+        from app.services.linked_registration import registration_context
+        form=registration_context(source.metadata.get('related',[]))['form']
+        index=next((i for i,s in enumerate(source.segments) if s.kind=='linked_form'),None)
+        if form and index is not None and not fields['materials'].value:
+            text=source.segments[index].text
+            ev=tuple(Evidence(segment=index,quote=q,start=text.index(q),end=text.index(q)+len(q),role='materials') for q in form['required_fields'] if q in text)
+            if len(ev)==len(form['required_fields']):
+                fields['materials']=CardField(value='填表資料：'+'、'.join(form['required_fields']),state='stale' if form.get('error') else 'supported',origin='linked_form',evidence=ev,warnings=('這是兌換表單必填資料；報到證件或其他文件仍須另行確認。',))
+        if form and index is not None and not fields['deadline'].value and not fields['deadline'].evidence:
+            date=form.get('deadline',{})
+            if date.get('state')=='supported' and date.get('value'):
+                ev=tuple(Evidence(segment=index,quote=e['quote'],start=e['start'],end=e['end'],role='deadline') for e in date.get('evidence',[]) if source.segments[index].text[e['start']:e['end']]==e['quote'])
+                if ev:
+                    fields['deadline']=CardField(value=date['value'],state='stale' if form.get('error') else 'supported',origin='linked_form',evidence=ev,warnings=('這是兌換表單截止，不代表其他票種或流程期限。',))
     if source.kind=='public' and source.metadata.get('article',{}).get('stale'):
+
+
         fields={key:field.model_copy(update={'state':'stale','warnings':(*field.warnings,'RSS內容已變更，本文尚待重新讀取。')}) for key,field in fields.items()}
     content=next((s for s in source.segments if s.kind=='official_text' and s.text),None)
     content=content or next((s for s in source.segments if s.kind!='title' and s.text),None)
@@ -50,15 +68,17 @@ def build_action_card(source, *, legacy=None, ai_references=()):
     payload=source.model_dump(mode='json')
     if source.kind=='public' and 'article' in payload['metadata']:
         payload['metadata']['article'].pop('error',None)  # Fetch failures do not invalidate edits to unchanged text.
+        for doc in payload['metadata'].get('related',[]):
+            for name in ('error','fetched_at','checked_at'):doc.pop(name,None)
     if source.anchor:
         anchor=source.anchor.replace(tzinfo=timezone.utc) if source.anchor.tzinfo is None else source.anchor
         payload['anchor']=anchor.astimezone(timezone.utc).isoformat()
     sh=digest(payload)
-    bh=digest([sh,PARSER_VERSION,legacy or {},refs])
+    bh=digest([sh,version,legacy or {},refs])
     deadline_text=' '.join(e.quote for e in fields['deadline'].evidence)
     kind=('registration' if '報名' in deadline_text else 'application' if '申請' in deadline_text else
           'submission' if re.search(r'繳件|繳交',deadline_text) else 'unknown')
-    return ActionCard(source=source,source_hash=sh,baseline_hash=bh,parser_version=PARSER_VERSION,
+    return ActionCard(source=source,source_hash=sh,baseline_hash=bh,parser_version=version,
         fields=fields,candidates=candidates,requires_action=True if fields['action'].value else None,
         deadline_kind=kind,legacy=legacy or {},ai_references=tuple(refs),warnings=warnings,
         time_status='unparsed' if any(re.search(r'\d{1,2}[:：]\d{2}|\d{1,2}時',s.text) for s in source.segments) else 'unknown')
@@ -101,10 +121,23 @@ def public_source(row, *, article=None):
         url=normalize_public_url(row.canonical_url)
     except PublicSourceError:
         url=None
+    from app.services.linked_registration import normalize_registration_url,registration_context
+    related=[]
+    for doc in (article or {}).get('related',[]):
+        try:
+            clean=dict(doc,url=normalize_registration_url(doc['url']))
+            if clean.get('kind') in ('form','tickets'):related.append(clean)
+        except (PublicSourceError,KeyError,TypeError):continue
+    context=registration_context(related)
+    segments=(SourceSegment(kind='title',text=row.title),SourceSegment(kind='excerpt',text=row.excerpt or '')) + ((SourceSegment(kind='official_text',text=article['text']),) if article and article.get('text') else ())
+    refs={}
+    if context['form']:
+        refs[str(len(segments))]={'url':context['form']['url'],'title':context['form']['title']}
+        segments=(*segments,SourceSegment(kind='linked_form',text=context['form']['text']))
+    metadata={'article':{'text':bool(article.get('text')),'error':article.get('error'),'stale':bool(article.get('rss_hash') and article['rss_hash']!=getattr(row,'content_hash',None))}} if article else {}
+    if related:metadata.update(related=related,registration_ticket=context['selected_ticket'],source_links=refs)
     return SourceDocument(kind='public',source_ref=json.dumps([row.source_key,url or ("invalid:"+digest(row.canonical_url))],ensure_ascii=False),title=row.title,
-        segments=(SourceSegment(kind='title',text=row.title),SourceSegment(kind='excerpt',text=row.excerpt or '')) +
-            ((SourceSegment(kind='official_text',text=article['text']),) if article and article.get('text') else ()),
-        url=url,metadata={'article':{'text':bool(article.get('text')),'error':article.get('error'),'stale':bool(article.get('rss_hash') and article['rss_hash']!=getattr(row,'content_hash',None))}} if article else {})
+        segments=segments,url=url,metadata=metadata)
 
 
 def private_source(row, received_at, *, email_parser_version=None):
@@ -130,13 +163,20 @@ def demo_source(item):
 
 def field_display(card,key):
     field=card.fields[key]
+    if field.state=='stale' and field.origin=='linked_form':return {'value':field.value or '填表資料待核對','state':'報名來源最近讀取失敗；保留上次資料，請核對最新表單。'}
     if field.state=='stale':return {'value':field.value or '資訊待重新核對','state':'RSS內容已變更，本文待更新；舊解析結果僅供參考。'}
-    if field.value:return {'value':field.value,'state':'我的修正 · 使用者確認，非系統驗證' if field.origin=='user' else '來源規則辨識'}
+    if field.value:return {'value':field.value,'state':'我的修正 · 使用者確認，非系統驗證' if field.origin=='user' else '公告連結的兌換表單' if field.origin=='linked_form' else '來源規則辨識'}
     if field.origin=='user':return {'value':'待確認','state':'我的修正 · 保留待確認'}
     article=card.source.metadata.get('article') or {}
     if card.source.kind=='public' and not article.get('text'):
         return {'value':'尚待讀取完整原文','state':'本文讀取失敗，稍後重試；目前僅有來源摘要。' if article.get('error') else '目前僅有來源摘要，完整資訊尚未讀取。'}
     if field.evidence or key in ('deadline','event_date') and any(e.role is None and card.source.segments[e.segment].kind!='title' for e in card.candidates):
         return {'value':'資訊待核對','state':'日期年份、用途或多個候選資訊尚未能確定，請查看依據。'}
+    ticket=card.source.metadata.get('registration_ticket')
+    if key=='deadline' and ticket:
+        from app.services.linked_registration import display_ticket
+        failed=any(d.get('url')==ticket['source_url'] and d.get('error') for d in card.source.metadata.get('related',[]))
+        note='票券來源最近讀取失敗，這是上次成功資料。' if failed else ''
+        return {'value':display_ticket(ticket),'state':note+'這是票券販售期限；兌換表單截止尚未確認。'}
     labels={'deadline':'截止說明','event_date':'活動日期','materials':'材料說明','audience':'適用對象','action':'行動說明','summary':'摘要'}
     return {'value':'本文未找到'+labels[key],'state':'請核對完整公告、附件或報名頁；不代表沒有相關規定。'}

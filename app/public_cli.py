@@ -23,6 +23,7 @@ def main(argv=None) -> int:
     history.add_argument('--max-pages', type=int, choices=range(1,21), default=5)
     articles = subs.add_parser('articles', help='分批更新官方公告本文（不抓附件）')
     articles.add_argument('--limit',type=int,choices=range(1,21),default=8)
+    articles.add_argument('--announcement-id',type=int,help='只重讀一則公開公告（略過快取）')
     args = parser.parse_args(argv)
     database = None
     try:
@@ -36,7 +37,7 @@ def main(argv=None) -> int:
             result = sync_recent(database, source=fetch_feed)
         elif args.command == 'articles':
             from app.services.public_articles import refresh_articles
-            result = refresh_articles(database,limit=args.limit)
+            result = refresh_articles(database,limit=args.limit,announcement_id=args.announcement_id)
         elif args.command == 'backfill':
             result = backfill_history(database,max_pages=args.max_pages)
         else:

@@ -13,6 +13,7 @@
   <main id="main-content" class="page-content narrow">
     <section class="hero compact public-detail-hero" aria-labelledby="page-title"><div><p class="eyebrow">PUBLIC ANNOUNCEMENT</p><h1 id="page-title">{{ item.title }}</h1></div></section>
     {% include 'action_card.html' %}
+    {% include 'linked_registration.html' %}
     <article class="detail-card">
       <div class="meta-row"><span class="tag">{{ item.category or '未分類' }}</span><span>發布：{{ item.published }}</span></div>
       <p>來源：高科大最新消息。{% if item.student_relevance == 'relevant' %}規則提示：學生相關。{% else %}學生相關性尚未確認，請核對原文對象。{% endif %}</p>

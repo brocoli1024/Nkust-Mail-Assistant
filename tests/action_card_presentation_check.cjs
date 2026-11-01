@@ -6,3 +6,8 @@ c.source.metadata={};assert.equal(fieldDisplay(c,'deadline').value,'尚待讀取
 c.source.metadata={article:{text:true}};c.fields.deadline.evidence=[{quote:'截止日期待公告'}];assert.equal(fieldDisplay(c,'deadline').value,'資訊待核對');
 c.fields.deadline={value:'2026-11-01',state:'user_confirmed',origin:'user'};assert.match(fieldDisplay(c,'deadline').state,/使用者確認/);
 console.log('Action card presentation contracts passed');
+
+c.fields.deadline={value:null,state:'pending',origin:'rule',evidence:[]};c.source.metadata.registration_ticket={name:'教育推廣票',ends_at:'2026-10-31T00:00:00+08:00'};
+assert.match(fieldDisplay(c,'deadline').value,/教育推廣票販售截止：2026-10-31 00:00/);
+assert.match(fieldDisplay(c,'deadline').state,/不是|票券販售/);
+assert.equal(c.fields.deadline.value,null);

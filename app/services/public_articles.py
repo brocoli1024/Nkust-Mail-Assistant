@@ -28,7 +28,7 @@ def parse_article(data):
     return text
 
 
-def fetch_article(url, *, transport=None):
+def fetch_article(url, *, transport=None, details=False):
     original=official_identity(url)
     if not original:raise PublicSourceError('PUBLIC_ARTICLE_URL')
     current=original;deadline=time.monotonic()+15
@@ -39,7 +39,10 @@ def fetch_article(url, *, transport=None):
             if not target or (urlsplit(target).hostname,urlsplit(target).path)!=(urlsplit(original).hostname,urlsplit(original).path):raise PublicSourceError('PUBLIC_ARTICLE_REDIRECT')
             current=target;continue
         if status!=200 or 'html' not in headers.get('content-type','').lower():raise PublicSourceError('PUBLIC_ARTICLE_RESPONSE')
-        return parse_article(body)
+        text=parse_article(body)
+        if not details:return text
+        from app.services.linked_registration import article_registration_links
+        return {'text':text,'links':article_registration_links(body,current)}
     raise PublicSourceError('PUBLIC_ARTICLE_REDIRECT')
 
 
@@ -55,13 +58,14 @@ class ArticleResult:
     status:str='success'
 
 
-def refresh_articles(database, *, source=fetch_article, limit=8, now=None, sleep=time.sleep):
+def refresh_articles(database, *, source=None, limit=8, now=None, sleep=time.sleep, announcement_id=None):
     if isinstance(limit,bool) or not isinstance(limit,int) or not 1<=limit<=20:raise ValueError('limit must be 1..20')
+    if announcement_id is not None and (isinstance(announcement_id,bool) or not isinstance(announcement_id,int) or announcement_id<1):raise ValueError('positive announcement id required')
     lease=SourceLease(database,now=now);lease.acquire();result=ArticleResult();deadline=time.monotonic()+90
     try:
         with database.transaction() as session:
             lease.verify(session)
-            rows=session.scalars(select(P).where(P.source_key=='nkust-latest').order_by(P.last_seen_at.desc(),P.published_at.desc(),P.id.desc()).limit(200)).all()
+            rows=session.scalars(select(P).where(P.source_key=='nkust-latest',P.id==announcement_id if announcement_id is not None else True).order_by(P.last_seen_at.desc(),P.published_at.desc(),P.id.desc()).limit(200)).all()
             latest_ids=select(func.max(V.id)).where(V.source_key=='nkust-latest',V.canonical_url.in_([r.canonical_url for r in rows])).group_by(V.canonical_url)
             previous={v.canonical_url:v.snapshot.get('metadata',{}).get('article') for v in session.scalars(select(V).where(V.id.in_(latest_ids)))}
             candidates=[]
@@ -69,7 +73,7 @@ def refresh_articles(database, *, source=fetch_article, limit=8, now=None, sleep
                 if not official_identity(row.canonical_url):continue
                 old=previous.get(row.canonical_url) or {}
                 checked=datetime.fromisoformat(old['checked_at']) if old.get('checked_at') else None
-                if checked and old.get('rss_hash')==row.content_hash and lease.clock()-aware(checked)<timedelta(hours=1 if old.get('error') else 24):continue
+                if announcement_id is None and old.get('related_version')=='registration-v1' and checked and old.get('rss_hash')==row.content_hash and lease.clock()-aware(checked)<timedelta(hours=1 if old.get('error') or old.get('registration_error') else 24):continue
                 candidates.append((row.id,row.canonical_url,old))
         # Untouched pages go first; ties retain recent-feed order.
         candidates.sort(key=lambda c:c[2].get('checked_at',''))
@@ -78,9 +82,25 @@ def refresh_articles(database, *, source=fetch_article, limit=8, now=None, sleep
             if index:sleep(2)
             article=dict(old,checked_at=lease.clock().isoformat())
             try:
-                body=source(url)
+                fetched=source(url) if source else fetch_article(url,details=True)
+                body=fetched.get('text') if isinstance(fetched,dict) else fetched
                 if not isinstance(body,str) or not body.strip() or len(body)>40000:raise PublicSourceError('PUBLIC_ARTICLE_BODY')
-                article.update(text=body,fetched_at=lease.clock().isoformat(),error=None)
+                article.update(text=body,fetched_at=lease.clock().isoformat(),error=None,related_version='registration-v1')
+                if isinstance(fetched,dict):
+                    from app.services.linked_registration import fetch_registration
+                    previous_docs={d.get('initial_url',d.get('url')):d for d in old.get('related',[])}
+                    docs=[]
+                    for linked_url in fetched.get('links',[])[:2]:
+                        try:
+                            doc=fetch_registration(linked_url)
+                            doc.update(fetched_at=lease.clock().isoformat(),checked_at=lease.clock().isoformat(),error=None)
+                        except Exception:
+                            doc=dict(previous_docs.get(linked_url) or {'initial_url':linked_url,'url':linked_url,'kind':'unavailable','title':'報名連結尚無法讀取'},error='REGISTRATION_UNAVAILABLE',checked_at=lease.clock().isoformat())
+                        if not any(d.get('url')==doc.get('url') for d in docs):docs.append(doc)
+                    article['related']=docs
+                    article['registration_error']=any(d.get('error') for d in docs)
+                    if article['registration_error']:result.failed+=1;result.status='partial'
+
             except Exception:
                 article['error']='PUBLIC_ARTICLE_UNAVAILABLE'
                 result.failed+=1;result.status='partial'

@@ -16,6 +16,7 @@ def extract(source):
     if anchor:
         anchor=(anchor.replace(tzinfo=timezone.utc) if anchor.tzinfo is None else anchor).astimezone(timezone(timedelta(hours=8)))
     for index, segment in enumerate(source.segments):
+        if segment.kind=='linked_form':continue  # Its workflow must not overwrite primary dates.
         text = segment.text
         result = parse_dates(text, anchor)
         warnings.extend(result.warnings)

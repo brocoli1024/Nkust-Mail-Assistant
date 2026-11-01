@@ -7,7 +7,7 @@ class Frozen(BaseModel):
     model_config = ConfigDict(frozen=True, extra='forbid')
 
 class SourceSegment(Frozen):
-    kind: Literal['title','excerpt','original','official_text']
+    kind: Literal['title','excerpt','original','official_text','linked_form']
     text: str
 
 class SourceDocument(Frozen):

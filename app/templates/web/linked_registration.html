@@ -1,0 +1,24 @@
+{% if item.registration_docs %}
+<section class="detail-card source-history" aria-label="報名與兌換核對">
+  <h2>報名與兌換核對</h2>
+  <p>依公告提供的公開連結核對。表單填寫、票券販售與現場報到是不同流程；下列要求不代表你已符合資格。</p>
+  {% for doc in item.registration_docs %}
+  <div>
+    <h3>{{ doc.title }}</h3>
+    <p><a class="text-link dark" href="{{ doc.url }}" target="_blank" rel="noopener noreferrer">開啟這份來源（另開分頁）</a>{% if doc.read_time %} · 最後成功讀取：{{ doc.read_time }}（台灣時間）{% endif %}</p>
+    {% if doc.error %}<p class="notice" role="status">最近讀取失敗；若有舊資料則保留，請核對來源最新內容。</p>{% endif %}
+    {% if doc.kind=='form' %}
+      <p><strong>兌換表單必填資料：</strong>{{ doc.required_fields | join('、') or '尚未辨識出明確欄位' }}。</p>
+      <p>這是填表資料，不能視為完整的報到證件清單。</p>
+      {% if doc.deadline and doc.deadline.state=='supported' %}<p>此表單明列的截止日期：{{ doc.deadline.value }}。請核對來源時間與適用流程。</p>{% else %}<p>表單兌換截止尚未確認，不能直接套用票券販售截止。</p>{% endif %}
+      <details><summary>查看表單公開說明與欄位</summary><pre>{{ doc.text }}</pre></details>
+    {% elif doc.kind=='tickets' %}
+      <details><summary>查看各票種販售期間（各自適用）</summary>
+      {% for ticket in doc.tickets %}<p><strong>{{ ticket.name }}</strong><br>{{ ticket.quote }}</p>{% endfor %}
+      </details>
+      <p>這裡是各票種的販售期間，不一定是邀請碼索取或兌換表單截止；不把不同票種的條件混用。</p>
+    {% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}

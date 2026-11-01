@@ -85,6 +85,12 @@ def detail(announcement_id: int, request: Request):
         from app.services.public_articles import latest_article
         article = latest_article(session,row)
         item['article'] = article
+        item['registration_docs'] = []
+        from app.services.linked_registration import normalize_registration_url
+        for doc in (article or {}).get('related',[]):
+            try:
+                item['registration_docs'].append(dict(doc,url=normalize_registration_url(doc['url']),read_time=display_time(datetime.fromisoformat(doc['fetched_at'])) if doc.get('fetched_at') else None))
+            except (PublicSourceError,KeyError,TypeError,ValueError):continue
         item['article_time'] = display_time(datetime.fromisoformat(article['fetched_at'])) if article and article.get('fetched_at') else None
         card = build_action_card(public_source(row,article=article))
         status = status_data(session)
