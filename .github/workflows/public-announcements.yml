@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: '17 * * * *'
   workflow_dispatch:
+    inputs:
+      announcement_id:
+        description: Optional public announcement ID to recheck (blank for regular batch)
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -24,6 +29,11 @@ jobs:
       - name: Sync official public feed
         env:
           DATABASE_URL: ${{ secrets.NKUST_PUBLIC_SYNC_DATABASE_URL }}
+          NKUST_PUBLIC_ANNOUNCEMENT_ID: ${{ inputs.announcement_id }}
         run: |
           python -m app.public_cli sync --source nkust-latest
-          python -m app.public_cli articles --limit 8
+          if [ -n "$NKUST_PUBLIC_ANNOUNCEMENT_ID" ]; then
+            python -m app.public_cli articles --limit 1 --announcement-id "$NKUST_PUBLIC_ANNOUNCEMENT_ID"
+          else
+            python -m app.public_cli articles --limit 8
+          fi
