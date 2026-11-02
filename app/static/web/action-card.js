@@ -66,7 +66,7 @@ function init(){
     if(!['public','demo'].includes(payload.scope))continue;
     const base=payload.base_card,editor=node.querySelector('[data-local-editor]'),status=node.querySelector('[data-correction-status]');
     if(!editor)continue;
-    let record=null,expected=0,ready=false,store=null;
+    let record=null,expected=0,ready=false,store=null,rendered=false;
     const message=text=>{status.textContent=text;};
     const invalidate=reason=>{root.NkustCalendarUI?.setDirty(node,reason);root.NkustTodoUI?.setDirty(node);};
     const control=name=>Array.from(editor.querySelectorAll('[name]')).find(e=>e.name===name);
@@ -92,14 +92,15 @@ function init(){
       const patch=same&&latest.operation==='save'?latest.patch:null;
       paint(patch?applyLocalPatch(base,patch):base);fill(patch);
       node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);
-      if(latest&&!same)message('來源或解析版本已變更，舊修正未套用，請重新核對後儲存。');
+      if(latest&&!same)message('來源或解析版本已變更，舊修正未套用，請重新核對後儲存。');rendered=true;
     }
+    const savingEnabled=value=>{for(const selector of ['[data-save]','[data-reset]','[data-erase]']){const button=editor.querySelector(selector);if(button)button.disabled=!value;}};
     async function load(preserveInputs=false){
-      ready=false;invalidate('正在重新讀取修正，先前的匯出確認已取消；請完成核對後再確認。');
+      savingEnabled(false);ready=false;invalidate('正在重新讀取修正，先前的匯出確認已取消；請完成核對後再確認。');
       try{
         if(payload.scope==='public'){store=root.NkustActionCardStore.createActionCardStore();record=await store.read(base.source.source_ref);}
-        expected=record?.revision||0;if(!preserveInputs)render();else{node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);message('已讀取裝置最新版本，輸入仍保留，請核對歷史後再儲存。');}ready=true;editor.hidden=false;
-      }catch(e){invalidate('修正讀取失敗，無法確認目前版本，匯出已停用；請重新載入頁面核對。');message('無法讀取裝置修正，尚未清除既有資料。請重新載入重試。');}
+        expected=record?.revision||0;if(!preserveInputs)render();else{node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);message('已讀取裝置最新版本，輸入仍保留，請核對歷史後再儲存。');}ready=true;editor.hidden=false;savingEnabled(true);
+      }catch(e){editor.hidden=false;editor.open=true;invalidate('修正讀取失敗，無法確認目前版本，匯出已停用；請重新載入頁面核對。');message('無法讀取裝置修正，尚未清除既有資料。請重新載入重試。');}
     }
     function readPatch(){
       const fields={};for(const key of keys){const mode=control(key+'.mode').value;fields[key]={mode};if(mode==='value')fields[key]={mode,value:control(key+'.value').value,quote:control(key+'.quote').value||null,confirmed:!!control(key+'.confirmed')?.checked};}
@@ -117,7 +118,7 @@ function init(){
       }catch(e){editor.open=true;message(e.message==='REVISION_CONFLICT'?'其他分頁已更新，本次未儲存；請先重新讀取裝置版本並核對，輸入仍保留。':'尚未儲存：請核對日期、確認欄、字數或裝置儲存空間，輸入仍保留。');}
       finally{ready=true;}
     }
-    const refresh=node.querySelector('[data-refresh]');if(payload.scope==='public'){refresh.hidden=false;refresh.addEventListener('click',()=>load(!editor.hidden));}
+    const refresh=node.querySelector('[data-refresh]');if(payload.scope==='public'){refresh.hidden=false;refresh.addEventListener('click',()=>load(rendered));}
     editor.addEventListener('input',()=>{message('有尚未儲存的修正。');root.NkustTodoUI?.setDirty(node);root.NkustCalendarUI?.setDirty(node);});
     editor.querySelector('[data-save]').addEventListener('click',()=>commit('save'));
     editor.querySelector('[data-reset]').addEventListener('click',()=>commit('reset'));

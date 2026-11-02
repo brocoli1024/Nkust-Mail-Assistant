@@ -66,6 +66,9 @@ def announcements(request: Request, q: str = Query('', max_length=200), category
         total = session.scalar(select(func.count()).select_from(statement.subquery()))
         rows = session.scalars(statement.order_by(P.published_at.desc().nulls_last(), P.id.desc()).offset((page_number-1)*20).limit(20)).all()
         items = [public_item(row) for row in rows]
+        reading_query = urlencode(dict(q=q, category=category, audience=audience, page=page_number))
+        for item in items:
+            item['detail_url'] = f"/public/announcements/{item['id']}?{reading_query}"
         status = status_data(session)
     def link(number):
         return '/public/announcements?' + urlencode(dict(q=q,category=category,audience=audience,page=number))
@@ -76,7 +79,16 @@ def announcements(request: Request, q: str = Query('', max_length=200), category
 
 
 @router.get('/public/announcements/{announcement_id}')
-def detail(announcement_id: int, request: Request):
+def detail(announcement_id: int, request: Request, q: str = Query('', max_length=200),
+           category: str = '', audience: Literal['all','student'] = 'all',
+           page_number: int = Query(1, alias='page', ge=1, le=1000000)):
+    if category and category not in (*CATEGORIES, '未分類'):
+        raise HTTPException(422, '未知的公告分類。')
+    has_search = any(key in request.query_params for key in ('q','category','audience','page'))
+    back_url = '/public/announcements'
+    if has_search:
+        back_url += '?' + urlencode(dict(q=q, category=category, audience=audience, page=page_number))
+    back_url += f'#announcement-{announcement_id}'
     with request.app.state.database.transaction() as session:
         row = session.scalar(select(P).where(P.id == announcement_id, P.source_key == SOURCE_KEY))
         if row is None:
@@ -94,4 +106,4 @@ def detail(announcement_id: int, request: Request):
         item['article_time'] = display_time(datetime.fromisoformat(article['fetched_at'])) if article and article.get('fetched_at') else None
         card = build_action_card(public_source(row,article=article))
         status = status_data(session)
-    return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, **status, **card_context(card,'public'))
+    return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, back_url=back_url, has_search=has_search, **status, **card_context(card,'public'))

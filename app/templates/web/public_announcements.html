@@ -5,6 +5,7 @@
   {% include 'pwa_head.html' %}<title>公開公告 · NKUST Mail Assistant</title>
   <link rel="stylesheet" href="/assets/account.css?v=public-1">
   <script src="/assets/announcement-filters.js" defer></script>
+  <script src="/assets/public-reading.js?v=reading-1" defer></script>
 </head>
 <body><div class="site-shell">
   {% set active_page = 'public' %}{% include 'site_header.html' %}
@@ -22,10 +23,10 @@
     </section>
     <p class="results-meta" role="status">共 {{ total }} 則 · 第 {{ page_number }} 頁</p>
     {% include 'public_source_status.html' %}
-    <div class="announcement-list">
-      {% for item in items %}<article class="announcement">
+    <div class="announcement-list" data-public-list>
+      {% for item in items %}<article class="announcement" id="announcement-{{ item.id }}">
         <div class="meta-row"><span class="tag">{{ item.category or '未分類' }}</span><span>高科大最新消息</span>{% if item.student_relevance == 'relevant' %}<span>學生相關</span>{% endif %}</div>
-        <h2><a href="/public/announcements/{{ item.id }}">{{ item.title }}</a></h2>
+        <h2><a href="{{ item.detail_url }}" data-reading-id="{{ item.id }}">{{ item.title }}</a></h2>
         <p class="muted">發布：{{ item.published }}{% if item.published != '未知' %}（台灣時間）{% endif %}</p>
         {% if item.excerpt %}<p class="public-excerpt">{{ item.excerpt }}</p>{% endif %}
       </article>{% else %}{% if source_total == 0 %}<p class="notice">目前尚無收錄資料。請稍後重新整理，或查看下方官方來源。</p>{% else %}<p class="notice">沒有符合篩選的公告。請<a href="/public/announcements">清除篩選</a>，或更換關鍵字。</p>{% endif %}{% endfor %}

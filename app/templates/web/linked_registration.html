@@ -5,7 +5,7 @@
   {% for doc in item.registration_docs %}
   <div>
     <h3>{{ doc.title }}</h3>
-    <p><a class="text-link dark" href="{{ doc.url }}" target="_blank" rel="noopener noreferrer">開啟這份來源（另開分頁）</a>{% if doc.read_time %} · 最後成功讀取：{{ doc.read_time }}（台灣時間）{% endif %}</p>
+    <p><a class="text-link dark" href="{{ doc.url }}" target="_blank" rel="noopener noreferrer">{{ ('開啟兌換表單' if '兌換' in doc.title else '開啟報名表單') if doc.kind=='form' else ('開啟票券頁' if doc.kind=='tickets' else '開啟來源') }}（另開分頁）</a>{% if doc.read_time %} · 最後成功讀取：{{ doc.read_time }}（台灣時間）{% endif %}</p>
     {% if doc.error %}<p class="notice" role="status">最近讀取失敗；若有舊資料則保留，請核對來源最新內容。</p>{% endif %}
     {% if doc.kind=='form' %}
       <p><strong>兌換表單必填資料：</strong>{{ doc.required_fields | join('、') or '尚未辨識出明確欄位' }}。</p>

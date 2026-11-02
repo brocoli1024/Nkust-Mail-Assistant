@@ -12,18 +12,20 @@ function makeMemory(){let record=null;return {async readAll(){return record?[str
  }};}
 function init(){
  for(const area of document.querySelectorAll('[data-device-todo], [data-todo-list]')){
+  const compact=area.hasAttribute('data-compact');
   const detail=area.hasAttribute('data-device-todo'),scope=area.dataset.scope||'public',cardNode=detail?area.closest('[data-card-payload]'):null;
   if(!['public','demo'].includes(scope))continue;
   const status=area.querySelector('[data-todo-status]'),body=area.querySelector(detail?'[data-todo-actions]':'[data-todo-items]');
   const store=scope==='demo'?makeMemory():api.createTodoStore();let records=[],card=null,dirty=false,ready=false,busy=false,clockKey='';
-  const say=text=>{status.textContent=text;};
-  const button=(target,text,fn)=>{const b=el('button',text);b.type='button';b.className='button secondary';b.disabled=busy; b.addEventListener('click',fn);target.append(b);};
+  let retryHelp=null;
+  const say=(text,reveal=false)=>{status.textContent=text;if(reveal&&retryHelp)retryHelp.open=true;};
+  const button=(target,text,fn)=>{const b=el('button',text);b.type='button';b.className=compact?'button':'button secondary';b.disabled=busy; b.addEventListener('click',fn);target.append(b);};
   async function change(operation,old,snoozeUntil){
-   if(!ready||busy)return;if(operation==='add'&&(!card||dirty)){say('請先讀取行動卡，並儲存或恢復尚未保存的修正，再加入待辦。');return;}
+   if(!ready||busy)return;if(operation==='add'&&(!card||dirty)){say('請先讀取行動卡，並儲存或恢復尚未保存的修正，再加入待辦。',true);return;}
    if(operation==='remove'&&!root.confirm('移除此待辦？公告與修正仍保留，可從公告詳情重新加入。'))return;
    busy=true;render();say('正在保存待辦，請稍候。');
    try{await store.change({operation,card:operation==='add'?card:undefined,sourceRef:old?.source_ref||card.source.source_ref,expectedRevision:old?.revision||0,snoozeUntil});records=await store.readAll();say(scope==='demo'?'示範待辦已更新；重新載入即重設。':'待辦已保存至此裝置。');}
-   catch(e){ready=false;say(e.message==='STALE_SNOOZE'?'日期已跨日，本次未稍後；請重新讀取待辦並確認新的時間與截止提醒。':e.message==='REVISION_CONFLICT'?'其他頁面已更新，本次未覆寫；請按重新讀取待辦後核對。':'保存結果無法確認，請重新讀取待辦；既有資料未清除。');}
+   catch(e){ready=false;say(e.message==='STALE_SNOOZE'?'日期已跨日，本次未稍後；請重新讀取待辦並確認新的時間與截止提醒。':e.message==='REVISION_CONFLICT'?'其他頁面已更新，本次未覆寫；請按重新讀取待辦後核對。':'保存結果無法確認，請重新讀取待辦；既有資料未清除。',true);}
    finally{busy=false;render();}
   }
   function actions(target,r){
@@ -51,8 +53,8 @@ function init(){
    const projected=records.map(r=>api.projectTodo(r,new Date()));
    if(detail){const old=projected.find(r=>r.source_ref===card?.source.source_ref);
     if(!card){body.append(el('p','請先完成行動卡載入；修正讀取失敗時不會使用空白值加入。'));return;}
-    if(!old||old.status==='removed'){button(body,'加入我的待辦',()=>change('add',old));}
-    else{body.append(el('p','已加入 · '+({active:'進行中',done:'已完成',snoozed:'稍後處理'}[old.effective_status])));if(old.card.baseline_hash!==card.baseline_hash)body.append(el('p','目前來源或解析版本與加入時不同，請核對；待辦保留加入時資訊。'));actions(body,old);}
+    if(!old||old.status==='removed'){button(body,'加入我的待辦',()=>change('add',old));if(compact){body.lastElementChild.disabled=busy||dirty;if(dirty)body.append(el('p','請先儲存或恢復未保存的修正，再加入待辦。'));}}
+    else{body.append(el('p','已加入 · '+({active:'進行中',done:'已完成',snoozed:'稍後處理'}[old.effective_status])));if(old.card.baseline_hash!==card.baseline_hash)body.append(el('p','目前來源或解析版本與加入時不同，請核對；待辦保留加入時資訊。'));if(compact){const link=el('a','查看我的待辦');link.href='/todos';link.className='button';body.append(link);}else actions(body,old);}
    }else{
     const filter=area.querySelector('[data-todo-filter]')?.value||'active';
     const selected=projected.filter(r=>r.effective_status===filter).sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
@@ -60,9 +62,9 @@ function init(){
     for(const r of selected)body.append(row(r));
    }
   }
-  async function load(){if(busy)return;ready=false;say('正在讀取待辦。');try{records=await store.readAll();ready=true;say(scope==='demo'?'示範待辦只留在此頁。':'已讀取此裝置待辦；不會隨 Google 帳號切換。');}catch{say('待辦讀取失敗，並非沒有待辦。請檢查儲存權限、關閉舊分頁後重試；不會清除既有資料。');}render();}
-  if(detail)controllers.set(cardNode,{setCard(value){card=structuredClone(value);dirty=false;render();},setDirty(){dirty=true;}});
-  const retry=el('button','重新讀取待辦');retry.type='button';retry.className='button secondary';retry.addEventListener('click',load);area.append(retry);
+  async function load(){if(busy)return;ready=false;say('正在讀取待辦。');try{records=await store.readAll();ready=true;say(scope==='demo'?'示範待辦只留在此頁。':'已讀取此裝置待辦；不會隨 Google 帳號切換。');}catch{say('待辦讀取失敗，並非沒有待辦。請檢查儲存權限、關閉舊分頁後重試；不會清除既有資料。',true);}render();}
+  if(detail)controllers.set(cardNode,{setCard(value){card=structuredClone(value);dirty=false;render();},setDirty(){dirty=true;render();}});
+  const retry=el('button','重新讀取待辦');retry.type='button';retry.className='button secondary';retry.addEventListener('click',load);if(compact){retryHelp=el('details');retryHelp.className='reading-storage-help';retryHelp.append(el('summary','待辦讀取與重試'),status,retry);area.append(retryHelp);}else area.append(retry);
   area.querySelector('[data-todo-filter]')?.addEventListener('change',render);setInterval(()=>{if(ready&&!busy&&clockKey!==api.renderClockKey(records,new Date()))render();},60000);load();
  }
 }

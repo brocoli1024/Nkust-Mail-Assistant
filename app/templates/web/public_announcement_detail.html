@@ -3,14 +3,15 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   {% include 'pwa_head.html' %}<title>{{ item.title }} · NKUST Mail Assistant</title>
-  <script src="/assets/calendar-ics.js" defer></script><script src="/assets/calendar-controls.js" defer></script><link rel="stylesheet" href="/assets/account.css?v=action-card-1">
-  <script src="/assets/todo-store.js" defer></script><script src="/assets/todos.js" defer></script>
+  <script src="/assets/calendar-ics.js" defer></script><script src="/assets/calendar-controls.js" defer></script><link rel="stylesheet" href="/assets/account.css?v=reading-1">
+  <script src="/assets/todo-store.js" defer></script><script src="/assets/todos.js?v=reading-1" defer></script>
   <script src="/assets/action-card-store.js" defer></script>
-  <script src="/assets/action-card.js" defer></script>
+  <script src="/assets/action-card.js?v=reading-1" defer></script>
 </head>
-<body><div class="site-shell">
+<body class="public-reading-page"><div class="site-shell">
   {% set active_page = 'public' %}{% include 'site_header.html' %}
   <main id="main-content" class="page-content narrow">
+    <nav class="reading-back" aria-label="返回公告"><a class="text-link" data-public-back href="{{ back_url }}">← {{ '返回搜尋結果' if has_search else '返回公告清單' }}</a></nav>
     <section class="hero compact public-detail-hero" aria-labelledby="page-title"><div><p class="eyebrow">PUBLIC ANNOUNCEMENT</p><h1 id="page-title">{{ item.title }}</h1></div></section>
     {% include 'action_card.html' %}
     {% include 'linked_registration.html' %}
@@ -27,7 +28,7 @@
       <p class="muted">這是來源提供的摘要，可能截短；活動日期、截止日與參加資格以學校原文為準。</p>
       {% if item.url %}<p><a class="button" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">閱讀學校原文（另開分頁）</a></p>{% endif %}
       <p><a class="button secondary" href="/public/announcements/{{ item.id }}/history">查看公開版本紀錄</a></p>
-      <a class="text-link dark" href="/public/announcements">返回公開公告</a>
+      <a class="text-link dark" href="{{ back_url }}">{{ '返回搜尋結果' if has_search else '返回公告清單' }}</a>
     </article>
     {% include 'public_source_status.html' %}
   </main>

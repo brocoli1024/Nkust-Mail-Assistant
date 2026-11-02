@@ -239,3 +239,31 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
   .device-todo-toolbar { align-items: stretch; }
   .device-todo-toolbar label, .device-todo-toolbar > .button { width: 100%; }
 }
+
+/* Public reading flow: keep the main actions ahead of advanced editing. */
+.reading-back { padding-top:16px; }
+.public-reading-page .public-detail-hero { min-height:0; padding:16px 0 24px; }
+.public-reading-page .public-detail-hero h1 { font-size:clamp(1.45rem,3vw,2.25rem); line-height:1.45; letter-spacing:-.025em; }
+.public-reading-page .public-detail-hero .eyebrow { display:none; }
+.public-reading-page .public-detail-hero::after { display:none; }
+.reading-actions { position:sticky; top:0; z-index:3; background:var(--paper); border-bottom:1px solid var(--line-light); padding:12px 0 16px; margin-bottom:24px; }
+.reading-source-actions, .reading-todo [data-todo-actions] { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.reading-source-actions { margin-top:8px; }
+.reading-actions .button { min-height:44px; padding:8px 14px; font-size:.95rem; }
+.reading-actions p { margin:8px 0; font-size:.85rem; }
+.reading-actions details { margin:0; }
+.reading-actions summary { min-height:44px; padding:10px 0; font-size:.85rem; color:var(--ink-muted); }
+.reading-actions details[open] { max-height:35dvh; overflow:auto; }
+.correction-field > summary { font-weight:600; }
+.correction-field fieldset { margin-top:0; }
+.public-reading-page .action-card > details:not(.correction-field) { border-top:1px solid var(--line-light); }
+@media(max-width:640px) {
+  .public-reading-page .site-header { gap:10px; padding-block:12px; }
+  .public-reading-page .main-nav { flex-wrap:nowrap; gap:4px; }
+  .public-reading-page .main-nav a { font-size:.78rem; padding-inline:8px; white-space:nowrap; }
+  .public-reading-page .detail-card { padding:20px; }
+  .reading-actions { top:0; }
+  .reading-source-actions .button { flex:1 1 auto; }
+}
+
+@media(max-height:600px) { .reading-actions { position:static; } }
