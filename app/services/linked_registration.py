@@ -37,7 +37,8 @@ def parse_form(data,url):
         text=h.get_text(' ',strip=True)
         if any(re.search(r'必填|required',n.get('aria-label',''),re.I) for n in h.select('[aria-label]')):
             label=re.sub(r'\s*\*\s*$','',text).strip()
-            if label and len(label)<=120:required.append(label)
+            if not label or len(label)>120:raise PublicSourceError('REGISTRATION_FORM')
+            required.append(label)
     # Explicitly remove controls and response/default values before any archive.
     for n in form.select('script,style,input,textarea,select,button,iframe,svg'):n.decompose()
     text=form.get_text('\n',strip=True)

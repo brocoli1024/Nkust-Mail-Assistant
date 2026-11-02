@@ -162,3 +162,8 @@ def test_history_reports_linked_content_changes_but_not_poll_failure():
  assert snapshot_changes(old,public_snapshot(row,article={'text':'活動日期：2026年10月31日','related':[failed]}))==[]
  changed=deepcopy(form);changed['text']+='\nCompany *';changed['required_fields'].append('Company')
  assert any('報名表單或票券' in x for x in snapshot_changes(old,public_snapshot(row,article={'text':'活動日期：2026年10月31日','related':[changed]})))
+
+
+def test_unreadable_required_label_is_not_silently_omitted():
+ raw=FORM_HTML.replace(b'</form>',('<div role="heading" aria-level="3">'+'X'*121+'<span aria-label="Required question">*</span></div></form>').encode())
+ with pytest.raises(PublicSourceError):parse_form(raw,FORM)
