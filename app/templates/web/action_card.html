@@ -1,22 +1,26 @@
 <section class="detail-card action-card" aria-label="公告行動資訊卡" {% if scope != 'private' %}data-card-payload="{{ payload | tojson | forceescape }}"{% endif %}>
   {% if scope=='public' %}{% include 'public_primary_actions.html' %}{% endif %}
   <h2>公告行動資訊卡</h2>
-  <p>系統辨識不代表你必須參加，也不會自動建立待辦。</p>
+  {% if scope!='public' %}<p>系統辨識不代表你必須參加，也不會自動建立待辦。</p>{% endif %}
+  {% if scope=='public' %}<div class="reading-date-notices" data-reading-date-notices role="status">{% for notice in reading.notices %}<p>{{ notice }}</p>{% endfor %}</div>{% endif %}
   {% if card.requires_action is none %}<p>行動尚未判定，請核對原文。</p>{% endif %}
   {% if scope=='private' and view.saved_at %}<p>保存時間（台灣）：{{ view.saved_at }}</p>{% endif %}
   <dl class="detail-grid">
   {% for key,label in labels.items() %}{% set field=card.fields[key] %}
-    <div><dt>{{ label }}</dt><dd data-card-field="{{ key }}">{{ field_displays[key].value }}</dd>
-    <p class="field-state" data-card-state="{{ key }}">{{ field_displays[key].state }}</p>
+    <div {% if scope=='public' and key=='summary' %}class="reading-summary"{% endif %}>{% if scope=='public' and key=='summary' %}<details><summary>公告摘要</summary>{% endif %}<dt>{{ label }}</dt><dd data-card-field="{{ key }}">{{ field_displays[key].value }}</dd>
+    <p class="field-state" data-card-state="{{ key }}" {% if scope=='public' and field_displays[key].state=='來源規則辨識' %}hidden{% endif %}>{{ field_displays[key].state }}</p>
     <div data-card-warnings="{{ key }}">{% for warning in field.warnings if warning != '日期或角色待確認' %}<p>{{ warning }}</p>{% endfor %}</div>
     <div data-card-evidence="{{ key }}">{% if field.evidence %}<details><summary>查看依據</summary>{% for e in field.evidence %}<blockquote>{{ e.quote }}</blockquote><p>依據：{{ {'title':'來源標題','excerpt':'來源摘要','original':'郵件公告原文','official_text':'官方公告本文','linked_form':'公告連結的兌換表單'}.get(card.source.segments[e.segment].kind) }}</p>{% set reference=card.source.metadata.get('source_links',{}).get(e.segment|string) %}{% if reference %}<a class="text-link dark" href="{{ reference.url }}" target="_blank" rel="noopener noreferrer">開啟這份來源</a>{% endif %}{% endfor %}</details>{% elif key=='deadline' and not field.value and field.origin!='user' and card.source.metadata.get('registration_ticket') %}{% set ticket=card.source.metadata.registration_ticket %}<details><summary>查看票券販售依據</summary><p>票種：{{ ticket.name }}；這不是兌換表單截止。</p><blockquote>{{ ticket.quote }}</blockquote><a class="text-link dark" href="{{ ticket.source_url }}" target="_blank" rel="noopener noreferrer">開啟票券來源</a></details>{% endif %}</div>
-    </div>
+    {% if scope=='public' and key=='summary' %}</details>{% endif %}</div>
   {% endfor %}
   </dl>
-  <p>公告列出的適用對象不代表你已符合資格，請核對完整條件。</p>
+  {% if scope=='public' %}<p class="reading-qualification">公告對象不代表你已符合資格；加入待辦不等於完成報名。</p>
+  <p data-correction-status role="status" aria-live="polite"></p>
+  <details class="reading-tools" data-reading-tools><summary>更多工具：補充資訊、行事曆與解析</summary>
+  {% else %}<p>公告列出的適用對象不代表你已符合資格，請核對完整條件。</p>{% endif %}
   <p>匯出行事曆前仍須核對原文日期與時間；系統不會猜測開始時間或持續長度。</p>
   {% if link_unverified %}<p>公告提供的連結，官方性待確認。</p>{% endif %}
-  <p class="notice" data-deadline-passed {% if not card_context.deadline_passed %}hidden{% endif %}>此截止日期已過；其他條件與期限仍請核對原文。</p>
+  <p class="notice" data-deadline-passed {% if scope=='public' or not card_context.deadline_passed %}hidden{% endif %}>此截止日期已過；其他條件與期限仍請核對原文。</p>
   {% if scope == 'private' and view.stale %}<p class="notice">來源或解析版本已變更，過往修正尚未套用，請重新核對。</p>{% endif %}
   <details><summary>原始解析與候選日期</summary><pre>{{ (view.base if scope == 'private' else card).legacy | tojson(indent=2) }}</pre>
     {% for e in card.candidates %}<blockquote>{{ e.quote }}{% if e.year_inferred %}（年份推定，待確認）{% endif %}</blockquote>{% endfor %}
@@ -24,9 +28,10 @@
     <p>解析版本：{{ card.parser_version }}</p>
   </details>
   {% if card.ai_references %}<details><summary>既有 AI 參考（請核對來源）</summary>{% for ref in card.ai_references %}<p>{{ ref.warning }}</p><pre>{{ ref.result | tojson(indent=2) }}</pre>{% endfor %}</details>{% endif %}
-  <p data-correction-status role="status" aria-live="polite"></p>
+  {% if scope!='public' %}<p data-correction-status role="status" aria-live="polite"></p>{% endif %}
   {% include 'action_card_editor.html' %}
   {% if scope!='public' %}{% include 'todo_controls.html' %}{% endif %}
   {% set calendar_wait=scope!='private' %}{% include 'calendar_controls.html' %}
+  {% if scope=='public' %}</details>{% endif %}
   {% if scope == 'private' %}<details><summary>此封郵件的修正歷史</summary><p><a class="text-link dark" href="/action-cards/sources/{{ item.id }}">瀏覽全部原快照（分頁）</a></p>{% for h in view.history %}<p><a class="text-link dark" href="/action-cards/history/{{ h.id }}">查看原快照與修正（版本 {{ h.revision }}）</a></p>{% else %}<p>尚無修正紀錄。</p>{% endfor %}</details>{% endif %}
 </section>

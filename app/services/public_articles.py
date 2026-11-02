@@ -51,6 +51,13 @@ def latest_article(session,row):
     return latest.snapshot.get('metadata',{}).get('article') if latest else None
 
 
+def latest_articles(session,rows):
+    """One bounded query for a displayed public page, independent of row count."""
+    if not rows:return {}
+    latest_ids=select(func.max(V.id)).where(V.source_key=='nkust-latest',V.canonical_url.in_([r.canonical_url for r in rows])).group_by(V.canonical_url)
+    return {v.canonical_url:v.snapshot.get('metadata',{}).get('article') for v in session.scalars(select(V).where(V.id.in_(latest_ids)))}
+
+
 @dataclass
 class ArticleResult:
     updated:int=0

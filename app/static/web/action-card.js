@@ -66,7 +66,11 @@ function init(){
     if(!['public','demo'].includes(payload.scope))continue;
     const base=payload.base_card,editor=node.querySelector('[data-local-editor]'),status=node.querySelector('[data-correction-status]');
     if(!editor)continue;
-    let record=null,expected=0,ready=false,store=null,rendered=false;
+    let record=null,expected=0,ready=false,store=null,rendered=false,displayed=base;
+    const tools=node.querySelector('[data-reading-tools]');
+    const revealEditor=()=>{editor.hidden=false;editor.open=true;if(tools)tools.open=true;};
+    const paintDates=()=>{if(payload.scope!=='public'||!root.NkustReadingDates)return;const box=node.querySelector('[data-reading-date-notices]');if(!box)return;box.replaceChildren();for(const text of root.NkustReadingDates.cardDates(displayed).notices){const p=document.createElement('p');p.textContent=text;box.append(p);}};
+    root.setInterval?.(paintDates,60000);
     const message=text=>{status.textContent=text;};
     const invalidate=reason=>{root.NkustCalendarUI?.setDirty(node,reason);root.NkustTodoUI?.setDirty(node);};
     const control=name=>Array.from(editor.querySelectorAll('[name]')).find(e=>e.name===name);
@@ -81,11 +85,12 @@ function init(){
         const ticket=key==='deadline'&&!f.value&&f.origin!=='user'?card.source.metadata?.registration_ticket:null;
         if(!f.evidence?.length&&ticket){const detail=document.createElement('details'),summary=document.createElement('summary'),quote=document.createElement('blockquote'),scope=document.createElement('p');summary.textContent='查看票券販售依據';quote.textContent=ticket.quote;scope.textContent='票種：'+ticket.name+'；這不是兌換表單截止。';detail.append(summary,scope,quote);if(/^https:\/\/[a-z0-9-]+\.kktix\.cc\//.test(ticket.source_url)){const link=document.createElement('a');link.href=ticket.source_url;link.textContent='開啟票券來源';link.target='_blank';link.rel='noopener noreferrer';detail.append(link);}box.append(detail);}
         const warnings=node.querySelector('[data-card-warnings="'+key+'"]');warnings.replaceChildren();for(const text of (f.warnings||[]).filter(x=>x!=='日期或角色待確認')){const p=document.createElement('p');p.textContent=text;warnings.append(p);}
-        const display=fieldDisplay(card,key);node.querySelector('[data-card-field="'+key+'"]').textContent=display.value;node.querySelector('[data-card-state="'+key+'"]').textContent=display.state;}
+        const display=fieldDisplay(card,key);node.querySelector('[data-card-field="'+key+'"]').textContent=display.value;const state=node.querySelector('[data-card-state="'+key+'"]');state.textContent=display.state;state.hidden=payload.scope==='public'&&display.state==='來源規則辨識';}
 
+      displayed=card;paintDates();
       root.NkustTodoUI?.setCard(node,card);
       root.NkustCalendarUI?.setCard(node,card);
-      const d=card.fields.deadline;node.querySelector('[data-deadline-passed]').hidden=!(d.value&&['supported','user_confirmed'].includes(d.state)&&d.value<payload.taipei_today);
+      const d=card.fields.deadline;node.querySelector('[data-deadline-passed]').hidden=payload.scope==='public'||!(d.value&&['supported','user_confirmed'].includes(d.state)&&d.value<payload.taipei_today);
     };
     function render(){
       const latest=record?.revisions?.at(-1),same=latest?.baseline_hash===base.baseline_hash;
@@ -100,7 +105,7 @@ function init(){
       try{
         if(payload.scope==='public'){store=root.NkustActionCardStore.createActionCardStore();record=await store.read(base.source.source_ref);}
         expected=record?.revision||0;if(!preserveInputs)render();else{node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);message('已讀取裝置最新版本，輸入仍保留，請核對歷史後再儲存。');}ready=true;editor.hidden=false;savingEnabled(true);
-      }catch(e){editor.hidden=false;editor.open=true;invalidate('修正讀取失敗，無法確認目前版本，匯出已停用；請重新載入頁面核對。');message('無法讀取裝置修正，尚未清除既有資料。請重新載入重試。');}
+      }catch(e){revealEditor();invalidate('修正讀取失敗，無法確認目前版本，匯出已停用；請重新載入頁面核對。');message('無法讀取裝置修正，尚未清除既有資料。請重新載入重試。');}
     }
     function readPatch(){
       const fields={};for(const key of keys){const mode=control(key+'.mode').value;fields[key]={mode};if(mode==='value')fields[key]={mode,value:control(key+'.value').value,quote:control(key+'.quote').value||null,confirmed:!!control(key+'.confirmed')?.checked};}

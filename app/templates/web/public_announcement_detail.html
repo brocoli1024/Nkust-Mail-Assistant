@@ -3,10 +3,11 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   {% include 'pwa_head.html' %}<title>{{ item.title }} · NKUST Mail Assistant</title>
-  <script src="/assets/calendar-ics.js" defer></script><script src="/assets/calendar-controls.js" defer></script><link rel="stylesheet" href="/assets/account.css?v=reading-1">
+  <script src="/assets/calendar-ics.js" defer></script><script src="/assets/calendar-controls.js" defer></script><link rel="stylesheet" href="/assets/account.css?v=focus-1">
+  <script src="/assets/reading-dates.js?v=focus-1" defer></script>
   <script src="/assets/todo-store.js" defer></script><script src="/assets/todos.js?v=reading-1" defer></script>
   <script src="/assets/action-card-store.js" defer></script>
-  <script src="/assets/action-card.js?v=reading-1" defer></script>
+  <script src="/assets/action-card.js?v=focus-1" defer></script>
 </head>
 <body class="public-reading-page"><div class="site-shell">
   {% set active_page = 'public' %}{% include 'site_header.html' %}
@@ -14,6 +15,8 @@
     <nav class="reading-back" aria-label="返回公告"><a class="text-link" data-public-back href="{{ back_url }}">← {{ '返回搜尋結果' if has_search else '返回公告清單' }}</a></nav>
     <section class="hero compact public-detail-hero" aria-labelledby="page-title"><div><p class="eyebrow">PUBLIC ANNOUNCEMENT</p><h1 id="page-title">{{ item.title }}</h1></div></section>
     {% include 'action_card.html' %}
+    {% if item.article and (item.article.error or item.article.registration_error) %}<p class="notice" role="status">最近部分來源讀取失敗，保留上次資料；請核對學校原文與報名來源。</p>{% endif %}
+    <details class="reading-originals"><summary>核對原文、報名來源與版本紀錄</summary>
     {% include 'linked_registration.html' %}
     <article class="detail-card">
       <div class="meta-row"><span class="tag">{{ item.category or '未分類' }}</span><span>發布：{{ item.published }}</span></div>
@@ -30,6 +33,7 @@
       <p><a class="button secondary" href="/public/announcements/{{ item.id }}/history">查看公開版本紀錄</a></p>
       <a class="text-link dark" href="{{ back_url }}">{{ '返回搜尋結果' if has_search else '返回公告清單' }}</a>
     </article>
-    {% include 'public_source_status.html' %}
+    </details>
+    {% set compact_source=true %}{% include 'public_source_status.html' %}
   </main>
 </div></body></html>

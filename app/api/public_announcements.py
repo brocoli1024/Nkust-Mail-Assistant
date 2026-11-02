@@ -65,7 +65,16 @@ def announcements(request: Request, q: str = Query('', max_length=200), category
         source_total = session.scalar(select(func.count()).select_from(P).where(P.source_key == SOURCE_KEY))
         total = session.scalar(select(func.count()).select_from(statement.subquery()))
         rows = session.scalars(statement.order_by(P.published_at.desc().nulls_last(), P.id.desc()).offset((page_number-1)*20).limit(20)).all()
-        items = [public_item(row) for row in rows]
+        from app.services.public_articles import latest_articles
+        from app.services.reading_dates import reading_dates
+        articles=latest_articles(session,rows)
+        now=datetime.now(timezone.utc)
+        items=[]
+        for row in rows:
+            item=public_item(row)
+            card=build_action_card(public_source(row,article=articles.get(row.canonical_url)))
+            item.update(reading=reading_dates(card,now=now),todo_ref=card.source.source_ref)
+            items.append(item)
         reading_query = urlencode(dict(q=q, category=category, audience=audience, page=page_number))
         for item in items:
             item['detail_url'] = f"/public/announcements/{item['id']}?{reading_query}"
@@ -75,7 +84,8 @@ def announcements(request: Request, q: str = Query('', max_length=200), category
     return page(request, 'public_announcements.html', items=items,total=total,source_total=source_total,q=q,category=category,
                 audience=audience,categories=CATEGORIES,page_number=page_number,source_url=LISTING_URL,
                 previous=link(page_number-1) if page_number>1 else None,
-                following=link(page_number+1) if page_number*20<total else None, **status)
+                following=link(page_number+1) if page_number*20<total else None,
+                student_shortcut='/public/announcements?'+urlencode(dict(q=q,category=category,audience='all' if audience=='student' else 'student',page=1)), **status)
 
 
 @router.get('/public/announcements/{announcement_id}')

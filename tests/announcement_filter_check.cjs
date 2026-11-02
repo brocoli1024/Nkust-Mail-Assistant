@@ -11,6 +11,7 @@ const windowEvents = {};
 const attributes = {};
 const status = { textContent: '', hidden: true };
 const form = {
+  hasAttribute() { return false; },
   querySelectorAll(selector) {
     assert.equal(selector, 'select');
     return [
@@ -47,3 +48,7 @@ assert.equal(attributes['aria-busy'], undefined);
 assert.equal(status.hidden, true);
 assert.equal(status.textContent, '');
 vm.runInNewContext(source, { document: { getElementById() { return null; } }, window });
+
+form.hasAttribute=()=>true;listeners.length=0;
+vm.runInNewContext(source,{document,window});
+assert.equal(listeners.length,0,'explicit public filters wait for Search or Enter');

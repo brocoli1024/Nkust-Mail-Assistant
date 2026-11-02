@@ -190,7 +190,8 @@ def test_public_filter_form_preserves_get_and_no_old_page(web):
         soup = BeautifulSoup(r.text, 'html.parser')
         form = soup.select_one('#announcement-filters')
         assert form['method'] == 'get' and not form.select('[name="page"]')
-        assert form.select_one('noscript button[type="submit"]')
+        if path.startswith('/public'):assert form.select_one('button[type="submit"]').find_parent('noscript') is None
+        else:assert form.select_one('noscript button[type="submit"]')
         assert form.select_one('option[selected]').text in ('全部公告', '獎學金', '活動')
         assert soup.select_one('#filter-status[role="status"][aria-live="polite"]')
 

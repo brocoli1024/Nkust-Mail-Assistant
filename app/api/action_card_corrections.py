@@ -20,6 +20,10 @@ def card_context(card,scope):
     context['field_displays']={key:field_display(card,key) for key in LABELS}
     host=urlsplit(card.source.url or '').hostname or ''
     context['link_unverified']=bool(card.source.url and not (host=='nkust.edu.tw' or host.endswith('.nkust.edu.tw')))
+    if scope=='public':
+        context['labels']={k:LABELS[k] for k in ('action','audience','materials','deadline','event_date','summary')}
+        from app.services.reading_dates import reading_dates
+        context['reading']=reading_dates(card,now=datetime.now(timezone.utc))
     if scope!='private':
         context['payload']={'schema_version':1,'scope':scope,'base_card':card.model_dump(mode='json'),
             'expected_revision':0,'taipei_today':context['card_context']['taipei_today']}

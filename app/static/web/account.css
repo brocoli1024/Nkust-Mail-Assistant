@@ -267,3 +267,31 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
 }
 
 @media(max-height:600px) { .reading-actions { position:static; } }
+
+/* Focused reading and compact public list metadata. */
+.public-reading-page .reading-summary { grid-column:1 / -1; order:2; }
+.public-reading-page .reading-summary > details { margin:0; }
+.public-reading-page .reading-summary dt { display:none; }
+.public-reading-page .reading-summary dd { font-size:1rem; }
+.public-reading-page .reading-tools { margin-top:20px; }
+.reading-date-notices:empty, .list-date-notices:empty { display:none; }
+.reading-date-notices p { padding:10px 14px; border-left:3px solid var(--ink-muted); background:var(--cream); font-size:.9rem; }
+.reading-qualification { margin-top:16px; font-size:.85rem; color:var(--ink-muted); }
+.reading-originals { margin:20px 0; color:var(--light); border:1px solid var(--line-dark); border-radius:14px; padding:0 16px; }
+.reading-originals > summary { min-height:48px; padding-block:12px; cursor:pointer; }
+.reading-originals > .detail-card { margin-block:16px; }
+.compact-source-status { padding:12px 16px; font-size:.85rem; }
+.compact-source-status .compact-source-line { display:flex; flex-wrap:wrap; gap:4px 16px; margin:0; }
+.compact-source-status a { color:var(--cream); text-underline-offset:4px; }
+.compact-source-status .compact-source-scope { margin:4px 0; }
+.compact-source-status .compact-source-warning { border-left:3px solid var(--cream); padding-left:10px; margin:10px 0; color:var(--cream); }
+.compact-source-status summary { min-height:44px; padding-top:10px; }
+.list-action-dates { display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px; font-size:.95rem; }
+.list-todo-badge { padding:2px 10px; border-radius:999px; border:1px solid var(--ink-muted); font-size:.8rem; }
+.announcement .list-date-notices { display:grid; gap:4px; font-size:.85rem; color:var(--ink); }
+.list-storage-message { color:var(--cream); }
+.public-filters + .filter-help { margin-top:12px; }
+/* Editing tools must not scroll inputs underneath the reading toolbar. */
+.public-reading-page .action-card:has([data-reading-tools][open]) .reading-actions { position:static; }
+.card-editor input[type="checkbox"] { width:20px; height:20px; flex:0 0 20px; }
+.card-editor label:has(> input[type="checkbox"]) { display:flex; align-items:center; min-height:44px; gap:10px; }
