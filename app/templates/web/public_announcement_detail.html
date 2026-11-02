@@ -19,7 +19,7 @@
       <p>來源：高科大最新消息。{% if item.student_relevance == 'relevant' %}規則提示：學生相關。{% else %}學生相關性尚未確認，請核對原文對象。{% endif %}</p>
       {% if item.article and item.article.text %}
       <h2>已讀取的官方本文</h2>
-      <p>最後成功讀取：{{ item.article_time }}（台灣時間）。附件與外部報名頁尚未讀取，請另行核對。</p>
+      <p>最後成功讀取：{{ item.article_time }}（台灣時間）。本文以外來源的讀取範圍及依據，請見本頁核對資訊；未收錄連結與附件請另行核對。</p>
       {% if item.article.error %}<p class="notice" role="status">最近本文更新失敗，保留上次成功讀取的內容；請開啟官方原文確認最新版本。</p>{% endif %}
       <details><summary>展開已讀取本文</summary><p class="public-detail-excerpt" style="white-space: pre-wrap">{{ item.article.text }}</p></details>
       {% elif item.article and item.article.error %}<p class="notice" role="status">官方本文暫時無法讀取，目前僅有來源摘要；排程將於一小時後具備重試條件，依排程順序重試。</p>{% else %}<p>完整本文尚未讀取，排程將分批補收；目前依來源摘要辨識。</p>{% endif %}
