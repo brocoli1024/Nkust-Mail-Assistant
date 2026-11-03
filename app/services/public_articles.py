@@ -1,5 +1,5 @@
 """Bounded official article refresh into the existing public version archive."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 import time
 from urllib.parse import urljoin, urlsplit
@@ -38,6 +38,7 @@ def fetch_article(url, *, transport=None, details=False):
             target=official_identity(urljoin(current,headers.get('location','')))
             if not target or (urlsplit(target).hostname,urlsplit(target).path)!=(urlsplit(original).hostname,urlsplit(original).path):raise PublicSourceError('PUBLIC_ARTICLE_REDIRECT')
             current=target;continue
+        if status==404:raise PublicSourceError('PUBLIC_ARTICLE_HTTP_404')
         if status!=200 or 'html' not in headers.get('content-type','').lower():raise PublicSourceError('PUBLIC_ARTICLE_RESPONSE')
         text=parse_article(body)
         if not details:return text
@@ -58,11 +59,33 @@ def latest_articles(session,rows):
     return {v.canonical_url:v.snapshot.get('metadata',{}).get('article') for v in session.scalars(select(V).where(V.id.in_(latest_ids)))}
 
 
+# Only fixed public adapter codes may leave the process. Never print exception
+# messages, request URLs, response bodies, database details, or credentials.
+SAFE_FAILURE_CODES = frozenset({
+    'PUBLIC_ARTICLE_SIZE', 'PUBLIC_ARTICLE_ENCODING', 'PUBLIC_ARTICLE_BODY',
+    'PUBLIC_ARTICLE_URL', 'PUBLIC_ARTICLE_REDIRECT', 'PUBLIC_ARTICLE_RESPONSE',
+    'PUBLIC_ARTICLE_HTTP_404',
+    'PUBLIC_SOURCE_ADDRESS', 'PUBLIC_SOURCE_TIMEOUT', 'PUBLIC_SOURCE_ENCODING',
+    'PUBLIC_SOURCE_SIZE', 'PUBLIC_SOURCE_UNAVAILABLE',
+    'REGISTRATION_URL', 'REGISTRATION_SIZE', 'REGISTRATION_ENCODING',
+    'REGISTRATION_FORM', 'REGISTRATION_TICKETS', 'REGISTRATION_RESPONSE',
+    'REGISTRATION_REDIRECT',
+})
+
+
+def failure_detail(pid, stage, exc):
+    code = str(exc) if isinstance(exc, PublicSourceError) else None
+    return {'announcement_id': pid, 'stage': stage,
+            'error_code': code if code in SAFE_FAILURE_CODES else
+            ('PUBLIC_ARTICLE_UNAVAILABLE' if stage == 'article' else 'REGISTRATION_UNAVAILABLE')}
+
+
 @dataclass
 class ArticleResult:
     updated:int=0
     failed:int=0
     status:str='success'
+    failures:list=field(default_factory=list)
 
 
 def refresh_articles(database, *, source=None, limit=8, now=None, sleep=time.sleep, announcement_id=None):
@@ -101,14 +124,16 @@ def refresh_articles(database, *, source=None, limit=8, now=None, sleep=time.sle
                         try:
                             doc=fetch_registration(linked_url)
                             doc.update(fetched_at=lease.clock().isoformat(),checked_at=lease.clock().isoformat(),error=None)
-                        except Exception:
+                        except Exception as exc:
+                            result.failures.append(failure_detail(pid,'registration',exc))
                             doc=dict(previous_docs.get(linked_url) or {'initial_url':linked_url,'url':linked_url,'kind':'unavailable','title':'報名連結尚無法讀取'},error='REGISTRATION_UNAVAILABLE',checked_at=lease.clock().isoformat())
                         if not any(d.get('url')==doc.get('url') for d in docs):docs.append(doc)
                     article['related']=docs
                     article['registration_error']=any(d.get('error') for d in docs)
                     if article['registration_error']:result.failed+=1;result.status='partial'
 
-            except Exception:
+            except Exception as exc:
+                result.failures.append(failure_detail(pid,'article',exc))
                 article['error']='PUBLIC_ARTICLE_UNAVAILABLE'
                 result.failed+=1;result.status='partial'
             with database.transaction() as session:

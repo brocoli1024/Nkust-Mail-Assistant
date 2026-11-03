@@ -69,7 +69,7 @@ GitHub 排程可能延後，公開repo60天無活動可能自動停用；必要�
 
 ## 官方本文分批更新
 
-同一個Actions同步步驟在RSS成功後執行 `python -m app.public_cli articles --limit 8`。管理者可手動執行相同命令（limit允許1–20）；仍使用受限公開角色，不需額外權限。CLI的updated表示成功讀取篇數，不代表每篇官方內容有變。失敗回傳partial與exit1，可在Actions檢查；頁面保留之前本文並提示，尚未讀取則維持摘要。
+同一個Actions同步步驟在RSS成功後執行 `python -m app.public_cli articles --limit 8`。管理者可手動執行相同命令（limit允許1–20）；仍使用受限公開角色，不需額外權限。CLI的updated表示成功讀取篇數，不代表每篇官方內容有變。失敗回傳partial與exit1，可在Actions檢查；articles JSON另列failures，提供公告編號、article／registration階段及固定安全錯誤碼（官方原文404為PUBLIC_ARTICLE_HTTP_404），不輸出任意例外或憑證；頁面保留之前本文並提示，尚未讀取則維持摘要。
 
 本文保存在現有公開版本JSON，保留RSS；成功讀取時間與清單同步時間分開。RSS改變、本文尚未重讀時舊資訊標待核對；不會覆蓋已加入待辦的快照。日期衝突保留雙方依據，系統缺漏不等於沒有規定。詳見[本文補強說明](public-article-enrichment-2026-10-31.md)。
 

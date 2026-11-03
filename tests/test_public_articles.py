@@ -112,3 +112,36 @@ def test_full_body_does_not_discard_rss_evidence_or_hide_conflicts():
     assert card.fields['deadline'].value=='2026-11-01'
     assert card.fields['event_date'].state=='pending'
     assert {card.source.segments[e.segment].kind for e in card.fields['event_date'].evidence}=={'excerpt','official_text'}
+
+
+@pytest.mark.parametrize('code',['PUBLIC_ARTICLE_BODY','PUBLIC_ARTICLE_HTTP_404'])
+def test_refresh_reports_article_identity_and_safe_failure_code(database,code):
+    from dataclasses import asdict
+    db,_=database
+    sync_recent(db,source=lambda:feed(item(url=URL)),now=NOW)
+    with db.transaction() as s:pid=s.scalar(select(P.id))
+    def fail(url):raise PublicSourceError(code)
+    result=refresh_articles(db,source=fail,now=NOW,sleep=lambda _:None)
+    assert result.status=='partial' and result.failed==1
+    assert asdict(result)['failures']==[{'announcement_id':pid,'stage':'article','error_code':code}]
+    def secret(url):raise PublicSourceError('PRIVATE-SECRET https://private.invalid/?token=secret')
+    result=refresh_articles(db,source=secret,announcement_id=pid,now=NOW,sleep=lambda _:None)
+    assert asdict(result)['failures']==[{'announcement_id':pid,'stage':'article','error_code':'PUBLIC_ARTICLE_UNAVAILABLE'}]
+
+
+def test_refresh_reports_registration_failure_without_losing_body(database,monkeypatch):
+    from dataclasses import asdict
+    db,_=database
+    sync_recent(db,source=lambda:feed(item(url=URL)),now=NOW)
+    with db.transaction() as s:pid=s.scalar(select(P.id))
+    def fail(url):raise PublicSourceError('REGISTRATION_FORM')
+    monkeypatch.setattr('app.services.linked_registration.fetch_registration',fail)
+    result=refresh_articles(db,source=lambda url:{'text':TEXT,'links':['https://docs.google.com/forms/d/e/synthetic/viewform']},now=NOW,sleep=lambda _:None)
+    assert result.updated==1 and result.failed==1 and result.status=='partial'
+    assert asdict(result)['failures']==[{'announcement_id':pid,'stage':'registration','error_code':'REGISTRATION_FORM'}]
+    with db.transaction() as s:assert latest_article(s,s.get(P,pid))['text']==TEXT
+
+
+def test_article_404_has_distinct_safe_error_code():
+    with pytest.raises(PublicSourceError,match='^PUBLIC_ARTICLE_HTTP_404$'):
+        fetch_article(URL,transport=lambda url:(404,{'content-type':'text/html'},b'<h1>Not found</h1>'))
