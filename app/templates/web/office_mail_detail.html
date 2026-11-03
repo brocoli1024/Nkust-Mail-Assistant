@@ -1,0 +1,12 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">{% include 'pwa_head.html' %}<title>{{ item.title }} · 公務公告</title><link rel="stylesheet" href="/assets/account.css?v=office-1"></head>
+<body class="office-mail-page"><div class="site-shell">{% set active_page='office' %}{% include 'site_header.html' %}<main id="main-content" class="page-content narrow">
+<nav class="reading-back" aria-label="返回公務公告"><a class="text-link" data-office-back href="{{ back_url }}">← 返回公務公告清單</a></nav>
+<section class="hero compact"><div><h1>{{ item.title }}</h1><p>{% if item.brief.campus_global %}全校性 {% endif %}{% for name in item.campus_names %}{{ name }} {% endfor %}{% if not item.campus_names and not item.brief.campus_global %}校區待確認{% endif %}</p></div></section>
+{% if item.brief.fetch_error %}<p class="notice" role="status">這則公告最近來源讀取失敗；以下保留上次內容，請核對官方最新原文。</p>{% endif %}
+{% include 'office_mail_brief.html' %}
+<p>發布單位：{{ item.brief.department or '未提供' }} · 公告日期：{{ item.published }}{% if item.published!='未知' %}（台灣時間）{% endif %}</p>
+<p><a class="button secondary" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">閱讀官方公務原文（另開分頁）</a></p>
+<details class="office-original"><summary>查看已收錄的完整官方原文</summary><div class="original">{{ item.body }}</div></details>
+<p><a class="text-link" href="/public/office-mail/{{ item.id }}/history">查看公開版本紀錄</a></p>
+{% include 'office_mail_status.html' %}<p><a class="text-link" href="{{ back_url }}">返回公務公告清單</a></p>
+</main></div></body></html>

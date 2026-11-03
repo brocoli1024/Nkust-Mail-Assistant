@@ -1,0 +1,5 @@
+<section class="detail-card office-brief" aria-label="公務公告重點整理"><h2>這則公告在說什麼？</h2><p class="office-brief-headline">{{ item.brief.headline }}</p>
+<p class="muted">依公告內容分區整理，未使用生成式 AI 改寫；每一項可核對原文。</p>
+{% for section in item.brief.sections %}<section class="office-brief-section"><h3>{{ section.label }}</h3>{% for point in section['items'] %}<div class="office-brief-item"><p>{{ point.text }}</p><details><summary>核對整理依據</summary>{% for e in point.evidence %}<blockquote>{{ e.quote }}</blockquote><p class="muted">官方正文第 {{ e.start+1 }}–{{ e.end }} 字。</p>{% endfor %}</details></div>{% endfor %}</section>{% else %}<p>目前尚無足夠資訊整理重點，請核對完整原文。</p>{% endfor %}
+{% for warning in item.brief.warnings %}<p class="office-brief-warning">{{ warning }}</p>{% endfor %}
+{% if item.brief.campus_evidence %}<details><summary>為什麼與這些校區相關？</summary><p>校區標籤是原文相關性線索，不代表一定影響該校區每位學生。</p>{% for e in item.brief.campus_evidence %}<blockquote>{{ e.quote }}</blockquote><p class="muted">依據：{{ '公告標題' if e.source=='title' else '官方正文' }}</p>{% endfor %}</details>{% endif %}</section>

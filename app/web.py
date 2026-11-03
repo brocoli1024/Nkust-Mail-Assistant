@@ -88,6 +88,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         from app.api.public_announcements import router as public_router
         from app.api.demo import router as demo_router
         app.include_router(public_router)
+        from app.api.office_mail import router as office_router
+        app.include_router(office_router)
         if demo_enabled:
             app.include_router(demo_router)
         else:

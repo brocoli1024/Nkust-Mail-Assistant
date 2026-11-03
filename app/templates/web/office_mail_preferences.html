@@ -1,0 +1,14 @@
+<section class="detail-card office-preferences" aria-label="我的校區設定">
+  <details data-office-preferences><summary>設定我的校區{% if campuses %} · {% for c in campuses %}{{ campus_labels[c] }}{{ '、' if not loop.last }}{% endfor %}{% endif %}</summary>
+    <p>可複選，也能稍後設定。偏好只存此瀏覽器；共用裝置可看見，清除瀏覽器資料後會遺失。</p>
+    <form method="get" action="/public/office-mail" data-office-preference-form>
+      <input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="category" value="{{ category }}"><input type="hidden" name="mode" value="priority"><input type="hidden" name="page" value="1">
+      <fieldset><legend>你主要在哪些校區？</legend><div class="office-campus-options">{% for code,name in campus_labels.items() %}<label><input type="checkbox" name="campus" value="{{ code }}" {% if code in campuses %}checked{% endif %}>{{ name }}</label>{% endfor %}</div></fieldset>
+      <div class="office-buttons"><button class="button" type="submit">完成設定</button><button class="button secondary" type="button" data-office-skip>稍後設定／跨校區不固定</button><button class="button secondary" type="button" data-office-clear>清除校區偏好</button></div>
+      <noscript><p>目前可用表單套用校區排序；啟用 JavaScript 才能保存到此瀏覽器。</p></noscript>
+    </form>
+  </details>
+  <p data-office-preference-status role="status" aria-live="polite" hidden></p>
+  <button class="button secondary" data-office-retry type="button" hidden>重試讀取校區設定</button>
+  <a class="button secondary" data-office-temporary href="/public/office-mail?mode=all" hidden>僅本次套用</a>
+</section>

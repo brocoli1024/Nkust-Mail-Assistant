@@ -259,7 +259,7 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
 .public-reading-page .action-card > details:not(.correction-field) { border-top:1px solid var(--line-light); }
 @media(max-width:640px) {
   .public-reading-page .site-header { gap:10px; padding-block:12px; }
-  .public-reading-page .main-nav { flex-wrap:nowrap; gap:4px; }
+  .public-reading-page .main-nav { flex-wrap:wrap; gap:4px; }
   .public-reading-page .main-nav a { font-size:.78rem; padding-inline:8px; white-space:nowrap; }
   .public-reading-page .detail-card { padding:20px; }
   .reading-actions { top:0; }
@@ -316,4 +316,36 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
   .private-reading-page .site-header { gap:10px; padding-block:12px; }
   .private-reading-page .main-nav { gap:4px; }
   .private-reading-page .main-nav a { font-size:.8rem; padding-inline:8px; }
+}
+
+/* Shared official mail: campus preference and source-backed content briefs. */
+.office-mail-page .hero { min-height:0; padding-block:20px 24px; }
+.office-mail-page .hero::after { display:none; }
+.office-mail-page .hero h1 { font-size:clamp(1.5rem,3.5vw,2.4rem); line-height:1.45; }
+.office-mail-page .hero p { margin-top:12px; }
+.office-preferences > details > summary { cursor:pointer; min-height:44px; padding:10px 0; font-weight:600; }
+.office-campus-options { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-block:12px; }
+.office-campus-options label { display:flex; align-items:center; gap:10px; min-height:48px; border:1px solid var(--line-light); border-radius:10px; padding:10px 14px; }
+.office-campus-options input { width:20px; height:20px; margin:0; }
+.office-buttons { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.office-source-status { font-size:.85rem; }
+.office-source-status p { margin-bottom:8px; }
+.office-list-headline { line-height:1.65; }
+.office-brief h2 { font-size:1.35rem; line-height:1.5; }
+.office-brief-headline { font-size:1.15rem; margin-top:12px; line-height:1.65; }
+.office-brief-section { margin-top:22px; padding-top:18px; border-top:1px solid var(--line-light); }
+.office-brief-section h3 { font-size:1.1rem; line-height:1.5; margin-bottom:12px; }
+.office-brief-item { margin-block:14px; }
+.office-brief-item > p { white-space:pre-wrap; line-height:1.75; }
+.office-brief summary, .office-original > summary { min-height:44px; padding-block:10px; cursor:pointer; }
+.office-brief summary { font-size:.85rem; color:var(--ink-muted); }
+.office-brief blockquote { margin:8px 0; border-left:2px solid var(--line-light); padding-left:12px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.office-brief-warning { margin-top:16px; font-size:.9rem; }
+.office-original { border-block:1px solid var(--line-dark); padding-block:8px; margin-block:20px; }
+@media(max-width:640px) {
+ .office-mail-page .detail-card { padding:20px; }
+ .office-mail-page .site-header { padding-block:12px; gap:10px; }
+ .office-mail-page .main-nav { gap:4px; }
+ .office-mail-page .main-nav a { font-size:.8rem; padding-inline:8px; }
+ .office-buttons > .button { flex:1 1 auto; }
 }
