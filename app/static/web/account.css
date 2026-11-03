@@ -295,3 +295,25 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
 .public-reading-page .action-card:has([data-reading-tools][open]) .reading-actions { position:static; }
 .card-editor input[type="checkbox"] { width:20px; height:20px; flex:0 0 20px; }
 .card-editor label:has(> input[type="checkbox"]) { display:flex; align-items:center; min-height:44px; gap:10px; }
+/* Owned Gmail announcement: extractive highlights before detailed actions. */
+.private-reading-page .hero { min-height:0; padding-block:20px 24px; }
+.private-reading-page .hero h1 { font-size:clamp(1.45rem,3vw,2.25rem); line-height:1.45; }
+.private-reading-page .hero::after, .private-reading-page .eyebrow { display:none; }
+.email-highlights h2 { font-size:1.35rem; line-height:1.5; }
+.email-highlights .email-summary-kind { margin:8px 0 16px; font-size:.85rem; color:var(--ink-muted); }
+.email-highlight-list { margin:0; padding-left:1.35em; }
+.email-highlight-list > li { padding-left:6px; margin-bottom:18px; overflow-wrap:anywhere; }
+.email-highlight-list > li > p { margin-bottom:4px; line-height:1.75; }
+.email-highlight-list summary, .private-original > summary { min-height:44px; padding-block:10px; cursor:pointer; }
+.email-highlight-list summary { font-size:.85rem; color:var(--ink-muted); }
+.email-highlight-list blockquote { margin:8px 0; padding-left:12px; border-left:2px solid var(--line-light); white-space:pre-wrap; overflow-wrap:anywhere; }
+.email-highlights .muted { font-size:.85rem; }
+.email-personal-summary { white-space:pre-wrap; }
+.private-original { border-top:1px solid var(--line-dark); margin-block:24px; }
+.private-original .original { margin-top:12px; }
+@media(max-width:640px) {
+  .private-reading-page .detail-card { padding:20px; }
+  .private-reading-page .site-header { gap:10px; padding-block:12px; }
+  .private-reading-page .main-nav { gap:4px; }
+  .private-reading-page .main-nav a { font-size:.8rem; padding-inline:8px; }
+}

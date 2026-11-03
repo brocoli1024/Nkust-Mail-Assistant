@@ -1,0 +1,24 @@
+<section class="detail-card email-highlights" aria-label="郵件公告重點摘要" aria-labelledby="email-highlights-title">
+  <h2 id="email-highlights-title">重點摘要</h2>
+  {% if email_highlights.kind == 'personal' %}
+    <p class="email-summary-kind">個人修正 · 依你保存的摘要顯示</p>
+    <p class="email-personal-summary">{{ email_highlights.value }}</p>
+    <p class="muted">這是個人補充，並非官方確認內容；可在下方「補充或修正這則公告」調整。</p>
+  {% elif email_highlights.kind == 'pending' %}
+    <p>你已將摘要設為「待確認」，目前保留你的選擇。</p>
+    <a class="text-link dark" href="#email-original">核對完整原文</a>
+  {% elif email_highlights.points %}
+    <p class="email-summary-kind">從這則郵件公告擷取原句，依原文順序列出；未提供的資訊不另行推測。</p>
+    <ul class="email-highlight-list">
+    {% for point in email_highlights.points %}
+      <li data-email-highlight>
+        <p>{{ point.text }}</p>
+        <details><summary>核對原句</summary><blockquote>{{ point.quote }}</blockquote><p class="muted">依據：郵件公告原文，第 {{ point.start + 1 }}–{{ point.end }} 字。</p></details>
+      </li>
+    {% endfor %}
+    </ul>
+    <p class="muted">重點節錄可能省略其他條件，請搭配下方行動與期限資訊核對；公告對象不代表你已符合資格。</p>
+  {% else %}
+    <p>目前沒有足夠的公告內容可擷取重點，請查看完整原文或公告連結。</p>
+  {% endif %}
+</section>

@@ -6,7 +6,7 @@
   {% if card.requires_action is none %}<p>行動尚未判定，請核對原文。</p>{% endif %}
   {% if scope=='private' and view.saved_at %}<p>保存時間（台灣）：{{ view.saved_at }}</p>{% endif %}
   <dl class="detail-grid">
-  {% for key,label in labels.items() %}{% set field=card.fields[key] %}
+  {% for key,label in labels.items() if scope!='private' or key!='summary' %}{% set field=card.fields[key] %}
     <div {% if scope=='public' and key=='summary' %}class="reading-summary"{% endif %}>{% if scope=='public' and key=='summary' %}<details><summary>公告摘要</summary>{% endif %}<dt>{{ label }}</dt><dd data-card-field="{{ key }}">{{ field_displays[key].value }}</dd>
     <p class="field-state" data-card-state="{{ key }}" {% if scope=='public' and field_displays[key].state=='來源規則辨識' %}hidden{% endif %}>{{ field_displays[key].state }}</p>
     <div data-card-warnings="{{ key }}">{% for warning in field.warnings if warning != '日期或角色待確認' %}<p>{{ warning }}</p>{% endfor %}</div>

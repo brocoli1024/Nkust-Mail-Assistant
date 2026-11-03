@@ -47,8 +47,9 @@ def render_private(request,user,aid,*,error=None,status=200,submitted=None):
     except CorrectionUnavailable:
         r=page(request,'action_card_error.html',user=user,source={'title':v.item['title'],'original_text':v.item['original_text'],'url':v.item['url']},title='暫時無法讀取待辦',detail='待辦讀取失敗，請稍後重試。');r.status_code=503;return r
     sessions=request.app.state.sessions
+    from app.services.email_highlights import email_highlights
     r=page(request,'announcement_detail.html',user=user,item=v.item,view=v,error=error,form_values=values,
-        todo_entry=todo_entry,csrf=sessions.csrf(request.cookies.get(sessions.cookie_name)),**card_context(v.effective,'private'))
+        email_highlights=email_highlights(v.effective),todo_entry=todo_entry,csrf=sessions.csrf(request.cookies.get(sessions.cookie_name)),**card_context(v.effective,'private'))
     r.status_code=status;return r
 
 
