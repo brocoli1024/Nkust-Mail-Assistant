@@ -10,6 +10,10 @@ from app.models.public_announcements import PublicAnnouncement
 def official_identity(value):
     try:url=normalize_public_url(value)
     except PublicSourceError:return None
+    if urlsplit(url).hostname=='officemail.nkust.edu.tw':
+        from app.services.office_mail_source import normalize_office_url
+        try:return normalize_office_url(value)
+        except PublicSourceError:return None
     if not re.fullmatch(r'/p/(?:404|405|406)-[1-9][0-9]*-[1-9][0-9]*(?:,[A-Za-z0-9_-]+)?\.php',urlsplit(url).path):return None
     return url
 
@@ -20,10 +24,10 @@ def stamp(value):
     return value.isoformat() if value is not None and hasattr(value,'isoformat') else value
 
 
-def public_snapshot(row, *, article=None):
+def public_snapshot(row, *, article=None, office=None):
     if not isinstance(row,PublicAnnouncement):raise TypeError('Public announcement required')
     return {'source_kind':'public','url':row.canonical_url,'title':row.title,'text':row.excerpt or '', 'html':None,
-        'metadata':{'source_key':row.source_key,'external_id':row.external_id,'published_at':stamp(row.published_at), **({'article':article} if article else {})},
+        'metadata':{'source_key':row.source_key,'external_id':row.external_id,'published_at':stamp(row.published_at), **({'article':article} if article else {}), **({'office':office} if office is not None else {})},
         'card':build_action_card(public_source(row,article=article)).model_dump(mode='json')}
 
 
@@ -63,14 +67,16 @@ def _digest(snapshot):
     return hashlib.sha256(json.dumps(snapshot,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
-def record_public_version(session,row,now,*,baseline=False,article=None):
+def record_public_version(session,row,now,*,baseline=False,article=None,office=None):
     """Caller must hold the public source lease in the same transaction."""
     from sqlalchemy import select
     from app.models.source_history import PublicSourceVersion as V
     latest=session.scalar(select(V).where(V.source_key==row.source_key,V.canonical_url==row.canonical_url).order_by(V.id.desc()).limit(1))
     if article is None and latest:
         article=latest.snapshot.get('metadata',{}).get('article')
-    snapshot=public_snapshot(row,article=article)
+    if office is None and latest:
+        office=latest.snapshot.get('metadata',{}).get('office')
+    snapshot=public_snapshot(row,article=article,office=office)
     fingerprint=_digest(snapshot)
     if latest and latest.snapshot_hash==fingerprint:return
     session.add(V(source_key=row.source_key,canonical_url=row.canonical_url,snapshot_hash=fingerprint,

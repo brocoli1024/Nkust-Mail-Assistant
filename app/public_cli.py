@@ -2,6 +2,7 @@
 import argparse
 from dataclasses import asdict
 import json
+from pathlib import Path
 from sqlalchemy import text
 
 from app.config import Settings
@@ -24,6 +25,10 @@ def main(argv=None) -> int:
     articles = subs.add_parser('articles', help='分批更新官方公告本文（不抓附件）')
     articles.add_argument('--limit',type=int,choices=range(1,21),default=8)
     articles.add_argument('--announcement-id',type=int,help='只重讀一則公開公告（略過快取）')
+    office=subs.add_parser('office-import',help='導入明確提供的官方公務網址；不查Gmail')
+    office.add_argument('--urls-file',required=True)
+    refresh=subs.add_parser('office-refresh',help='只重讀已收錄公務公告，不發現新郵件')
+    refresh.add_argument('--limit',type=int,choices=range(1,21),default=8)
     args = parser.parse_args(argv)
     database = None
     try:
@@ -33,7 +38,15 @@ def main(argv=None) -> int:
             revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
         if revision != REQUIRED_REVISION:
             raise PublicSourceError('PUBLIC_MIGRATION_REQUIRED')
-        if args.command == 'sync':
+        if args.command in ('office-import','office-refresh'):
+            from app.services.office_mail_sync import import_office_mail,refresh_office_mail
+            if args.command=='office-import':
+                path=Path(args.urls_file)
+                if path.stat().st_size>100000:raise PublicSourceError('OFFICE_MAIL_URL_LIST')
+                urls=[line.strip() for line in path.read_text(encoding='utf-8-sig').splitlines() if line.strip()]
+                result=import_office_mail(database,urls)
+            else:result=refresh_office_mail(database,limit=args.limit)
+        elif args.command == 'sync':
             result = sync_recent(database, source=fetch_feed)
         elif args.command == 'articles':
             from app.services.public_articles import refresh_articles

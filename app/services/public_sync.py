@@ -38,7 +38,9 @@ class SyncResult:
 
 
 class SourceLease:
-    def __init__(self, database, *, now=None):
+    def __init__(self, database, *, now=None, source_key=SOURCE_KEY):
+        if source_key not in (SOURCE_KEY, "nkust-office-mail"):raise ValueError("Unknown public source")
+        self.source_key=source_key
         self.database, self.owner = database, secrets.token_hex(24)
         self.clock = (lambda: now) if now is not None else utcnow
 
@@ -46,16 +48,16 @@ class SourceLease:
         now = self.clock()
         with self.database.transaction() as session:
             insert = pg_insert if session.bind.dialect.name == 'postgresql' else sqlite_insert
-            session.execute(insert(S).values(source_key=SOURCE_KEY, next_history_page=1,
+            session.execute(insert(S).values(source_key=self.source_key, next_history_page=1,
                 history_status='not_started').on_conflict_do_nothing(index_elements=['source_key']))
-            result = session.execute(update(S).where(S.source_key == SOURCE_KEY,
+            result = session.execute(update(S).where(S.source_key == self.source_key,
                 or_(S.lease_owner.is_(None), S.lease_expires_at <= now)).values(
                 lease_owner=self.owner, lease_expires_at=now + timedelta(minutes=10)))
             if result.rowcount != 1:
                 raise PublicSourceError('PUBLIC_SYNC_BUSY')
 
     def verify(self, session):
-        state = session.scalar(select(S).where(S.source_key == SOURCE_KEY).with_for_update())
+        state = session.scalar(select(S).where(S.source_key == self.source_key).with_for_update())
         if (not state or state.lease_owner != self.owner or not state.lease_expires_at
                 or aware(state.lease_expires_at) <= self.clock()):
             raise PublicSourceError('PUBLIC_SYNC_LEASE_LOST')
@@ -63,7 +65,7 @@ class SourceLease:
 
     def release(self):
         with self.database.transaction() as session:
-            session.execute(update(S).where(S.source_key == SOURCE_KEY, S.lease_owner == self.owner)
+            session.execute(update(S).where(S.source_key == self.source_key, S.lease_owner == self.owner)
                 .values(lease_owner=None, lease_expires_at=None))
 
 
@@ -125,7 +127,7 @@ def apply_classification(row):
 def begin_run(database, lease, mode):
     with database.transaction() as session:
         lease.verify(session)
-        row = R(source_key=SOURCE_KEY, mode=mode, status='running', started_at=lease.clock())
+        row = R(source_key=lease.source_key, mode=mode, status='running', started_at=lease.clock())
         session.add(row)
         session.flush()
         return row.id
