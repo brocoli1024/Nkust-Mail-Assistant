@@ -51,4 +51,6 @@ vm.runInNewContext(source, { document: { getElementById() { return null; } }, wi
 
 form.hasAttribute=()=>true;listeners.length=0;
 vm.runInNewContext(source,{document,window});
-assert.equal(listeners.length,0,'explicit public filters wait for Search or Enter');
+assert.equal(listeners.length,2,'public category and audience always apply immediately');
+const previous=submissions;listeners[0]();listeners[1]();assert.equal(submissions,previous+2);
+console.log('Immediate category/audience, Search/Enter and back feedback passed');

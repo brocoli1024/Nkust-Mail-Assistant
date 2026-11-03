@@ -4,7 +4,7 @@
   const form = document.getElementById('announcement-filters');
   if (!form) return;
   const status = document.getElementById('filter-status');
-  for (const select of form.hasAttribute('data-explicit-submit') ? [] : form.querySelectorAll('select')) {
+  for (const select of form.querySelectorAll('select')) {
     select.addEventListener('change', () => form.requestSubmit());
   }
   form.addEventListener('submit', () => {

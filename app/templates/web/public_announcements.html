@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   {% include 'pwa_head.html' %}<title>公開公告 · NKUST Mail Assistant</title>
   <link rel="stylesheet" href="/assets/account.css?v=focus-1">
-  <script src="/assets/announcement-filters.js?v=focus-1" defer></script>
+  <script src="/assets/announcement-filters.js?v=instant-2" defer></script>
   <script src="/assets/reading-dates.js?v=focus-1" defer></script>
   <script src="/assets/todo-store.js" defer></script>
   <script src="/assets/public-list.js?v=focus-1" defer></script>
@@ -15,13 +15,13 @@
   <main id="main-content" class="page-content">
     <section class="hero compact" aria-labelledby="page-title"><div><p class="eyebrow">OPEN TO EVERYONE</p><h1 id="page-title">公開公告</h1><p>全部收錄，再依需要篩選。資料來自高科大「最新消息」，免登入即可閱讀。</p></div></section>
     <section class="filter-panel" aria-label="搜尋與篩選公開公告">
-      <form method="get" action="/public/announcements" class="filters public-filters" id="announcement-filters" data-explicit-submit aria-describedby="public-filter-help">
+      <form method="get" action="/public/announcements" class="filters public-filters" id="announcement-filters" aria-describedby="public-filter-help">
         <label>搜尋標題與摘要<input type="search" name="q" value="{{ q }}" maxlength="200" placeholder="例如：獎學金、實習" enterkeyhint="search"></label>
         <label>對象<select name="audience"><option value="all" {% if audience == 'all' %}selected{% endif %}>全部公告</option><option value="student" {% if audience == 'student' %}selected{% endif %}>學生相關</option></select></label>
         <label>分類<select name="category"><option value="">全部分類</option>{% for name in categories + ('未分類',) %}<option {% if category == name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
         <button type="submit" class="button">搜尋</button><a class="text-link dark" href="/public/announcements">清除篩選</a>
       </form>
-      <p class="filter-help" id="public-filter-help">選好條件後按「搜尋」或 Enter，一次套用。學生相關可能漏判，可切回全部公告。</p>
+      <p class="filter-help" id="public-filter-help">選單變更後立即更新；關鍵字可按 Enter 或「搜尋」。學生相關可能漏判，可切回全部公告。</p>
       <p class="filter-help" id="filter-status" role="status" aria-live="polite" hidden></p>
       <a class="text-link dark" data-student-shortcut href="{{ student_shortcut }}">{{ '查看全部公告' if audience=='student' else '只看學生相關' }}</a>
     </section>

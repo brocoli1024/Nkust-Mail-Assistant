@@ -35,11 +35,12 @@ def test_focus_page_hides_advanced_tools_and_sources_but_keeps_failures_visible(
     assert soup.select_one('[data-card-field="action"]').find_parent('details') is None
 
 
-def test_public_list_has_explicit_search_and_student_shortcut(web):
+def test_public_list_has_immediate_filters_keyword_search_and_student_shortcut(web):
     c,app,_,_=web;seed(app)
     soup=BeautifulSoup(c.get('/public/announcements?q=PUBLIC&category=獎學金').text,'html.parser')
     form=soup.select_one('#announcement-filters')
-    assert form.has_attr('data-explicit-submit')
+    assert not form.has_attr('data-explicit-submit')
+    assert '選單變更後立即更新' in soup.select_one('#public-filter-help').get_text()
     assert form.select_one('button[type="submit"]').find_parent('noscript') is None
     assert form.select_one('button[type="submit"]').get_text(strip=True)=='搜尋'
     shortcut=soup.select_one('[data-student-shortcut]')
