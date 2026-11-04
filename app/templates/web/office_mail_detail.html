@@ -1,4 +1,4 @@
-<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">{% include 'pwa_head.html' %}<title>{{ item.title }} · 公務公告</title><link rel="stylesheet" href="/assets/account.css?v=office-1"></head>
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">{% include 'pwa_head.html' %}<title>{{ item.title }} · 公務公告</title><link rel="stylesheet" href="/assets/account.css?v=office-2"></head>
 <body class="office-mail-page"><div class="site-shell">{% set active_page='office' %}{% include 'site_header.html' %}<main id="main-content" class="page-content narrow">
 <nav class="reading-back" aria-label="返回公務公告"><a class="text-link" data-office-back href="{{ back_url }}">← 返回公務公告清單</a></nav>
 <section class="hero compact"><div><h1>{{ item.title }}</h1><p>{% if item.brief.campus_global %}全校性 {% endif %}{% for name in item.campus_names %}{{ name }} {% endfor %}{% if not item.campus_names and not item.brief.campus_global %}校區待確認{% endif %}</p></div></section>
