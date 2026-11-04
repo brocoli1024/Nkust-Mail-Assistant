@@ -1,6 +1,6 @@
 # 公務公告持續收錄 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 從單一指定管理者Gmail只發現官方MailView網址，匿名驗證後持續新增公開公務公告，並能安全接續回補／重試。
 
@@ -41,11 +41,11 @@
 
 **Interfaces:** DiscoverySettings(enabled:bool=False,owner_sub:str='',trigger_secret:str='')（secret repr=False）；load()讀NKUST_OFFICE_DISCOVERY_ENABLED、NKUST_OFFICE_DISCOVERY_OWNER_SUB、NKUST_OFFICE_DISCOVERY_TRIGGER_SECRET，啟用時subject非空、Secret至少32個ASCII字元，非法設定fail closed。DiscoveryRepository(database,owner:CurrentUser)；acquire(now)->owner_token、fence(session,token,now)、release(token)、state()->dict、commit_page(token,*,window_start,window_end,page_token,urls,complete,now)、due_candidates(token,now,limit=3)->list、mark_candidate(token,url,*,status,error_code=None,next_retry_at=None,now)。後續只使用這組介面。
 
-- [ ] Step1：建立RED測試：upgrade0009→0010保留公開／私人既有資料；User刪除CASCADE私有state/candidate、公開公告仍在；userid與subject不符拒絕。候選(user_id,url)唯一；私有狀態enum檢查；Secret不出repr／錯誤；enabled且缺Secret／subject拒絕。兩個並行acquire僅一個成功、冷卻300秒、租約120秒可fence續期、過期舊token拒寫。
-- [ ] Step2：跑pytest tests/test_office_discovery_state.py -q，確認缺介面RED；測試用合成帳號與URL。
-- [ ] Step3：實作兩表。State含user_id FK、google_user_id、固定窗開始／結束、page_token、完整掃描時間、run lease owner/expires、next_allowed_at、last_status/error_code；Candidate含user_id FK、canonical_url、發現時間、pending/retry/published/rejected、attempts/next_retry_at、安全error_code。所有網路之外短交易先比對User固定subject再fence，同現有鎖順序。每頁urls與游標同交易保存；不存郵件正文／主旨／訊息ID。更新REQUIRED_REVISION=0010與既有schema gate測試期望；不要寫死測試假裝新schema等於0009。
-- [ ] Step4：在SQLite及獨立PG跑schema／並行／受限公開角色測試；公開角色對兩張新表SELECT/INSERT/UPDATE全部失敗，既有公開同步仍成功。不使用正式庫驗證。
-- [ ] Step5：提交 feat: persist private office discovery progress and candidates。
+- [x] Step1：建立RED測試：upgrade0009→0010保留公開／私人既有資料；User刪除CASCADE私有state/candidate、公開公告仍在；userid與subject不符拒絕。候選(user_id,url)唯一；私有狀態enum檢查；Secret不出repr／錯誤；enabled且缺Secret／subject拒絕。兩個並行acquire僅一個成功、冷卻300秒、租約120秒可fence續期、過期舊token拒寫。
+- [x] Step2：跑pytest tests/test_office_discovery_state.py -q，確認缺介面RED；測試用合成帳號與URL。
+- [x] Step3：實作兩表。State含user_id FK、google_user_id、固定窗開始／結束、page_token、完整掃描時間、run lease owner/expires、next_allowed_at、last_status/error_code；Candidate含user_id FK、canonical_url、發現時間、pending/retry/published/rejected、attempts/next_retry_at、安全error_code。所有網路之外短交易先比對User固定subject再fence，同現有鎖順序。每頁urls與游標同交易保存；不存郵件正文／主旨／訊息ID。更新REQUIRED_REVISION=0010與既有schema gate測試期望；不要寫死測試假裝新schema等於0009。
+- [x] Step4：在SQLite及獨立PG跑schema／並行／受限公開角色測試；公開角色對兩張新表SELECT/INSERT/UPDATE全部失敗，既有公開同步仍成功。不使用正式庫驗證。
+- [x] Step5：提交 feat: persist private office discovery progress and candidates。
 
 ### Task 2: 有界Gmail頁面及網址發現
 

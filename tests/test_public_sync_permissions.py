@@ -46,6 +46,9 @@ def test_scheduled_role_can_sync_but_not_read_private_or_delete(database,monkeyp
         assert refresh_office_mail(limited,source=lambda u:office_doc).unchanged==1
 
         for query in ['select * from emails','select * from users','select * from private_todos',
+            'select * from office_discovery_state','select * from office_discovery_candidates',
+            "insert into office_discovery_candidates(user_id,canonical_url) values(1,'x')",
+            "update office_discovery_state set last_status='running'",
             'select * from private_action_snapshots','select * from private_source_versions',
             'delete from public_announcements','create table forbidden(id int)']:
             with pytest.raises(DBAPIError):
