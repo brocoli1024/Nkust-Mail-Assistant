@@ -40,7 +40,7 @@ class RedactQuery(logging.Filter):
 
 
 def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth,
-               session_enabled=False, session_secret=None, demo_enabled=False):
+               session_enabled=False, session_secret=None, demo_enabled=False, discovery_settings=None):
     """OAuth-only default preserves Phase 2 callers; app below enables sessions."""
     @asynccontextmanager
     async def lifespan(app):
@@ -61,6 +61,10 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             app.state.tokens = TokenService(database, oauth.encryption_key, app.state.google)
             app.state.gmail_for_user = UserGmailFactory(config, app.state.tokens)
             app.state.sync_service = UserSyncService(database, app.state.gmail_for_user)
+            from app.core.office_discovery import DiscoverySettings
+            from app.services.office_mail_discovery import run_office_discovery
+            app.state.discovery_settings = discovery_settings or DiscoverySettings.load()
+            app.state.discovery_runner = lambda: run_office_discovery(database, app.state.discovery_settings, app.state.gmail_for_user)
             app.state.attempts = OAuthAttempts(database, app.state.tokens)
             if session_enabled:
                 app.state.sessions = SessionService(database,
@@ -90,6 +94,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         app.include_router(public_router)
         from app.api.office_mail import router as office_router
         app.include_router(office_router)
+        from app.api.office_discovery import router as discovery_router
+        app.include_router(discovery_router)
         if demo_enabled:
             app.include_router(demo_router)
         else:
@@ -129,7 +135,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
     def is_public_page(request):
         path = request.url.path
         return session_enabled and request.method == 'GET' and (
-            path in ('/', '/public/announcements', '/demo', '/todos')
+            path in ('/', '/public/announcements', '/public/office-mail', '/demo', '/todos')
+            or path.startswith('/public/office-mail/')
             or path.startswith('/public/announcements/')
             or path.startswith('/demo/announcements/'))
 
@@ -143,7 +150,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             500: ('暫時無法顯示這個頁面', '請稍後重試，或返回公告清單。'),
         }
         title, detail = messages[status_code]
-        return_url='/demo' if demo else '/public/announcements'
+        office=request.url.path=='/public/office-mail' or request.url.path.startswith('/public/office-mail/')
+        return_url='/demo' if demo else '/public/office-mail' if office else '/public/announcements'
         if status_code >= 500:
             # Relative origin-local URL; encode decoded path delimiters and backslashes.
             from urllib.parse import quote
@@ -151,7 +159,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             if path.startswith('/') and not path.startswith('//'):
                 return_url=path+('?' + request.url.query if request.url.query else '')
         response = page(request, 'public_error.html', title=title, detail=detail,
-                        demo=demo, return_url=return_url,
+                        demo=demo, office=office, return_url=return_url,
                         retry=status_code >= 500)
         response.status_code = status_code
         return response
@@ -192,7 +200,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         # which correctly fail our CSRF origin check. Account pages must retain
         # same-origin form metadata; OAuth URLs must never disclose their code.
         response.headers['Referrer-Policy'] = (
-            'same-origin' if (request.url.path in ('/dashboard', '/settings', '/account/delete', '/my/todos') or re.fullmatch(r'/my/todos/[0-9]+', request.url.path) or re.fullmatch(r'/announcements/[0-9]+(?:/action-card/corrections|/todos)?', request.url.path)) else 'no-referrer'
+            'same-origin' if (request.url.path.startswith('/settings/office-discovery') or request.url.path in ('/dashboard', '/settings', '/account/delete', '/my/todos') or re.fullmatch(r'/my/todos/[0-9]+', request.url.path) or re.fullmatch(r'/announcements/[0-9]+(?:/action-card/corrections|/todos)?', request.url.path)) else 'no-referrer'
         )
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Content-Security-Policy'] = (

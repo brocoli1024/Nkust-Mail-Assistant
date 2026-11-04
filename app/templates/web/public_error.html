@@ -6,15 +6,15 @@
   <link rel="stylesheet" href="/assets/account.css?v=phase1">
 </head>
 <body><div class="site-shell">
-  {% set active_page = 'demo' if demo else 'public' %}{% include 'site_header.html' %}
+  {% set active_page = 'demo' if demo else 'office' if office else 'public' %}{% include 'site_header.html' %}
   <main id="main-content" class="page-content narrow">
     <section class="hero compact" aria-labelledby="page-title"><div><h1 id="page-title">{{ title }}</h1></div></section>
     {% if demo %}{% include 'demo_notice.html' %}{% endif %}
     <section class="detail-card" aria-label="錯誤說明">
       <p role="alert">{{ detail }}</p>
       <div class="actions">
-        <a class="button" href="{{ return_url }}">{% if retry %}重新載入{% elif demo %}返回合成示範{% else %}返回公開公告{% endif %}</a>
-        {% if retry %}<a class="text-link dark" href="/public/announcements">返回公開公告</a>{% endif %}
+        <a class="button" href="{{ return_url }}">{% if retry %}重新載入{% elif demo %}返回合成示範{% elif office %}返回公務公告{% else %}返回公開公告{% endif %}</a>
+        {% if retry %}<a class="text-link dark" href="{{ "/public/office-mail" if office else "/public/announcements" }}">{{ "返回公務公告" if office else "返回公開公告" }}</a>{% endif %}
       </div>
     </section>
   </main>

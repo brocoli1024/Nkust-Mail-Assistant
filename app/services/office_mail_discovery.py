@@ -43,14 +43,21 @@ def _summary(repo,token,result,started,now):
   public.history_status='complete' if state.get('window_complete') else 'incomplete'
   s.add(R(source_key=KEY,mode='recent',status=result.status,started_at=started,finished_at=now,added=result.published,updated=0,unchanged=0,failed=1 if result.error_code not in (None,'OFFICE_DISCOVERY_PENDING') else 0,error_code=result.error_code))
 
+def _early_failure(database,result,stamp):
+ with database.transaction() as s:
+  if s.get(S,KEY) is None:s.add(S(source_key=KEY))
+  s.add(R(source_key=KEY,mode='recent',status='failed',started_at=stamp,finished_at=stamp,added=0,updated=0,unchanged=0,failed=1,error_code=result.error_code))
+ return result
+
 def run_office_discovery(database,settings,gmail_factory,*,now=None,monotonic=None,public_source=None):
  clock=now or (lambda:datetime.now(timezone.utc));tick=monotonic or time.monotonic
  result=DiscoveryResult();started=clock();deadline=tick()+60
  if not settings.enabled:return DiscoveryResult(status='failed',error_code='OFFICE_DISCOVERY_DISABLED')
  with database.transaction() as s:
   row=s.scalar(select(User).where(User.google_user_id==settings.owner_sub))
-  if row is None:return DiscoveryResult(status='failed',error_code='OFFICE_DISCOVERY_OWNER_UNAVAILABLE')
-  owner=CurrentUser(row.id,row.email,row.display_name,row.google_user_id)
+  if row is None:owner=None
+  else:owner=CurrentUser(row.id,row.email,row.display_name,row.google_user_id)
+ if owner is None:return _early_failure(database,DiscoveryResult(status='failed',error_code='OFFICE_DISCOVERY_OWNER_UNAVAILABLE'),started)
  repo=DiscoveryRepository(database,owner)
  try:token=repo.acquire(clock())
  except DiscoveryError as exc:return DiscoveryResult(status='busy',error_code=_code(exc))
@@ -117,5 +124,6 @@ def run_office_discovery(database,settings,gmail_factory,*,now=None,monotonic=No
    repo.report(token,result.status,result.error_code,clock());_summary(repo,token,result,started,clock())
   except (DiscoveryError,SQLAlchemyError):
    result.status='failed';result.error_code='OFFICE_DISCOVERY_UNAVAILABLE'
+   _early_failure(database,result,clock())
   finally:repo.release(token)
  return result

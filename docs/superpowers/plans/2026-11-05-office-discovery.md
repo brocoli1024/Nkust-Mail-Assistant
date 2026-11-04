@@ -78,12 +78,12 @@
 
 **Interfaces:** POST /internal/office-discovery/run：Authorization Bearer專用Secret，body為空、上限1024bytes、無任意query；disabled404、未授權401、過大413、非空參數422、冷卻429（Retry-After300）、忙碌409、授權失效安全503，其餘依DiscoveryResult；僅回補pending時200/partial＋OFFICE_DISCOVERY_PENDING，真正依賴故障回503/failed或partial，不能把兩者混為成功。GET /settings/office-discovery及POST /settings/office-discovery/run：必須固定owner current_page_user＋same-origin／CSRF；不使用觸發Secret替代一般帳號權限。普通帳號不得讀管理者狀態。
 
-- [ ] Step1：RED測試：未設定／無token／錯token／Cookie但無Bearer／任意account或URL參數不能觸發；正確token僅執行固定服務且回傳安全白名單。owner手動表單成功、非owner拒絕、CSRF失敗；設定頁不顯示token／Google subject。偽造X-Forwarded身份標頭不改owner。
-- [ ] Step2：跑pytest tests/test_office_discovery_api.py -q確認RED。
-- [ ] Step3：在create_app新增可注入discovery_settings供合成測試；lifespan建立服務且預設disabled。設定enabled才要求完整subject／Secret，預備檢查錯誤不部署。hmac.compare_digest比對Secret，錯誤不帶原例外／header；no-store回應、無CORS開放、觸發不中斷既有RSS／Gmail路由。使用現有safe identity/token流程取得指定user，不接受請求內subject。
-- [ ] Step4：管理頁顯示啟停、回補範圍、完整檢查時間、候選pending/retry/rejected彙總、需重新授權／繁忙／冷卻及手動執行結果。中文、手機、表單重試清楚；不外送通知、不讀其他帳號。新信發現的公開成功時間、回補狀態與既有重讀時間分列，未啟用時不宣稱新信自動更新；保留舊資料與安全提示。
-- [ ] Step5：公開入口標示「全部已收錄公務公告」，保留mode=all及既有URL，不影響校區局部更新。更新privacy，清楚區分管理者背景發現例外與普通使用者手動同步，私有游標／候選保存及帳號刪除；Testing7天限制只在管理介面說明。公務錯誤頁補進現有public error分類，返回連結仍指公務來源、5xx重試保留原條件。
-- [ ] Step6：測試新信發現failed＋office重讀success仍呈警示；所有公開GET只讀公共表、無私人marker；32既有公開頁與13前端檢查及新API測試通過，提交 feat: expose safe owner discovery controls and source freshness。
+- [x] Step1：RED測試：未設定／無token／錯token／Cookie但無Bearer／任意account或URL參數不能觸發；正確token僅執行固定服務且回傳安全白名單。owner手動表單成功、非owner拒絕、CSRF失敗；設定頁不顯示token／Google subject。偽造X-Forwarded身份標頭不改owner。
+- [x] Step2：跑pytest tests/test_office_discovery_api.py -q確認RED。
+- [x] Step3：在create_app新增可注入discovery_settings供合成測試；lifespan建立服務且預設disabled。設定enabled才要求完整subject／Secret，預備檢查錯誤不部署。hmac.compare_digest比對Secret，錯誤不帶原例外／header；no-store回應、無CORS開放、觸發不中斷既有RSS／Gmail路由。使用現有safe identity/token流程取得指定user，不接受請求內subject。
+- [x] Step4：管理頁顯示啟停、回補範圍、完整檢查時間、候選pending/retry/rejected彙總、需重新授權／繁忙／冷卻及手動執行結果。中文、手機、表單重試清楚；不外送通知、不讀其他帳號。新信發現的公開成功時間、回補狀態與既有重讀時間分列，未啟用時不宣稱新信自動更新；保留舊資料與安全提示。
+- [x] Step5：公開入口標示「全部已收錄公務公告」，保留mode=all及既有URL，不影響校區局部更新。更新privacy，清楚區分管理者背景發現例外與普通使用者手動同步，私有游標／候選保存及帳號刪除；Testing7天限制只在管理介面說明。公務錯誤頁補進現有public error分類，返回連結仍指公務來源、5xx重試保留原條件。
+- [x] Step6：測試新信發現failed＋office重讀success仍呈警示；所有公開GET只讀公共表、無私人marker；32既有公開頁與13前端檢查及新API測試通過，提交 feat: expose safe owner discovery controls and source freshness。
 
 ### Task 5: 排程整合、完整驗收與分段啟用
 

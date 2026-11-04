@@ -29,7 +29,7 @@ def listing(request:Request,q:str=Query('',max_length=200),category:str='',campu
     data=list_office_mail(request.app.state.database,**f)
     query=_link(f).split('?',1)[1]
     for item in data['items']:item['detail_url']=f"/public/office-mail/{item['id']}?{query}"
-    return page(request,'office_mail_list.html',**data,**f,campus_labels=CAMPUS_LABELS,categories=CATEGORIES,
+    return page(request,'office_mail_list.html',**data,**f,discovery_enabled=request.app.state.discovery_settings.enabled,campus_labels=CAMPUS_LABELS,categories=CATEGORIES,
                 previous=_link(f,page_number=page_number-1) if page_number>1 else None,
                 following=_link(f,page_number=page_number+1) if page_number*20<data['total'] else None,
                 all_url=_link(f,page_number=1,mode='all'),priority_url=_link(f,page_number=1,mode='priority'))
@@ -41,7 +41,7 @@ def detail(pid:int,request:Request,q:str=Query('',max_length=200),category:str='
     f=_filters(q,category,campus,mode,page_number)
     try:data=office_mail_detail(request.app.state.database,pid)
     except LookupError:raise HTTPException(404,'找不到公務公告。') from None
-    return page(request,'office_mail_detail.html',**data,back_url=_link(f)+f'#office-{pid}')
+    return page(request,'office_mail_detail.html',**data,discovery_enabled=request.app.state.discovery_settings.enabled,back_url=_link(f)+f'#office-{pid}')
 
 
 @router.get('/public/office-mail/{pid}/history')

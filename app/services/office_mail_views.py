@@ -15,10 +15,17 @@ def _time(value):return aware(value).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M
 def _status(s):
     state=s.get(S,OFFICE_SOURCE_KEY)
     run=s.scalar(select(R).where(R.source_key==OFFICE_SOURCE_KEY).order_by(R.id.desc()).limit(1))
+    discovery=s.get(S,'nkust-office-discovery')
+    discovery_run=s.scalar(select(R).where(R.source_key=='nkust-office-discovery').order_by(R.id.desc()).limit(1))
     success=state.last_success_at if state else None
     return {'last_success':_time(success) if success else '尚無成功更新紀錄',
             'stale':not success or datetime.now(timezone.utc)-aware(success)>timedelta(hours=2),
-            'last_run_status':run.status if run else None}
+            'last_run_status':run.status if run else None,
+            'discovery_success':_time(discovery.last_success_at) if discovery and discovery.last_success_at else '尚無完整檢查紀錄',
+            'discovery_started':discovery is not None,
+            'discovery_backfill':discovery.history_status if discovery else 'not_started',
+            'discovery_status':discovery_run.status if discovery_run else None,
+            'discovery_error':discovery_run.error_code if discovery_run else None}
 
 
 def _item(row,snapshot):

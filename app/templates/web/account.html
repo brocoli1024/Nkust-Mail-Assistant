@@ -17,6 +17,7 @@
       <div><p class="eyebrow">YOUR SPACE</p><h1 id="page-title">帳號設定</h1><p>管理這台裝置的登入狀態與安裝方式。</p></div>
     </section>
     <div class="card-stack">
+      {% if discovery_owner %}<section class="paper-card"><h2>公務公告來源</h2><p>指定管理者可檢查新公告與回補狀態。</p><a href="/settings/office-discovery" class="button secondary">管理公務公告來源</a></section>{% endif %}
       <section class="paper-card" aria-labelledby="account-title">
         <h2 id="account-title">你的帳號</h2>
         <span class="account-email">{{ user.email }}</span>

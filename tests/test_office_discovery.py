@@ -104,3 +104,15 @@ def test_restricted_pages_are_rejected_without_public_content(database):
  def restricted(url):raise PublicSourceError('OFFICE_MAIL_NOT_PUBLIC')
  r=execute(db,Mail(),source=restricted);assert r.rejected==2 and r.pending==0
  with db.transaction() as s:assert not s.scalar(select(func.count()).select_from(PublicAnnouncement))
+
+
+def test_missing_provider_records_public_safe_failure(database):
+ from sqlalchemy import delete
+ from app.models.multi_user import User
+ from app.models.public_announcements import PublicSyncRun
+ db,_=database
+ with db.transaction() as s:s.execute(delete(User).where(User.id==OWNER.id))
+ r=execute(db,Mail());assert r.error_code=='OFFICE_DISCOVERY_OWNER_UNAVAILABLE'
+ with db.transaction() as s:
+  last=s.scalar(select(PublicSyncRun).where(PublicSyncRun.source_key=='nkust-office-discovery'))
+  assert last and last.status=='failed'

@@ -60,3 +60,8 @@ class DiscoveryRepository:
   with self.database.transaction() as s:
    self.identity(s)
    return dict(s.execute(select(C.status,func.count()).where(C.user_id==self.owner.id).group_by(C.status)).all())
+
+ def rejections(self):
+  with self.database.transaction() as s:
+   self.identity(s)
+   return [{'url':r.canonical_url,'error_code':r.error_code} for r in s.scalars(select(C).where(C.user_id==self.owner.id,C.status=='rejected').order_by(C.id.desc()).limit(20))]

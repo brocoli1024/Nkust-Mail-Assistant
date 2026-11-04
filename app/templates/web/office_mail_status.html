@@ -1,5 +1,7 @@
 <section class="notice office-source-status" aria-label="公務來源與更新狀態">
-  <p>來源：高科大公務電子郵件公開公告 · 最後成功更新：{{ last_success }}{% if last_success != '尚無成功更新紀錄' %}（台灣時間）{% endif %}{% if source_total is defined %} · 已收錄 {{ source_total }} 則{% endif %}</p>
-  <p>僅收錄管理者明確導入並確認可公開閱讀的網址；定期重讀既有公告，不代表已自動收錄所有新公務信件。</p>
+  <p>來源：高科大公務電子郵件公開公告 · 內容最後成功重讀：{{ last_success }}{% if last_success != '尚無成功更新紀錄' %}（台灣時間）{% endif %}{% if source_total is defined %} · 已收錄 {{ source_total }} 則{% endif %}</p>
+  {% if discovery_status=='failed' or discovery_error not in (none,'OFFICE_DISCOVERY_PENDING') %}<p role="status">新公告收錄暫停或部分失敗，舊公告仍可閱讀；管理者需檢查來源授權與工作狀態。</p>{% endif %}
+  <p>新公告最後完整檢查：{{ discovery_success }}{% if discovery_success != '尚無完整檢查紀錄' %}（台灣時間）{% endif %}。{% if not discovery_enabled %}新公告持續收錄目前未啟用。{% elif not discovery_started %}等待首次檢查。{% elif discovery_backfill!='complete' %}回補處理中，尚未完成本時間窗。{% endif %}</p>
+  <p>只收錄通過匿名官方頁檢查的公務網址。資料依指定來源可取得的內容，不能保證全校完整；郵件原文不因此公開。</p>
   {% if last_run_status in ('failed','partial') %}<p role="status">最近來源更新失敗或僅部分成功，保留既有資料，請核對官方原文。</p>{% elif stale %}<p role="status">尚無成功紀錄或超過 2 小時未成功更新，請核對來源最新內容。</p>{% endif %}
 </section>

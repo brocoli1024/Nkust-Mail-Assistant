@@ -35,7 +35,7 @@ def dashboard(request: Request, user=Depends(current_page_user)):
 @router.get('/settings')
 def settings(request: Request, user=Depends(current_page_user)):
     sessions = request.app.state.sessions
-    return page(request, 'account.html', user=user, title='帳號設定', settings=True,
+    return page(request, 'account.html', user=user, title='帳號設定', settings=True,discovery_owner=request.app.state.discovery_settings.enabled and user.google_user_id==request.app.state.discovery_settings.owner_sub,
                 csrf=sessions.csrf(request.cookies.get(sessions.cookie_name)))
 
 
