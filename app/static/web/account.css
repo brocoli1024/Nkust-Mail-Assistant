@@ -349,3 +349,7 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
  .office-mail-page .main-nav a { font-size:.8rem; padding-inline:8px; }
  .office-buttons > .button { flex:1 1 auto; }
 }
+
+.office-course-details { margin-top:20px; border-top:1px solid var(--line-light); }
+.office-brief [aria-label="公務公告快速重點"] > h3 { font-size:1.1rem; line-height:1.5; margin-top:20px; }
+.office-brief [aria-label="公務公告快速重點"] li { margin-block:8px; overflow-wrap:anywhere; }

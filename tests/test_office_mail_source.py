@@ -37,3 +37,19 @@ def test_response_redirect_and_missing_date_are_explicit():
     doc=parse_office_mail(html().replace('民國 115 年 11 月 3 日'.encode(),b'unknown'),URL)
     assert doc.published_at is None
     assert fetch_office_mail(URL,transport=lambda u:(200,{'content-type':'text/html'},html())).title=='合成施工公告'
+
+
+def test_restricted_subject_or_inline_description_cannot_be_imported():
+    from app.services.office_mail_source import parse_office_mail
+    with pytest.raises(PublicSourceError,match='OFFICE_MAIL_NOT_PUBLIC'):
+        parse_office_mail(html(subject='機密文件，禁止公開'),URL)
+    with pytest.raises(PublicSourceError,match='OFFICE_MAIL_NOT_PUBLIC'):
+        parse_office_mail(html().replace('說 明：'.encode(),'說 明：僅限內部，禁止公開。'.encode()),URL)
+
+
+def test_inline_description_is_kept_in_complete_original():
+    from app.services.office_mail_source import parse_office_mail
+    data=html().replace('說 明：'.encode(),'說 明：重要限制：學生不得報名。<br>本段也有條件。'.encode())
+    body=parse_office_mail(data,URL).body
+    assert body.startswith('重要限制：學生不得報名。\n本段也有條件。')
+    assert '建工校區施工' in body

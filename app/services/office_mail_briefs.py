@@ -25,6 +25,13 @@ def _item(entries):
     return {'text':'\n'.join(e['quote'] for e in entries),'evidence':entries}
 
 
+def _group_item(group):
+    entries=([group['header']] if group['header'] else [])+group['lines']
+    item=_item(entries)
+    item['text']='\n'.join(e['quote'] for e in group['lines']) if group['lines'] else group['heading']
+    return item
+
+
 def build_office_brief(doc:OfficeDocument)->dict:
     lines=list(_lines(doc.body))
     flags={k:False for k in CAMPUS_LABELS};campus_evidence=[];global_scope=False
@@ -57,9 +64,10 @@ def build_office_brief(doc:OfficeDocument)->dict:
             course_items.append(item)
         sections.append({'label':'班別與課程','items':course_items})
         for g in groups:
-            if g in courses or not g['heading'] or not g['lines']:continue
-            if re.search(r'福利|補助|獎勵|就業|優惠|資格|對象|限制|報名|申請',g['heading']):
-                sections.append({'label':g['heading'],'items':[_item(g['lines'])]})
+            if g in courses or not (g['lines'] or g['header']):continue
+            # Unknown headings and preambles can contain controlling eligibility
+            # or benefit conditions. Keep them instead of selecting only positives.
+            sections.append({'label':g['heading'] or '其他說明與條件','items':[_group_item(g)]})
         warnings.append('福利與退費須符合原文條件；資格可能有身分限制或例外，不代表你已符合資格。')
     elif re.search(r'施工|停水|停電|封閉|道路|交通管制',doc.title+'\n'+doc.body):
         kind='works';buckets={'影響地點與時段':[],'封閉或停用範圍':[],'替代動線與處理方式':[]}
@@ -75,7 +83,7 @@ def build_office_brief(doc:OfficeDocument)->dict:
     else:
         kind='general'
         for g in groups:
-            if g['lines']:sections.append({'label':g['heading'] or '公告內容','items':[_item(g['lines'])]})
+            if g['lines'] or g['header']:sections.append({'label':g['heading'] or '公告內容','items':[_group_item(g)]})
         warnings.append('依原文段落整理；未能確認的重點與其他條件請核對完整原文。')
     return {'version':'office-brief-v1','kind':kind,'headline':headline,
             'headline_evidence':[g['header'] for g in courses],

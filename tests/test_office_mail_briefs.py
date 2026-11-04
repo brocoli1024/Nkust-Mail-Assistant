@@ -63,3 +63,23 @@ def test_campus_codes_are_validated_deduplicated_in_fixed_order():
     assert parse_campuses(['nanzih','jiangong','nanzih'])==('jiangong','nanzih')
     assert parse_campuses([])==()
     with pytest.raises(ValueError):parse_campuses(['invalid'])
+
+
+def test_training_keeps_unheaded_and_unrecognized_heading_restrictions():
+    d=doc('本方案僅限待業青年，在學學生不得報名。\n【AI課程班】\n培訓免費，另可申請補助。\n【重要提醒】\n補助只適用已就業三個月者，未就業不得申請。')
+    b=build(d);text=' '.join(i['text'] for s in b['sections'] for i in s['items'])
+    assert '在學學生不得報名' in text and '未就業不得申請' in text
+    assert any(s['label']=='重要提醒' for s in b['sections'])
+    for section in b['sections']:
+        for item in section['items']:
+            for e in item['evidence']:assert d.body[e['start']:e['end']]==e['quote']
+
+
+def test_heading_only_restrictions_survive_training_and_general_briefs():
+    restriction='僅限教職員，學生不得報名'
+    for body in ['【'+restriction+'】\n【AI課程班】\n培訓免費。','【'+restriction+'】']:
+        d=doc(body);b=build(d)
+        text=' '.join(s['label']+' '+i['text'] for s in b['sections'] for i in s['items'])
+        assert restriction in text
+        evidence=[e['quote'] for s in b['sections'] for i in s['items'] for e in i['evidence']]
+        assert '【'+restriction+'】' in evidence

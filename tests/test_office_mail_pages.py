@@ -79,3 +79,8 @@ def test_training_detail_shows_all_options_and_escapes_original(web):
     assert r.status_code==200
     for v in ['合成AI整合實務班','合成數據人才班','合成永續培訓班','符合資格','最高16,000元']:assert v in r.text
     assert '<script>PRIVATE-XSS</script>' not in r.text
+    soup=BeautifulSoup(r.text,'html.parser');overview=soup.select_one('[aria-label="公務公告快速重點"]')
+    assert overview and '合成永續培訓班' in overview.text and '最高16,000元' in overview.text
+    details=soup.select_one('details.office-course-details')
+    assert details and not details.has_attr('open')
+    assert '2027/03/03' in details.text

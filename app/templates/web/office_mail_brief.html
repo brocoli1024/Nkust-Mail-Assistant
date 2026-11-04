@@ -1,5 +1,11 @@
+{% macro render_points(section) %}{% for point in section['items'] %}<div class="office-brief-item"><p>{{ point.text }}</p><details><summary>核對整理依據</summary>{% for e in point.evidence %}<blockquote>{{ e.quote }}</blockquote><p class="muted">官方正文第 {{ e.start+1 }}–{{ e.end }} 字。</p>{% endfor %}</details></div>{% endfor %}{% endmacro %}
 <section class="detail-card office-brief" aria-label="公務公告重點整理"><h2>這則公告在說什麼？</h2><p class="office-brief-headline">{{ item.brief.headline }}</p>
 <p class="muted">依公告內容分區整理，未使用生成式 AI 改寫；每一項可核對原文。</p>
-{% for section in item.brief.sections %}<section class="office-brief-section"><h3>{{ section.label }}</h3>{% for point in section['items'] %}<div class="office-brief-item"><p>{{ point.text }}</p><details><summary>核對整理依據</summary>{% for e in point.evidence %}<blockquote>{{ e.quote }}</blockquote><p class="muted">官方正文第 {{ e.start+1 }}–{{ e.end }} 字。</p>{% endfor %}</details></div>{% endfor %}</section>{% else %}<p>目前尚無足夠資訊整理重點，請核對完整原文。</p>{% endfor %}
+{% if item.brief.kind=='training' %}<section aria-label="公務公告快速重點"><h3>提供的班別</h3><ul>{% for section in item.brief.sections if section.label=='班別與課程' %}{% for point in section['items'] %}<li>{{ point.text.split('\n')[0] }}</li>{% endfor %}{% endfor %}</ul>
+{% for section in item.brief.sections if '福利' in section.label or '補助' in section.label or '獎勵' in section.label %}<section class="office-brief-section"><h3>{{ section.label }}</h3>{{ render_points(section) }}</section>{% endfor %}</section>{% endif %}
+{% for section in item.brief.sections %}
+{% if item.brief.kind=='training' and section.label=='班別與課程' %}<details class="office-course-details"><summary>各班課程內容與上課時程</summary>{{ render_points(section) }}</details>
+{% elif not (item.brief.kind=='training' and ('福利' in section.label or '補助' in section.label or '獎勵' in section.label)) %}<section class="office-brief-section"><h3>{{ section.label }}</h3>{{ render_points(section) }}</section>{% endif %}
+{% else %}<p>目前尚無足夠資訊整理重點，請核對完整原文。</p>{% endfor %}
 {% for warning in item.brief.warnings %}<p class="office-brief-warning">{{ warning }}</p>{% endfor %}
 {% if item.brief.campus_evidence %}<details><summary>為什麼與這些校區相關？</summary><p>校區標籤是原文相關性線索，不代表一定影響該校區每位學生。</p>{% for e in item.brief.campus_evidence %}<blockquote>{{ e.quote }}</blockquote><p class="muted">依據：{{ '公告標題' if e.source=='title' else '官方正文' }}</p>{% endfor %}</details>{% endif %}</section>

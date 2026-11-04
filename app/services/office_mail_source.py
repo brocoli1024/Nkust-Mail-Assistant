@@ -3,12 +3,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import re
 import time
+from html import escape
 from urllib.parse import urlsplit, urljoin
 from bs4 import BeautifulSoup
 from app.services.public_source import PublicSourceError, MAX_BYTES, TAIPEI, _download
 
 OFFICE_SOURCE_KEY='nkust-office-mail'
 _PATH=re.compile(r'/Mail/MailView/[1-9][0-9]{0,17}')
+_RESTRICTED=re.compile(r'僅限內部|禁止公開|不得公開|機密文件|密件|限閱|內部文件')
 
 
 def normalize_office_url(value: str) -> str:
@@ -51,7 +53,12 @@ def parse_office_mail(data:bytes,url:str)->OfficeDocument:
     if not groups or any(not re.fullmatch(r'(?:全校|全體|本校)[^@<>\n]{0,50}(?:學生|師生|教職員工|教職員|教師|職員|同仁|人員)',g.strip()) for g in groups):raise PublicSourceError('OFFICE_MAIL_NOT_PUBLIC')
     title=fields.get('主旨','')
     if not description or not title or len(title)>2000:raise PublicSourceError('OFFICE_MAIL_STRUCTURE')
-    body_nodes=[]
+    if _RESTRICTED.search('\n'.join([header.get_text(' ',strip=True),*fields.values()])):raise PublicSourceError('OFFICE_MAIL_NOT_PUBLIC')
+    inline=BeautifulSoup(str(description),'html.parser')
+    for n in inline.select('script,style,form,input,textarea,select,button,iframe,noscript'):n.decompose()
+    for n in inline.select('br'):n.replace_with('\n')
+    inline_text=re.sub(r'^\s*說\s*明\s*[：:]\s*','',inline.get_text(' '))
+    body_nodes=[escape(inline_text)+'\n']
     # Only siblings after the explicit 說明 marker, before the platform signature.
     for n in description.next_siblings:
         if getattr(n,'name',None):
@@ -65,7 +72,7 @@ def parse_office_mail(data:bytes,url:str)->OfficeDocument:
     lines=[' '.join(line.split()).strip('\u200b') for line in body_soup.get_text(' ').splitlines()]
     body='\n'.join(line for line in lines if line).strip()
     if not body or len(body)>40000:raise PublicSourceError('OFFICE_MAIL_BODY')
-    if re.search(r'僅限內部|禁止公開|不得公開|機密文件|密件|限閱|內部文件',body):raise PublicSourceError('OFFICE_MAIL_NOT_PUBLIC')
+    if _RESTRICTED.search(body):raise PublicSourceError('OFFICE_MAIL_NOT_PUBLIC')
     published=None
     date=re.fullmatch(r'民國\s*(\d{2,3})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日',fields.get('日期',''))
     if date:
