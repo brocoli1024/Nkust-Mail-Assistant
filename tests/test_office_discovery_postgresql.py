@@ -14,3 +14,11 @@ def test_only_one_postgresql_discovery_worker_acquires(database):
   try:return bool(DiscoveryRepository(db,OWNER).acquire(NOW))
   except DiscoveryError:return False
  with ThreadPoolExecutor(max_workers=2) as pool:assert sum(pool.map(attempt,range(2)))==1
+
+def test_discovery_publication_and_resume_on_postgresql(database):
+ from tests.test_office_discovery import test_owner_mail_only_discovers_and_publication_uses_anonymous_page
+ test_owner_mail_only_discovers_and_publication_uses_anonymous_page(database)
+
+def test_discovery_publication_identity_race_on_postgresql(database):
+ from tests.test_office_discovery import test_owner_deleted_during_public_fetch_cannot_publish
+ test_owner_deleted_during_public_fetch_cannot_publish(database)

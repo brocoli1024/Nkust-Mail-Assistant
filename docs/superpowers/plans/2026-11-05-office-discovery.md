@@ -65,12 +65,12 @@
 
 **Interfaces:** run_office_discovery(database,settings:DiscoverySettings,gmail_factory,*,now=None,monotonic=None,public_source=None)->DiscoveryResult；DiscoveryResult.to_public_dict()只回status/scanned/discovered/published/rejected/pending/error_code（數字非bool非負，狀態success/partial/failed/busy）。Task4調用此函式；私有管理頁另透過repo取得安全細節。scanned為本次完成處理封數、discovered為本次新建唯一候選數、published只計本次真正新增公開篇數（既有URL可標published但不膨脹此數字）、rejected為本次拒絕數、pending為仍待處理總數。
 
-- [ ] Step1：RED測試三封合成通知含兩個新官方URL→經匿名公開替身檢查added2；沒有URL／限制頁不發布；重複URL只一篇；合成PRIVATE marker在所有public表／to_public_dict中皆不存在。兩頁中途失敗保持該頁游標；回補超過20封保持incomplete；最後一頁完成才更新最後完整檢查。
-- [ ] Step2：跑pytest tests/test_office_discovery.py -q確認RED。
-- [ ] Step3：實作工作租約→UserSyncLease讀信（max20、page10、deadline60秒，開始每次I/O前預留剩餘socket預算）→同交易保存完整頁候選／游標→釋放UserSyncLease→有餘裕時最多3個候選匿名import_office_mail。公開階段與讀信階段不重疊持有UserSyncLease／SourceLease，工作租約保護整次狀態；網路不在DB交易內。剩餘少於15秒不開始公開讀取，留下pending，不宣稱已發布。
-- [ ] Step4：實作固定窗：首次now-14days至now，完成後新窗start=previous_end-24h，end=now；token失效重開同窗並依URL去重、重複token安全報錯。解析永久不支援郵件視安全略過，暫時Gmail/DB錯誤不推游標。候選網路／429／5xx按1h、6h、24h重試；登入／限制／404／結構拒絕標rejected，保留固定理由。公開成功但候選標記失敗下輪可重新導入，canonical去重；不吞DB錯誤假成功。
-- [ ] Step5：將純彙總寫入既有PublicSourceState/PublicSyncRun的獨立key nkust-office-discovery（不含owner/游標／候選URL）。S.last_success_at只代表完整窗掃完；S.history_status為not_started/incomplete/complete。R.status與error_code記安全整體狀態；不挪用公開公告的成功時間。公開view只讀此公開彙總及既有公開表，不SELECT新私有表；實際候選pending數只由內部回傳／管理頁顯示，不暴露私人queue。新增查詢隔離測試。
-- [ ] Step6：加入帳號刪除／ID重用、授權刷新衝突、工作租約過期、public lease busy、同秒重疊窗、頁token失效、公開成功後中斷、429/5xx及拒絕恢復測試；SQLite+獨立PG驗證，提交 feat: resume office discovery and publish anonymously verified notices。
+- [x] Step1：RED測試三封合成通知含兩個新官方URL→經匿名公開替身檢查added2；沒有URL／限制頁不發布；重複URL只一篇；合成PRIVATE marker在所有public表／to_public_dict中皆不存在。兩頁中途失敗保持該頁游標；回補超過20封保持incomplete；最後一頁完成才更新最後完整檢查。
+- [x] Step2：跑pytest tests/test_office_discovery.py -q確認RED。
+- [x] Step3：實作工作租約→UserSyncLease讀信（max20、page10、deadline60秒，開始每次I/O前預留剩餘socket預算）→同交易保存完整頁候選／游標→釋放UserSyncLease→有餘裕時最多3個候選匿名import_office_mail。公開階段與讀信階段不重疊持有UserSyncLease／SourceLease，工作租約保護整次狀態；網路不在DB交易內。剩餘少於15秒不開始公開讀取，留下pending，不宣稱已發布。
+- [x] Step4：實作固定窗：首次now-14days至now，完成後新窗start=previous_end-24h，end=now；token失效重開同窗並依URL去重、重複token安全報錯。解析永久不支援郵件視安全略過，暫時Gmail/DB錯誤不推游標。候選網路／429／5xx按1h、6h、24h重試；登入／限制／404／結構拒絕標rejected，保留固定理由。公開成功但候選標記失敗下輪可重新導入，canonical去重；不吞DB錯誤假成功。
+- [x] Step5：將純彙總寫入既有PublicSourceState/PublicSyncRun的獨立key nkust-office-discovery（不含owner/游標／候選URL）。S.last_success_at只代表完整窗掃完；S.history_status為not_started/incomplete/complete。R.status與error_code記安全整體狀態；不挪用公開公告的成功時間。公開view只讀此公開彙總及既有公開表，不SELECT新私有表；實際候選pending數只由內部回傳／管理頁顯示，不暴露私人queue。新增查詢隔離測試。
+- [x] Step6：加入帳號刪除／ID重用、授權刷新衝突、工作租約過期、public lease busy、同秒重疊窗、頁token失效、公開成功後中斷、429/5xx及拒絕恢復測試；SQLite+獨立PG驗證，提交 feat: resume office discovery and publish anonymously verified notices。
 
 ### Task 4: 管理者操作、固定觸發與來源提示
 

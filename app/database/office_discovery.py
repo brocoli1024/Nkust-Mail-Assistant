@@ -19,7 +19,10 @@ class DiscoveryRepository:
    self.identity(s)
    statement=insert(S).values(user_id=self.owner.id,google_user_id=self.owner.google_user_id,window_complete=False,last_status='running',lease_owner=token,lease_expires_at=now+timedelta(seconds=120),next_allowed_at=now+timedelta(seconds=300))
    statement=statement.on_conflict_do_update(index_elements=[S.user_id],set_={'lease_owner':token,'lease_expires_at':now+timedelta(seconds=120),'next_allowed_at':now+timedelta(seconds=300),'last_status':'running'},where=((S.lease_expires_at.is_(None))|(S.lease_expires_at<=now))&((S.next_allowed_at.is_(None))|(S.next_allowed_at<=now))&(S.google_user_id==self.owner.google_user_id)).returning(S.user_id)
-   if s.scalar(statement) is None:raise DiscoveryError('OFFICE_DISCOVERY_BUSY')
+   if s.scalar(statement) is None:
+    old=s.get(S,self.owner.id)
+    busy=old and old.lease_expires_at and aware(old.lease_expires_at)>aware(now)
+    raise DiscoveryError('OFFICE_DISCOVERY_BUSY' if busy else 'OFFICE_DISCOVERY_COOLDOWN')
   return token
  def fence(self,s,token,now):
   self.identity(s)

@@ -32,7 +32,7 @@ def _safe_code(exc):
     return code if code in allowed else 'OFFICE_MAIL_UNAVAILABLE'
 
 
-def import_office_mail(database,urls:list[str],*,source=None,now=None)->OfficeSyncResult:
+def import_office_mail(database,urls:list[str],*,source=None,now=None,write_fence=None)->OfficeSyncResult:
     if not isinstance(urls,list) or not 1<=len(urls)<=20:raise PublicSourceError('OFFICE_MAIL_URL_LIST')
     urls=list(dict.fromkeys(normalize_office_url(u) for u in urls))
     lease=SourceLease(database,now=now,source_key=OFFICE_SOURCE_KEY);lease.acquire()
@@ -48,6 +48,7 @@ def import_office_mail(database,urls:list[str],*,source=None,now=None)->OfficeSy
                 stamp=doc.published_at.isoformat() if doc.published_at else None
                 digest=hashlib.sha256(json.dumps([doc.title,doc.body,doc.department,stamp],ensure_ascii=False).encode()).hexdigest()
                 with database.transaction() as s:
+                    if write_fence is not None:write_fence(s)
                     state=lease.verify(s)
                     row=s.scalar(select(P).where(P.source_key==OFFICE_SOURCE_KEY,P.canonical_url==url))
                     if row is None:
@@ -67,6 +68,7 @@ def import_office_mail(database,urls:list[str],*,source=None,now=None)->OfficeSy
                 code=_safe_code(exc);result.failed+=1
                 result.failures.append({'announcement_id':url.rsplit('/',1)[1],'error_code':code})
                 with database.transaction() as s:
+                    if write_fence is not None:write_fence(s)
                     lease.verify(s)
                     row=s.scalar(select(P).where(P.source_key==OFFICE_SOURCE_KEY,P.canonical_url==url))
                     if row:
@@ -77,6 +79,9 @@ def import_office_mail(database,urls:list[str],*,source=None,now=None)->OfficeSy
         result.status='failed' if result.failed==len(urls) else 'partial' if result.failed else 'success'
         if result.status=='success':
             with database.transaction() as s:lease.verify(s).last_success_at=lease.clock()
+    except Exception:
+        result.status='failed'
+        raise
     finally:
         try:
             if run_id is not None:
