@@ -26,14 +26,69 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install -r requirements-web.txt
-      - name: Sync official public feed
+      - name: Sync announcement list
+        id: feed
+        env:
+          DATABASE_URL: ${{ secrets.NKUST_PUBLIC_SYNC_DATABASE_URL }}
+        run: python -m app.public_cli sync --source nkust-latest
+      - name: Enrich article and registration details
+        id: articles
+        continue-on-error: true
+        shell: bash
         env:
           DATABASE_URL: ${{ secrets.NKUST_PUBLIC_SYNC_DATABASE_URL }}
           NKUST_PUBLIC_ANNOUNCEMENT_ID: ${{ inputs.announcement_id }}
         run: |
-          python -m app.public_cli sync --source nkust-latest
           if [ -n "$NKUST_PUBLIC_ANNOUNCEMENT_ID" ]; then
-            python -m app.public_cli articles --limit 1 --announcement-id "$NKUST_PUBLIC_ANNOUNCEMENT_ID"
+            python -m app.public_cli articles --limit 1 --announcement-id "$NKUST_PUBLIC_ANNOUNCEMENT_ID" | tee "$RUNNER_TEMP/public-articles.json"
           else
-            python -m app.public_cli articles --limit 8
+            python -m app.public_cli articles --limit 8 | tee "$RUNNER_TEMP/public-articles.json"
           fi
+      - name: Summarize maintenance results
+        if: ${{ always() }}
+        env:
+          SYNC_OUTCOME: ${{ steps.feed.outcome }}
+          ARTICLES_OUTCOME: ${{ steps.articles.outcome }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          sync = os.environ['SYNC_OUTCOME']
+          articles = os.environ['ARTICLES_OUTCOME']
+          labels = {'success': '成功', 'failure': '失敗', 'cancelled': '已取消'}
+          feed_label = labels.get(sync, '未執行')
+          article_label = labels.get(articles, '未執行')
+          counts = '—'
+          fatal = sync != 'success'
+          if articles in ('success', 'failure'):
+              try:
+                  result = json.loads((Path(os.environ['RUNNER_TEMP']) / 'public-articles.json').read_text())
+                  updated, failed = result['updated'], result['failed']
+                  valid_counts = all(type(value) is int and value >= 0 for value in (updated, failed))
+                  success = (valid_counts and articles == 'success' and
+                             result['status'] == 'success' and failed == 0)
+                  partial = (valid_counts and articles == 'failure' and
+                             result['status'] == 'partial' and failed > 0)
+              except (OSError, ValueError, KeyError, TypeError):
+                  success = partial = False
+              if success or partial:
+                  counts = f'已更新 {updated}；有錯誤的公告 {failed}'
+                  if partial:
+                      article_label = '部分失敗（警告）'
+                      print('::warning::全文／報名補抓部分失敗；公告清單同步結果請見執行摘要。')
+              else:
+                  article_label = '失敗'
+                  fatal = True
+                  print('::error::全文／報名補抓未正常完成，或未產生有效結果。')
+          elif sync == 'success':
+              fatal = True
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('## 公告維護結果\n\n'
+                            '| 階段 | 結果 | 詳情 |\n| --- | --- | --- |\n'
+                            f'| 公告清單同步 | {feed_label} | 詳見 Sync announcement list 步驟 |\n'
+                            f'| 全文／報名補抓 | {article_label} | {counts} |\n\n'
+                            '補抓部分失敗以警告呈現；清單同步或補抓程式故障仍判定執行失敗。\n')
+          raise SystemExit(1 if fatal else 0)
+          PY
