@@ -22,8 +22,8 @@ if(typeof module!=='undefined')module.exports={readingRecord,restoreOffset};
 if(typeof document==='undefined')return;
 document.addEventListener('DOMContentLoaded',()=>{
  const list=document.querySelector('[data-office-list]');if(!list)return;
- list.addEventListener('click',event=>{
-  const link=event.target.closest('a[data-office-reading-id]');if(!link)return;
+ document.addEventListener('click',event=>{
+  const link=event.target.closest('a[data-office-reading-id]');if(!link||!link.closest('[data-office-list]'))return;
   const record=readingRecord(location.pathname+location.search,link.dataset.officeReadingId,root.scrollY,Date.now());
   try{if(record)sessionStorage.setItem(KEY,JSON.stringify(record));}catch{/* The row anchor remains a usable fallback. */}
  });

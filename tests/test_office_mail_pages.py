@@ -84,3 +84,13 @@ def test_training_detail_shows_all_options_and_escapes_original(web):
     details=soup.select_one('details.office-course-details')
     assert details and not details.has_attr('open')
     assert '2027/03/03' in details.text
+
+
+def test_partial_region_excludes_preferences_and_search_controls(web):
+    c,_,_,_=web
+    soup=BeautifulSoup(c.get('/public/office-mail').text,'html.parser')
+    region=soup.select_one('[data-office-results]')
+    assert region is not None
+    assert region.select_one('[data-office-list]') and region.select_one('.results-meta') and region.select_one('.pagination')
+    assert not region.select_one('[data-office-preference-form]') and not region.select_one('[data-office-search]')
+    assert soup.select_one('[data-office-refresh-retry]')

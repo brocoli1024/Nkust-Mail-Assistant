@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 {% include 'pwa_head.html' %}<title>公務公告 · NKUST Mail Assistant</title><link rel="stylesheet" href="/assets/account.css?v=office-2">
-<script src="/assets/office-mail-preferences.js?v=1" defer></script><script src="/assets/office-mail-reading.js?v=1" defer></script><script src="/assets/announcement-filters.js?v=instant-2" defer></script></head>
+<script src="/assets/office-mail-preferences.js?v=2" defer></script><script src="/assets/office-mail-reading.js?v=2" defer></script><script src="/assets/announcement-filters.js?v=instant-2" defer></script></head>
 <body class="office-mail-page"><div class="site-shell">{% set active_page='office' %}{% include 'site_header.html' %}
 <main id="main-content" class="page-content"><section class="hero compact"><div><h1>公務公告</h1><p>先看與你校區相關的消息，點開掌握公告內容與影響。免登入即可閱讀。</p></div></section>
 {% include 'office_mail_preferences.html' %}
@@ -10,7 +10,8 @@
 {% for c in campuses %}<input type="hidden" name="campus" value="{{ c }}">{% endfor %}<input type="hidden" name="mode" value="{{ mode }}"><button class="button" type="submit">搜尋</button>
 </form><p class="filter-help">分類變更後立即更新；關鍵字可按 Enter 或「搜尋」。校區是排序偏好，不會隱藏其他公告。</p><p id="filter-status" role="status" aria-live="polite" hidden></p>
 <nav class="office-buttons" aria-label="公務公告排序"><a class="button {{ 'secondary' if mode!='priority' }}" href="{{ priority_url }}" {% if mode=='priority' %}aria-current="page"{% endif %}>我的校區優先</a><a class="button {{ 'secondary' if mode!='all' }}" href="{{ all_url }}" {% if mode=='all' %}aria-current="page"{% endif %}>全部公務公告</a></nav>
-{% if mode=='priority' and not campuses %}<p>尚未選擇校區，目前依日期顯示全部公告。</p>{% endif %}</section>
+<p data-office-campus-hint {% if not (mode=='priority' and not campuses) %}hidden{% endif %}>尚未選擇校區，目前依日期顯示全部公告。</p></section>
+<div data-office-results aria-busy="false">
 <p class="results-meta" role="status">共 {{ total }} 則 · 第 {{ page_number }} 頁 · 僅調整站內排序，未啟用裝置推播。</p>
 {% include 'office_mail_status.html' %}
 <div class="announcement-list" data-office-list>{% for item in items %}<article class="announcement" id="office-{{ item.id }}" data-office-id="{{ item.id }}">
@@ -20,4 +21,5 @@
 {% if item.brief.fetch_error %}<p class="notice">這則公告最近更新失敗，保留上次資料，請核對原文。</p>{% endif %}</article>
 {% else %}<p class="notice">{% if source_total==0 %}尚無收錄的公務公告。管理者確認官方網址並導入後才會顯示，不會公開你的私人信件。{% else %}沒有符合搜尋條件的公務公告，請調整關鍵字或分類。{% endif %}</p>{% endfor %}</div>
 <nav class="pagination" aria-label="公務公告分頁">{% if previous %}<a href="{{ previous }}">上一頁</a>{% endif %}{% if following %}<a href="{{ following }}">下一頁</a>{% endif %}</nav>
+</div>
 </main></div></body></html>
