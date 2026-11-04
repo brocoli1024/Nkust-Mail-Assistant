@@ -127,9 +127,56 @@ class UserGmailFactory:
         self.settings = settings
         self.tokens = tokens
 
+    def discovery(self, user, *, timeout_seconds):
+        if not isinstance(user, CurrentUser):raise GmailReauthorizationRequired('GMAIL_REAUTHORIZE')
+        if type(timeout_seconds) is not int or not 1<=timeout_seconds<=10:raise ValueError('OFFICE_DISCOVERY_TIMEOUT')
+        return DiscoveryGmailService.connect(_ReadSettings(timeout_seconds),tokens=self.tokens,user_id=user.id,google_user_id=user.google_user_id)
+
     def __call__(self, user):
         # Callers pass the identity produced by current_user, never request JSON.
         if not isinstance(user, CurrentUser):
             raise GmailReauthorizationRequired('GMAIL_REAUTHORIZE')
         return UserGmailService.connect(self.settings, tokens=self.tokens, user_id=user.id,
                                        google_user_id=user.google_user_id)
+
+
+class DiscoveryGmailService(UserGmailService):
+    """Independent no-retry SDK client for the bounded discovery operation."""
+    @staticmethod
+    def _execute(operation, request):
+        try:
+            return request().execute(num_retries=0)
+        except GmailError:
+            raise
+        except HttpError as exc:
+            if exc.resp.status == 401:
+                raise GmailReauthorizationRequired('GMAIL_REAUTHORIZE') from None
+            if exc.resp.status==400 and operation=='discovery.page':raise GmailError('GMAIL_DISCOVERY_PAGE_TOKEN') from None
+            raise GmailError('GMAIL_DISCOVERY_UNAVAILABLE') from None
+        except Exception:
+            raise GmailError('GMAIL_DISCOVERY_UNAVAILABLE') from None
+
+    def list_discovery_page(self, start, end, *, page_token=None):
+        from app.services.office_mail_discovery_source import discovery_query
+        import re
+        if page_token is not None and (not isinstance(page_token,str) or not 1<=len(page_token)<=4096):
+            raise GmailError('GMAIL_RESPONSE_INVALID')
+        args=dict(userId='me',q=discovery_query(start,end),maxResults=10,includeSpamTrash=False)
+        if page_token:args['pageToken']=page_token
+        result=self._execute('discovery.page' if page_token else 'messages.list',lambda:self.api.users().messages().list(**args))
+        try:
+            rows=result.get('messages',[]);token=result.get('nextPageToken')
+            if not isinstance(rows,list) or len(rows)>10:raise ValueError()
+            ids=tuple(row['id'] for row in rows)
+            if any(not isinstance(i,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,255}',i) for i in ids) or len(set(ids))!=len(ids):raise ValueError()
+            if token is not None and (not isinstance(token,str) or not 1<=len(token)<=4096 or token==page_token):raise ValueError()
+            return ids,token
+        except (ValueError,TypeError,KeyError,AttributeError):raise GmailError('GMAIL_RESPONSE_INVALID') from None
+
+    def read_message(self,message_id):
+        from app.services.email_parser import decode_message
+        raw=self.get_message(message_id)
+        if not isinstance(raw,dict) or raw.get('id')!=message_id:raise GmailError('EMAIL_ID_MISMATCH')
+        headers=raw.get('payload',{}).get('headers',[])
+        if sum(h.get('name','').lower()=='from' for h in headers)!=1:raise EmailParseError('EMAIL_FORMAT_ERROR')
+        return decode_message(raw,lambda aid:self.get_body_attachment(message_id,aid))

@@ -53,11 +53,11 @@
 
 **Interfaces:** extract_office_urls(email:DecodedEmail)->tuple[str,...]；discovery_query(start:datetime,end:datetime)->str；UserGmailService.list_discovery_page(start,end,*,page_token=None)->tuple[tuple[str,...],str|None]；UserGmailFactory.discovery(user:CurrentUser,*,timeout_seconds:int)->UserGmailService，這個專用client使用num_retries=0、1..10秒socket timeout，不改一般同步client的重試契約。每個client單次工作獨享並close。
 
-- [ ] Step1：RED：實際From不是mailoffice（即使顯示名稱像校方）回空tuple；HTML href與純文字合法MailView多筆去重、:443正規化；拒絕http/query/fragment/他站/userinfo/腳本URL、偽文字連結不取得任意host；PRIVATE正文marker不出抽取結果。query固定sender、includeSpamTrash=False、maxResults=10、after/before為UTC epoch秒；回傳ID型別／重複ID／token長度錯誤拒絕。
-- [ ] Step2：跑pytest tests/test_office_discovery_source.py -q確認RED。測試API替身不得連真實Gmail。
-- [ ] Step3：實作本文暫存記憶體→網址tuple；沿用DecodedEmail／MIME2MiB、32層、200parts，只允許無檔名的正文部分；不下載一般附件、不持久保存郵件副本。專用factory用現有TokenService與subject綁定取得授權，不讀token.json；發現client不改現有UserGmailFactory.__call__行為。
-- [ ] Step4：測試錯誤授權映射GMAIL_REAUTHORIZE／credentials unavailable、MIME超量／惡意編碼／附件、client關閉、0次SDK重試；跑新來源、既有user Gmail與parser測試全通過。
-- [ ] Step5：提交 feat: discover canonical office URLs from bounded owner mail reads。
+- [x] Step1：RED：實際From不是mailoffice（即使顯示名稱像校方）回空tuple；HTML href與純文字合法MailView多筆去重、:443正規化；拒絕http/query/fragment/他站/userinfo/腳本URL、偽文字連結不取得任意host；PRIVATE正文marker不出抽取結果。query固定sender、includeSpamTrash=False、maxResults=10、after/before為UTC epoch秒；回傳ID型別／重複ID／token長度錯誤拒絕。
+- [x] Step2：跑pytest tests/test_office_discovery_source.py -q確認RED。測試API替身不得連真實Gmail。
+- [x] Step3：實作本文暫存記憶體→網址tuple；沿用DecodedEmail／MIME2MiB、32層、200parts，只允許無檔名的正文部分；不下載一般附件、不持久保存郵件副本。專用factory用現有TokenService與subject綁定取得授權，不讀token.json；發現client不改現有UserGmailFactory.__call__行為。
+- [x] Step4：測試錯誤授權映射GMAIL_REAUTHORIZE／credentials unavailable、MIME超量／惡意編碼／附件、client關閉、0次SDK重試；跑新來源、既有user Gmail與parser測試全通過。
+- [x] Step5：提交 feat: discover canonical office URLs from bounded owner mail reads。
 
 ### Task 3: 可接續掃描、匿名發布與彙總
 
