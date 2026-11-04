@@ -1,6 +1,6 @@
 # 公務公告校區偏好與重點整理驗收
 
-規格核准2026-11-04；發布作業2026-11-05進行中。此段先記錄本機結果，正式證據待完成後追加。
+規格核准2026-11-04；2026-11-05已正式發布並完成下列驗收。
 
 ## 交付範圍
 
@@ -33,3 +33,17 @@ workflow固定執行RSS、本文、公務來源，即使前階段失敗仍執行
 5. 初次導入用workflow明確URL及短期檔案，沿用受限公開角色；代價是新公告仍需管理者明確加入。
 6. 保留遠端新版本文partial警告語義；代價是警告需點摘要查看。
 7. 保留由App管理的worktree與驗收紀錄供後續維護，不刪其他工作；代價是佔少量本機空間。
+
+最終排程相容性回歸：678項獨立PostgreSQL測試全數通過、0略過、74.09秒；12項Node檢查與diff檢查通過，臨時PG已停止。產品commit b2d4cc611d9ba3511f86d1e4dd3bb9333571a29f；workflow commit 66756fbf228262c5b03aff1a171f833ee8a429be。
+
+## 正式發布證據（台灣時間2026-11-05）
+
+- 產品commit：`b2d4cc611d9ba3511f86d1e4dd3bb9333571a29f`，Render `dep-dblm9108v5cc739hnru0`。00:59:48開始，01:01:10 PREFLIGHT_OK，01:01:28 Application startup complete，01:01:38 service is live。schema0009，沒有migration或角色權限改動。
+- main workflow：`66756fbf228262c5b03aff1a171f833ee8a429be`，每小時17分，checkout codex/web-deployment。這是排程配置與手動執行證據，未宣稱已觀察下一個cron觸發。
+- 首次明確網址導入：[run41873275240](https://github.com/brocoli1024/Nkust-Mail-Assistant/actions/runs/41873275240)，job126725853515，成功。RSS unchanged20/failed0；本文updated6/failed4為警告（HTTP404、正文缺失、未支援報名URL）；公務added1/failed0，01:02成功。官方69929對應站內ID146，公務共1篇，沒有合成公告進正式庫。
+- 例行無輸入重讀：[run41873759728](https://github.com/brocoli1024/Nkust-Mail-Assistant/actions/runs/41873759728)，job126727543539，成功、1m45s。RSS unchanged20/failed0；本文updated6/failed2（ID15 HTTP404、ID19正文缺失）為警告；公務unchanged1/failed0。最後成功時間01:05（台灣時間）。兩次實際證明本文警告不阻止公務來源。
+- 正式匿名公務頁確認共1篇、來源／最後成功時間／收錄限制正確；建工＋楠梓完成立即套用、詳情返回保留兩校區及模式／錨點，全部模式保留偏好。三班別、完整福利與資格可讀，課程時程鍵盤Enter可展開／收合，原文及依據可核對，沒有公告行動卡。既有RSS頁正常顯示145則；正式版未登入私人帳號，未執行私人Gmail同步。
+
+正式入口：https://nkust-mail-assistant.onrender.com/public/office-mail 。本機320/390px與跨頁排名驗收使用明確標示的合成資料；正式只1篇，不能把正式單篇列表視為多頁排序實機證據。臨時PG已停止；舊預覽session已不存在，管理分頁已關閉，正式入口保留。
+
+公務更新0失敗不表示所有RSS本文已補齊；上述外部來源錯誤仍可在Actions警告查看。新公務公告尚需管理者明確加入URL，未知校區不推測也不隱藏。未新增裝置推播或生成式AI摘要。
