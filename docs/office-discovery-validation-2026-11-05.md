@@ -33,3 +33,14 @@
 ## 限制與待完成
 
 2026-11-08唯讀核對：Render live為8307e29、正式schema0009，指定學校帳號已有Google授權紀錄，尚未綁定新功能。遷移前備份pre-office-discovery-20261108（br-floral-butterfly-az38dwm4）建立於11/08 02:52:32台灣時間，11/09 02:52:33自動到期；延後啟用時需重新備份。候選程式2c84ba5；正式migration、新版部署、觸發憑證、owner綁定及真實執行仍待完成。OAuth仍為Testing，授權可能約7天到期，需提供者重新連結；不更改scope或付費服務。無裝置推播，排序不等於推播。來源不能保證全校完整；其他整站體驗項目仍見site-completion-audit-2026-11-05.md。
+
+
+## 正式首輪與格式補修（2026-11-08）
+
+正式0010遷移已於02:59成功提交；公開受限角色對兩張私有表SELECT／INSERT／UPDATE均false。8a7f176以預設關閉發布後，匿名三頁200／觸發404通過，再由本人確認啟用指定提供者，環境設定部署dep-dbnncabl550s73fmidug成功；無憑證觸發401。本人在Render與GitHub輸入並儲存相同新Secret，未讀取憑證值。main工作流9784e025ee4bf4a7478cd10f772f2e7c24d9355f只增加觸發Secret環境變數，cron與受限DB角色保持原狀；維護暫停後已恢復。
+
+手動工作42404533989：RSS成功、本文8篇成功、公務69929重讀PUBLIC_SOURCE_UNAVAILABLE；新信發現成功檢查10封，候選0。不能以Gmail成功宣稱已新增公告。核對指定提供者已保存的示例公告，郵件使用官方HTTPS `/Mail/View/69929`，而抽取器只接受`/Mail/MailView/69929`，形成漏列。
+
+裁定：網址發現僅增加精確官方HTTPS `/Mail/View/正整數ID`→匿名`/Mail/MailView/同ID`轉換；不掃描ID、不接受HTTP／query／fragment／userinfo／其他主機／路徑穿越。發布前匿名公開範圍檢查仍必須通過。這是既有官方識別碼格式相容修正，不擴充寄件者或私人資料用途。原14天窗需重掃，保留候選去重；未重掃前首次實機收錄驗收未完成。
+
+回歸測試RED重現0候選、GREEN45相關測試；修正後全新獨立PostgreSQL完整735 passed、0 skipped、2既有警告，83.87秒，cluster已停止。13項前端檢查先前已通過，這次只改後端網址抽取，無前端改動。

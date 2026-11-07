@@ -81,3 +81,11 @@ def test_deadline_checked_before_each_inline_body_request(web):
   with UserGmailFactory(Settings(),app.state.tokens).discovery(a,timeout_seconds=2,deadline=10,monotonic=lambda:next(ticks,9)) as client:
    with pytest.raises(GmailError,match='OFFICE_DISCOVERY_BUDGET'):client.read_message('m1')
  assert len(http.requests)==2
+
+
+def test_official_digest_view_links_become_public_candidates_only():
+ alias=URL.replace('/Mail/MailView/','/Mail/View/')
+ e=replace(EMAIL,html_body='<a href="'+alias+'">原始公告</a>',text_body=alias+' '+alias.replace('.tw/','.tw:443/'))
+ assert extract_office_urls(e)==(URL,)
+ for invalid in (alias+'?recipient=PRIVATE',alias+'#PRIVATE',alias.replace('https:','http:'),alias.replace('officemail.nkust.edu.tw','officemail.nkust.edu.tw.evil.invalid'),alias.replace('officemail.nkust.edu.tw','user@officemail.nkust.edu.tw'),alias.replace('/View/','/View/../View/'),alias.replace('/70001','/070001')):
+  assert extract_office_urls(replace(EMAIL,html_body='<a href="'+invalid+'">官方</a>',text_body=invalid))==()

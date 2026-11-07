@@ -24,7 +24,10 @@ def extract_office_urls(email):
  values.extend(re.findall(r'https://[^\s<>"\']+',text))
  result=[]
  for value in values:
-  try:url=normalize_office_url(value.rstrip('.,，。;；)]}）】'))
+  value=value.rstrip('.,，。;；)]}）】')
+  # Official digest links use View; fetch only the canonical anonymous MailView.
+  value=re.sub(r'^(https://officemail\.nkust\.edu\.tw(?::443)?)/Mail/View/([1-9][0-9]{0,17})$',r'\1/Mail/MailView/\2',value)
+  try:url=normalize_office_url(value)
   except PublicSourceError:continue
   if url not in result:result.append(url)
  return tuple(result)
