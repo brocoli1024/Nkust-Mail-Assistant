@@ -18,7 +18,7 @@
 - 最終全新獨立PostgreSQL 18.6：`python -m pytest -q -p no:cacheprovider`，734 passed、0 skipped、2個既有相依套件警告，125.99秒。包括遷移、併發、帳號刪除／隔離及受限公開同步角色不得讀寫新私有表。臨時cluster已停止；未連正式庫。
 - 13個`tests/*_check.cjs`全通過；`git diff --check`通過。
 - 本機合成完整流程：3封郵件發現2個URL，新增公開公告2篇、pending0，完整窗完成。公開清單顯示2篇與發布日期範圍；新信掃描成功不改寫「內容最後成功重讀」。管理頁390px、公開列表390px及320px無橫向溢出。沒有真實Gmail請求。
-- 回復版本`29e8951`（本機分支`codex/office-discovery-rollback-20261108`）由正式8307e29僅修改schema閘門為0010。獨立合成schema0010驗收私人清單／既有私人資料、公開公務清單與詳情均可閱讀；新觸發路由404。此回復smoke為SQLite；PostgreSQL完整測試是新實作，不能混稱回復版本PG已驗收。
+- 回復版本`29e8951`（本機分支`codex/office-discovery-rollback-20261108`）由正式8307e29僅修改schema閘門為0010。獨立合成schema0010驗收私人清單／既有私人資料、公開公務清單與詳情均可閱讀；新觸發路由404。此回復smoke先通過SQLite，再以全新獨立PostgreSQL 18.6與非管理員角色通過同一組公開／私人閱讀及停用觸發驗收；臨時cluster已停止。
 
 ## 正式發布順序與回復
 
@@ -32,4 +32,4 @@
 
 ## 限制與待完成
 
-正式migration、備份名稱、部署SHA、觸發憑證、owner綁定及真實執行證據尚未填入。OAuth仍為Testing，授權可能約7天到期，需提供者重新連結；不更改scope或付費服務。無裝置推播，排序不等於推播。來源不能保證全校完整；其他整站體驗項目仍見site-completion-audit-2026-11-05.md。
+2026-11-08唯讀核對：Render live為8307e29、正式schema0009，指定學校帳號已有Google授權紀錄，尚未綁定新功能。遷移前備份pre-office-discovery-20261108（br-floral-butterfly-az38dwm4）建立於11/08 02:52:32台灣時間，11/09 02:52:33自動到期；延後啟用時需重新備份。候選程式2c84ba5；正式migration、新版部署、觸發憑證、owner綁定及真實執行仍待完成。OAuth仍為Testing，授權可能約7天到期，需提供者重新連結；不更改scope或付費服務。無裝置推播，排序不等於推播。來源不能保證全校完整；其他整站體驗項目仍見site-completion-audit-2026-11-05.md。
