@@ -33,6 +33,7 @@ jobs:
       - name: Refresh independent public sources
         env:
           DATABASE_URL: ${{ secrets.NKUST_PUBLIC_SYNC_DATABASE_URL }}
+          NKUST_OFFICE_DISCOVERY_TRIGGER_SECRET: ${{ secrets.NKUST_OFFICE_DISCOVERY_TRIGGER_SECRET }}
           NKUST_PUBLIC_ANNOUNCEMENT_ID: ${{ inputs.announcement_id }}
           NKUST_PUBLIC_OFFICE_URL: ${{ inputs.office_url }}
         run: python scripts/refresh_public_sources.py
