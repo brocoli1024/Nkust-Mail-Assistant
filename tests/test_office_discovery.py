@@ -23,7 +23,7 @@ class Mail:
   return replace(EMAIL,text_body=(URL2 if mid=='m2' else URL)+' PRIVATE-BODY')
 class Factory:
  def __init__(self,mail):self.mail=mail
- def discovery(self,owner,*,timeout_seconds):assert owner.google_user_id=='google-a' and 1<=timeout_seconds<=10;return self.mail
+ def discovery(self,owner,*,timeout_seconds,deadline=None,monotonic=None):assert owner.google_user_id=='google-a' and 1<=timeout_seconds<=10;return self.mail
 
 def execute(db,mail,now=NOW,source=None):return run_office_discovery(db,SETTINGS,Factory(mail),now=lambda:now,public_source=source or (lambda url:document(url,'官方合成公開內容')))
 
@@ -116,3 +116,38 @@ def test_missing_provider_records_public_safe_failure(database):
  with db.transaction() as s:
   last=s.scalar(select(PublicSyncRun).where(PublicSyncRun.source_key=='nkust-office-discovery'))
   assert last and last.status=='failed'
+
+
+def test_discovery_cannot_overwrite_failed_existing_content_refresh(database):
+ from app.models.public_announcements import PublicSyncRun
+ db,_=database
+ with db.transaction() as s:s.add(PublicSyncRun(source_key='nkust-office-mail',mode='recent',status='failed',started_at=NOW,finished_at=NOW,error_code='OFFICE_MAIL_PARTIAL'))
+ assert execute(db,Mail(),NOW+timedelta(seconds=301)).published==2
+ with db.transaction() as s:
+  runs=s.scalars(select(PublicSyncRun).where(PublicSyncRun.source_key=='nkust-office-mail')).all()
+  assert len(runs)==1 and runs[0].status=='failed'
+  state=s.get(PublicSourceState,'nkust-office-mail');assert state.last_success_at is None
+
+def test_two_token_cycle_resets_same_window_and_reports_failure(database):
+ db,_=database;repo=DiscoveryRepository(db,OWNER);t=repo.acquire(NOW)
+ repo.commit_page(t,window_start=NOW-timedelta(days=14),window_end=NOW,page_token='A',urls=[],complete=False,now=NOW);repo.release(t)
+ r=execute(db,Mail({'A':(('m1',),'B'),'B':(('m2',),'A')}),NOW+timedelta(seconds=301))
+ state=repo.state()
+ assert r.error_code=='GMAIL_DISCOVERY_PAGE_TOKEN' and r.status=='failed'
+ assert state['page_token'] is None and not state['window_complete']
+
+
+def test_inline_body_failure_keeps_page_for_recovery(database):
+ from app.services.user_gmail_service import DiscoveryGmailService,_ReadSettings
+ from tests.test_office_discovery_source import inline_message
+ db,_=database
+ class Inline(Mail):
+  def read_message(self,mid):
+   client=DiscoveryGmailService(_ReadSettings(2),None)
+   client.get_message=lambda _:inline_message(mid)
+   def failed(*args):raise GmailError('GMAIL_DISCOVERY_UNAVAILABLE')
+   client.get_body_attachment=failed
+   return client.read_message(mid)
+ first=execute(db,Inline());assert first.status=='failed'
+ assert not DiscoveryRepository(db,OWNER).state()['window_complete']
+ assert execute(db,Mail(),NOW+timedelta(seconds=301)).published==2

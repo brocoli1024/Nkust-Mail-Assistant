@@ -49,3 +49,16 @@ def test_public_discovery_failure_cannot_be_hidden_by_successful_reread(web):
  assert '新公告收錄暫停' in r.text and '內容最後成功重讀' in r.text
  assert not any('office_discovery_' in q or ' users' in q for q in queries)
  assert '返回公務公告' in c.get('/public/office-mail/999').text
+
+
+def test_public_scope_shows_all_collected_publication_dates(web):
+ from dataclasses import replace
+ from tests.test_office_discovery_state import URL
+ from tests.test_office_mail_sync import document
+ from app.services.office_mail_sync import import_office_mail
+ c,app,_,_=web
+ for day in (1,5):
+  u=URL[:-1]+str(day)
+  import_office_mail(app.state.database,[u],source=lambda url,day=day:replace(document(url),published_at=datetime(2026,11,day,tzinfo=timezone.utc)))
+ text=c.get('/public/office-mail?q=no-match').text
+ assert '收錄公告發布日期' in text and '2026-11-01' in text and '2026-11-05' in text

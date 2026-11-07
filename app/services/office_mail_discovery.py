@@ -70,16 +70,19 @@ def run_office_discovery(database,settings,gmail_factory,*,now=None,monotonic=No
   if deadline-tick()<10:raise _BudgetPending()
   user_lease=UserSyncLease(database,owner.id,google_user_id=owner.google_user_id,now=clock);user_lease.acquire()
   try:
-   with gmail_factory.discovery(owner,timeout_seconds=max(1,min(10,int(deadline-tick())))) as gmail:
-    restarted=False
+   with gmail_factory.discovery(owner,timeout_seconds=max(1,min(10,int(deadline-tick()))),deadline=deadline,monotonic=tick) as gmail:
+    restarted=False;seen_tokens={page_token} if page_token else set()
     for _ in range(2):
      if deadline-tick()<10:break
      try:ids,next_token=gmail.list_discovery_page(start,end,page_token=page_token)
      except GmailError as exc:
       if str(exc)=='GMAIL_DISCOVERY_PAGE_TOKEN' and page_token and not restarted:
-       page_token=None;restarted=True
+       page_token=None;restarted=True;seen_tokens.clear()
        repo.commit_page(token,window_start=start,window_end=end,page_token=None,urls=[],complete=False,now=clock());continue
       raise
+     if next_token and next_token in seen_tokens:
+      repo.commit_page(token,window_start=start,window_end=end,page_token=None,urls=[],complete=False,now=clock())
+      raise GmailError('GMAIL_DISCOVERY_PAGE_TOKEN')
      urls=[];page_complete=True
      for mid in ids:
       if deadline-tick()<10:page_complete=False;break
@@ -92,13 +95,15 @@ def run_office_discovery(database,settings,gmail_factory,*,now=None,monotonic=No
      repo.commit_page(token,window_start=start,window_end=end,page_token=next_token,urls=urls,complete=not next_token,now=clock())
      result.discovered+=sum(repo.counts().values())-old
      page_token=next_token
+     if next_token:seen_tokens.add(next_token)
      if not next_token:break
+    if restarted and not repo.state().get('window_complete'):result.error_code='GMAIL_DISCOVERY_PAGE_TOKEN'
   finally:user_lease.release()
   # User lease has been released before acquiring the public source lease.
   for candidate in repo.due_candidates(token,clock(),3):
    if deadline-tick()<15:break
    with database.transaction() as s:repo.fence(s,token,clock())
-   imported=import_office_mail(database,[candidate['url']],source=public_source,now=clock(),write_fence=lambda session:repo.fence(session,token,clock()))
+   imported=import_office_mail(database,[candidate['url']],source=public_source,now=clock(),write_fence=lambda session:repo.fence(session,token,clock()),record_refresh=False)
    if not imported.failed:
     result.published+=imported.added
     repo.mark_candidate(token,candidate['url'],status='published',now=clock())
@@ -116,7 +121,9 @@ def run_office_discovery(database,settings,gmail_factory,*,now=None,monotonic=No
   result.status='partial';result.error_code='OFFICE_DISCOVERY_PENDING'
   counts=repo.counts();result.pending=counts.get('pending',0)+counts.get('retry',0)
  except Exception as exc:
-  result.status='failed';result.error_code=_code(exc)
+  if isinstance(exc,GmailError) and str(exc)=='OFFICE_DISCOVERY_BUDGET':
+   result.status='partial';result.error_code='OFFICE_DISCOVERY_PENDING'
+  else:result.status='failed';result.error_code=_code(exc)
   try:counts=repo.counts();result.pending=counts.get('pending',0)+counts.get('retry',0)
   except (DiscoveryError,SQLAlchemyError):pass
  finally:

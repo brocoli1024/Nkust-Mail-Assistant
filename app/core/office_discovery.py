@@ -10,7 +10,7 @@ class DiscoverySettings:
  owner_sub:str=field(default='',repr=False)
  trigger_secret:str=field(default='',repr=False)
  def __post_init__(self):
-  if type(self.enabled) is not bool or self.enabled and (not self.owner_sub or len(self.owner_sub)>255 or not self.trigger_secret.isascii() or len(self.trigger_secret)<32):raise ValueError('OFFICE_DISCOVERY_CONFIG')
+  if type(self.enabled) is not bool or self.enabled and (not isinstance(self.owner_sub,str) or not self.owner_sub or len(self.owner_sub)>255 or any(c.isspace() for c in self.owner_sub) or not isinstance(self.trigger_secret,str) or not 32<=len(self.trigger_secret)<=256 or any(not 33<=ord(c)<=126 for c in self.trigger_secret)):raise ValueError('OFFICE_DISCOVERY_CONFIG')
  @classmethod
  def load(cls):
   v={**dotenv_values(ROOT/'.env'),**os.environ};flag=v.get('NKUST_OFFICE_DISCOVERY_ENABLED','0')

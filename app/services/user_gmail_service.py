@@ -65,6 +65,7 @@ class _ReadSettings:
 
 
 class UserGmailService(GmailService):
+    refresh_attempts = 1
     @classmethod
     def connect(cls, settings, *, tokens, user_id, google_user_id):
         if type(user_id) is not int or user_id < 1 or not google_user_id:
@@ -77,7 +78,7 @@ class UserGmailService(GmailService):
         http = None
         try:
             http = AuthorizedHttp(credentials, http=httplib2.Http(timeout=settings.timeout_seconds),
-                                  max_refresh_attempts=1)
+                                  max_refresh_attempts=cls.refresh_attempts)
             # Bundled discovery avoids a network request during construction.
             api = build('gmail', 'v1', http=http, cache_discovery=False, static_discovery=True)
             return cls(_ReadSettings(settings.timeout_seconds), api)
@@ -127,10 +128,13 @@ class UserGmailFactory:
         self.settings = settings
         self.tokens = tokens
 
-    def discovery(self, user, *, timeout_seconds):
+    def discovery(self, user, *, timeout_seconds, deadline=None, monotonic=None):
         if not isinstance(user, CurrentUser):raise GmailReauthorizationRequired('GMAIL_REAUTHORIZE')
         if type(timeout_seconds) is not int or not 1<=timeout_seconds<=10:raise ValueError('OFFICE_DISCOVERY_TIMEOUT')
-        return DiscoveryGmailService.connect(_ReadSettings(timeout_seconds),tokens=self.tokens,user_id=user.id,google_user_id=user.google_user_id)
+        import time
+        client=DiscoveryGmailService.connect(_ReadSettings(timeout_seconds),tokens=self.tokens,user_id=user.id,google_user_id=user.google_user_id)
+        client.discovery_deadline=deadline;client.discovery_clock=monotonic or time.monotonic
+        return client
 
     def __call__(self, user):
         # Callers pass the identity produced by current_user, never request JSON.
@@ -142,8 +146,12 @@ class UserGmailFactory:
 
 class DiscoveryGmailService(UserGmailService):
     """Independent no-retry SDK client for the bounded discovery operation."""
-    @staticmethod
-    def _execute(operation, request):
+    refresh_attempts = 0
+
+    def _execute(self, operation, request):
+        deadline=getattr(self,'discovery_deadline',None)
+        if deadline is not None and deadline-self.discovery_clock()<self.settings.timeout_seconds:
+            raise GmailError('OFFICE_DISCOVERY_BUDGET')
         try:
             return request().execute(num_retries=0)
         except GmailError:
@@ -169,7 +177,8 @@ class DiscoveryGmailService(UserGmailService):
             if not isinstance(rows,list) or len(rows)>10:raise ValueError()
             ids=tuple(row['id'] for row in rows)
             if any(not isinstance(i,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,255}',i) for i in ids) or len(set(ids))!=len(ids):raise ValueError()
-            if token is not None and (not isinstance(token,str) or not 1<=len(token)<=4096 or token==page_token):raise ValueError()
+            if token is not None and (not isinstance(token,str) or not 1<=len(token)<=4096):raise ValueError()
+            if token is not None and token==page_token:raise GmailError('GMAIL_DISCOVERY_PAGE_TOKEN')
             return ids,token
         except (ValueError,TypeError,KeyError,AttributeError):raise GmailError('GMAIL_RESPONSE_INVALID') from None
 
@@ -179,4 +188,12 @@ class DiscoveryGmailService(UserGmailService):
         if not isinstance(raw,dict) or raw.get('id')!=message_id:raise GmailError('EMAIL_ID_MISMATCH')
         headers=raw.get('payload',{}).get('headers',[])
         if sum(h.get('name','').lower()=='from' for h in headers)!=1:raise EmailParseError('EMAIL_FORMAT_ERROR')
-        return decode_message(raw,lambda aid:self.get_body_attachment(message_id,aid))
+        from email.utils import getaddresses
+        sender=next(h.get('value','') for h in headers if h.get('name','').lower()=='from')
+        addresses=getaddresses([sender])
+        if len(addresses)!=1 or addresses[0][1].lower()!='mailoffice@nkust.edu.tw':raise EmailParseError('OFFICE_DISCOVERY_SENDER')
+        try:
+            return decode_message(raw,lambda aid:self.get_body_attachment(message_id,aid))
+        except EmailParseError as exc:
+            if isinstance(exc.__cause__,GmailError):raise exc.__cause__ from None
+            raise

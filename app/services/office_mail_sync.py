@@ -32,13 +32,13 @@ def _safe_code(exc):
     return code if code in allowed else 'OFFICE_MAIL_UNAVAILABLE'
 
 
-def import_office_mail(database,urls:list[str],*,source=None,now=None,write_fence=None)->OfficeSyncResult:
+def import_office_mail(database,urls:list[str],*,source=None,now=None,write_fence=None,record_refresh=True)->OfficeSyncResult:
     if not isinstance(urls,list) or not 1<=len(urls)<=20:raise PublicSourceError('OFFICE_MAIL_URL_LIST')
     urls=list(dict.fromkeys(normalize_office_url(u) for u in urls))
     lease=SourceLease(database,now=now,source_key=OFFICE_SOURCE_KEY);lease.acquire()
     run_id=None;result=OfficeSyncResult();deadline=time.monotonic()+90
     try:
-        run_id=begin_run(database,lease,'recent')
+        if record_refresh:run_id=begin_run(database,lease,'recent')
         for url in urls:
             try:
                 if time.monotonic()>=deadline:raise PublicSourceError('OFFICE_SYNC_BUDGET')
@@ -77,7 +77,7 @@ def import_office_mail(database,urls:list[str],*,source=None,now=None,write_fenc
                         row.last_seen_at=lease.clock()
                         record_public_version(s,row,lease.clock(),office=brief)
         result.status='failed' if result.failed==len(urls) else 'partial' if result.failed else 'success'
-        if result.status=='success':
+        if result.status=='success' and record_refresh:
             with database.transaction() as s:lease.verify(s).last_success_at=lease.clock()
     except Exception:
         result.status='failed'

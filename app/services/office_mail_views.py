@@ -17,8 +17,10 @@ def _status(s):
     run=s.scalar(select(R).where(R.source_key==OFFICE_SOURCE_KEY).order_by(R.id.desc()).limit(1))
     discovery=s.get(S,'nkust-office-discovery')
     discovery_run=s.scalar(select(R).where(R.source_key=='nkust-office-discovery').order_by(R.id.desc()).limit(1))
+    first_date,last_date=s.execute(select(func.min(P.published_at),func.max(P.published_at)).where(P.source_key==OFFICE_SOURCE_KEY)).one()
     success=state.last_success_at if state else None
-    return {'last_success':_time(success) if success else '尚無成功更新紀錄',
+    return {'publication_start':_time(first_date).split(' ')[0],'publication_end':_time(last_date).split(' ')[0],
+            'last_success':_time(success) if success else '尚無成功更新紀錄',
             'stale':not success or datetime.now(timezone.utc)-aware(success)>timedelta(hours=2),
             'last_run_status':run.status if run else None,
             'discovery_success':_time(discovery.last_success_at) if discovery and discovery.last_success_at else '尚無完整檢查紀錄',

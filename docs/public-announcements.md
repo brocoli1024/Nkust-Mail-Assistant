@@ -150,3 +150,8 @@ SQLite 測試或 PostgreSQL 離線編譯不代表正式 Neon 已驗收。
 管理者確認匿名可公開後，將HTTPS officemail.nkust.edu.tw/Mail/MailView/正整數網址以UTF8每行一筆寫入檔案，再以既有公開受限角色執行 `python -m app.public_cli office-import --urls-file PATH`；最多20個不同網址、先驗證整份清單，不掃描ID、不匯入Gmail。`office-refresh --limit 8`只重讀已知公告，失敗保留原文與版本。首次正式導入69929（站內ID146），共1篇。
 
 main工作流66756fb沿用既有Secret與cron每小時17分、checkout部署分支，改跑 `python scripts/refresh_public_sources.py`。RSS、本文、公務來源獨立執行；已辨識本文partial警告不阻止公務工作，其他程式／來源失敗仍回報失敗。手動office_url輸入僅供明確公開網址導入；空白是重讀，沒有全校公務新信發現能力。不能把此排序或每小時重讀稱為裝置推播。證據見[公務公告驗收](office-mail-campus-validation-2026-11-04.md)。
+
+
+## 公務新信發現（本機候選，未正式啟用）
+
+指定提供者可供官方網址發現，普通使用者不自動提供來源。首次14天、之後重疊24小時；每次20封／3個公開候選，未完接續。只儲存私人URL候選與進度，匿名官方頁通過檢查後才發布。新信完整檢查與既有內容重讀分開顯示。公開同步角色不獲取私有新表權限，Actions只用專用觸發Secret，不用Gmail token或私人DB連線。設定預設關閉；部署前先升級0010並備妥相容回復版本。詳細驗收與啟用步驟見[持續收錄驗收](office-discovery-validation-2026-11-05.md)。

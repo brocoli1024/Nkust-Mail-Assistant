@@ -40,7 +40,7 @@ def test_bad_discovery_pages_are_rejected_without_raw_response(web,payload):
  _,app,google=web;a,_=seed(app,google);http=FakeHttp(lambda uri,auth:(200,payload))
  with patch('app.services.user_gmail_service.httplib2.Http',return_value=http):
   with UserGmailFactory(Settings(),app.state.tokens).discovery(a,timeout_seconds=2) as client:
-   with pytest.raises(GmailError,match='GMAIL_RESPONSE_INVALID'):client.list_discovery_page(NOW-timedelta(days=1),NOW,page_token='same')
+   with pytest.raises(GmailError,match='GMAIL_DISCOVERY_PAGE_TOKEN' if payload.get('nextPageToken')=='same' else 'GMAIL_RESPONSE_INVALID'):client.list_discovery_page(NOW-timedelta(days=1),NOW,page_token='same')
 
 def test_invalid_page_token_has_a_safe_recoverable_code(web):
  from app.services.gmail_service import GmailError
@@ -49,3 +49,35 @@ def test_invalid_page_token_has_a_safe_recoverable_code(web):
   with UserGmailFactory(Settings(),app.state.tokens).discovery(a,timeout_seconds=2) as client:
    with pytest.raises(GmailError,match='GMAIL_DISCOVERY_PAGE_TOKEN'):client.list_discovery_page(NOW-timedelta(days=1),NOW,page_token='expired')
  assert len(http.requests)==1 and http.closed
+
+
+def inline_message(mid='m1',sender='mailoffice@nkust.edu.tw'):
+ return {'id':mid,'internalDate':'1793836800000','payload':{'mimeType':'multipart/alternative','headers':[{'name':'From','value':sender}], 'parts':[{'mimeType':'text/plain','body':{'attachmentId':'plain'}},{'mimeType':'text/html','body':{'attachmentId':'html'}}]}}
+
+def test_inline_body_transient_failure_is_not_a_permanent_mime_rejection(web):
+ from app.services.gmail_service import GmailError
+ _,app,google=web;a,_=seed(app,google)
+ def respond(uri,auth):return (503,{'error':{'message':'PRIVATE'}}) if '/attachments/' in uri else (200,inline_message())
+ http=FakeHttp(respond)
+ with patch('app.services.user_gmail_service.httplib2.Http',return_value=http):
+  with UserGmailFactory(Settings(),app.state.tokens).discovery(a,timeout_seconds=2) as client:
+   with pytest.raises(GmailError):client.read_message('m1')
+
+def test_sender_is_checked_before_loading_inline_bodies(web):
+ from app.services.email_parser import EmailParseError
+ _,app,google=web;a,_=seed(app,google);http=FakeHttp(lambda uri,auth:(200,inline_message(sender='other@example.invalid')))
+ with patch('app.services.user_gmail_service.httplib2.Http',return_value=http):
+  with UserGmailFactory(Settings(),app.state.tokens).discovery(a,timeout_seconds=2) as client:
+   with pytest.raises(EmailParseError):client.read_message('m1')
+ assert len(http.requests)==1
+
+def test_deadline_checked_before_each_inline_body_request(web):
+ import base64
+ from app.services.gmail_service import GmailError
+ _,app,google=web;a,_=seed(app,google)
+ def respond(uri,auth):return (200,{'data':base64.urlsafe_b64encode(URL.encode()).decode()}) if '/attachments/' in uri else (200,inline_message())
+ http=FakeHttp(respond);ticks=iter([0,0,9])
+ with patch('app.services.user_gmail_service.httplib2.Http',return_value=http):
+  with UserGmailFactory(Settings(),app.state.tokens).discovery(a,timeout_seconds=2,deadline=10,monotonic=lambda:next(ticks,9)) as client:
+   with pytest.raises(GmailError,match='OFFICE_DISCOVERY_BUDGET'):client.read_message('m1')
+ assert len(http.requests)==2

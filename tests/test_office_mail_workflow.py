@@ -14,7 +14,7 @@ def run_pipeline(tmp_path,fail='',announcement_id='',office_url='',article_resul
     (app/'public_cli.py').write_text(fake)
     record=tmp_path/'calls.jsonl';env=os.environ.copy()
     # Never pass real connection strings or OAuth settings into the synthetic CLI.
-    env.pop('DATABASE_URL',None);env.update(QA_RECORD=str(record),QA_FAIL=fail,QA_ARTICLE_RESULT=article_result,NKUST_PUBLIC_ANNOUNCEMENT_ID=announcement_id,NKUST_PUBLIC_OFFICE_URL=office_url,QA_IMPORTED=str(tmp_path/'imported.txt'))
+    env.pop('DATABASE_URL',None);env.pop('NKUST_OFFICE_DISCOVERY_TRIGGER_SECRET',None);env.update(QA_RECORD=str(record),QA_FAIL=fail,QA_ARTICLE_RESULT=article_result,NKUST_PUBLIC_ANNOUNCEMENT_ID=announcement_id,NKUST_PUBLIC_OFFICE_URL=office_url,QA_IMPORTED=str(tmp_path/'imported.txt'))
     result=subprocess.run([sys.executable,str(Path('scripts/refresh_public_sources.py').resolve())],cwd=tmp_path,env=env,capture_output=True,text=True)
     calls=[json.loads(line) for line in record.read_text().splitlines()] if record.exists() else []
     return result,calls
@@ -57,3 +57,25 @@ def test_known_article_partial_is_warning_but_malformed_result_is_failure(tmp_pa
     bad=tmp_path/'bad';bad.mkdir()
     r,_=run_pipeline(bad,fail='articles',article_result=json.dumps({'updated':0,'failed':0,'status':'partial'}))
     assert r.returncode==1
+
+
+def test_discovery_trigger_runs_after_other_stages_fail(monkeypatch):
+ from scripts.refresh_public_sources import main
+ calls=[];monkeypatch.setenv('NKUST_OFFICE_DISCOVERY_TRIGGER_SECRET','synthetic-secret-'+'x'*32)
+ def run(command,**kwargs):
+  calls.append(command)
+  return subprocess.CompletedProcess(command,1 if 'sync' in command or 'articles' in command else 0,stdout='',stderr='')
+ assert main(run=run)==1
+ assert calls[-1][-1].endswith('trigger_office_discovery.py') and len(calls)==4
+
+
+def test_discovery_pending_is_warning_in_summary(monkeypatch,tmp_path):
+ from scripts.refresh_public_sources import main
+ monkeypatch.setenv('NKUST_OFFICE_DISCOVERY_TRIGGER_SECRET','synthetic-'+'x'*32)
+ summary=tmp_path/'summary.md';monkeypatch.setenv('GITHUB_STEP_SUMMARY',str(summary))
+ def run(command,**kwargs):
+  payload={'status':'partial','scanned':20,'discovered':3,'published':0,'rejected':0,'pending':3,'error_code':'OFFICE_DISCOVERY_PENDING'} if command[-1].endswith('trigger_office_discovery.py') else {'updated':0,'failed':0,'status':'success'}
+  return subprocess.CompletedProcess(command,0,stdout=json.dumps(payload)+'\n',stderr='')
+ assert main(run=run)==0
+ text=summary.read_text()
+ assert '| discovery | warning (partial) |' in text and 'pending: 3' in text

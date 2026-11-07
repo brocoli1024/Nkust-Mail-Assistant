@@ -43,3 +43,8 @@ def test_expired_worker_identity_reuse_and_cascade(database):
 def test_foreign_subject_is_rejected(database):
  db,_=database
  with pytest.raises(DiscoveryError):DiscoveryRepository(db,CurrentUser(1,'x','X','google-b')).acquire(NOW)
+
+
+@pytest.mark.parametrize('secret',['x'*31,'x'*257,'x'*32+'\n','x'*32+' '])
+def test_invalid_trigger_header_secret_is_rejected(secret):
+ with pytest.raises(ValueError):DiscoverySettings(True,'google-a',secret)
