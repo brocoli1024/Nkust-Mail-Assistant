@@ -92,9 +92,9 @@
 **Interfaces:** trigger腳本固定HTTPS nkust-mail-assistant.onrender.com/internal/office-discovery/run，不接受任意host／轉址／query；從env讀新增觸發Secret（repr／log不輸出），timeout120秒、網路／5xx最多重試1次、409/429回安全busy不反覆喚醒、其他失敗exit1；200/partial且僅OFFICE_DISCOVERY_PENDING為可接續回補提示、exit0但摘要標未完成，任何其他partial不假報成功。沒有Secret表示尚未設定、明確skipped，不冒稱已成功掃信。已有Secret但錯誤／缺服務必須失敗。
 
 - [x] Step1：建立RED：受控HTTP替身驗證正確POST／header／空body、錯URL不傳憑證、redirect不跟隨、timeout有界、401/503安全失敗、429/busy提示、回傳型別／負數／bool／多餘私有欄位拒絕且不打印正文；fake CLI整合驗證先前三來源失敗仍呼叫discovery。保留既有有效article partial警告語義，不覆蓋main較新workflow內容。
-- [ ] Step2：實作trigger與runner獨立階段（完整argv、無shell），workflow只新增專用觸發Secret env，不碰現有公開DB Secret。步驟摘要分開列發現、公開發布、RSS及文章結果，CLI呼叫不得洩漏header或郵件資料。摘要文字分清office-refresh只重讀、discovery才找新信，不再對整個workflow寫「不會發現新公告」。跑新trigger、既有workflow測試及13Node檢查。
+- [x] Step2：實作trigger與runner獨立階段（完整argv、無shell），workflow只新增專用觸發Secret env，不碰現有公開DB Secret。步驟摘要分開列發現、公開發布、RSS及文章結果，CLI呼叫不得洩漏header或郵件資料。摘要文字分清office-refresh只重讀、discovery才找新信，不再對整個workflow寫「不會發現新公告」。跑新trigger、既有workflow測試及13Node檢查。
 - [x] Step3：全新臨時PG跑完整pytest（目前基線679、0略過不是新功能通過），含私有表權限、併發、帳號隔離、migration及中斷恢復；diff檢查。以合成Gmail完整驗收至少新增兩篇而非只重讀原1篇；手機公開列表／設定狀態／錯誤／重試，原校區原地更新不退步。安排一次獨立整段review，重要問題RED→GREEN修正後相關完整驗證。
-- [ ] Step4：備妥0010相容回復版本並測試關閉flag仍能閱讀公告／私人既有資料；記錄正式schema0009→0010備份、遷移、失敗回復步驟。正式schema切換安排維護視窗並暫停觸發；程式先保持本機／候選分支，不讓依賴0010的新CLI提前進入仍為0009的排程。與使用者核對將綁定的實際Google帳號，不從聯絡Email猜。正式新Secret設定屬擴充安全存取，依當時工具規則由本人確認／輸入；在這些啟用條件完成前，只交付可審閱本機成果，不用等待授權來省略前述實作與驗收。
+- [x] Step4：備妥0010相容回復版本並測試關閉flag仍能閱讀公告／私人既有資料；記錄正式schema0009→0010備份、遷移、失敗回復步驟。正式schema切換安排維護視窗並暫停觸發；程式先保持本機／候選分支，不讓依賴0010的新CLI提前進入仍為0009的排程。與使用者核對將綁定的實際Google帳號，不從聯絡Email猜。正式新Secret設定屬擴充安全存取，依當時工具規則由本人確認／輸入；在這些啟用條件完成前，只交付可審閱本機成果，不用等待授權來省略前述實作與驗收。
 - [ ] Step5：只在具體啟用條件完成後，依既有部署流程推送／Render手動發布；先確認schema與flag關閉健康，再設定單一owner與triggerSecret、啟用功能。首次手動小批工作確認新增／拒絕／pending、原文來自匿名官方頁、日誌無私人marker；未驗證不能宣稱已自動收錄。再更新workflow並手動執行，後續實際觀察至少一次cron，分別記錄證據。
 - [ ] Step6：更新驗收文件：產品／workflow SHA、migration／備份／相容回復、提供者不公開、真實與合成驗證範圍、實際篇數及涵蓋窗、完整掃描與重讀時間、Testing重新授權限制；關閉臨時server／PG／管理分頁。整站其他缺口保持下一輪清單，不宣稱全站已完善。
 
@@ -109,3 +109,6 @@ Ruling：60秒是工作調度預算；各網路呼叫使用剩餘預算且SDK無
 Ruling：公開pending數非必要公開資訊，保留在內部／owner狀態，不為它新增公開JSON欄位；公開頁仍顯示新信完整檢查／回補狀態及內容重讀。這避免私人候選間接洩漏，代價是一般學生只看到延遲狀態而非queue細節。
 
 Ruling：本期只規劃來源管線及必要文字／狀態，私人摘要／移除行動卡／待辦銜接、全站局部搜尋另分段設計，避免未完成來源便全面重寫。
+
+
+2026-11-08實機裁定：精確官方HTTPS /Mail/View/ID在摘要郵件中實際出現，增加同ID→MailView正規化，不擴大host、scheme、query或公開範圍，完整735項測試通過。Task5 Step5只剩新版cron實際觀察，手動與正式新增2篇已驗收；Step6文件及臨時服務清理已完成，待cron證據後才全部勾選。
