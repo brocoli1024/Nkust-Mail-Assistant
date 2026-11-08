@@ -4,7 +4,7 @@
   {% if last_run_status in ('failed','partial') %}<p class="compact-source-warning" role="status">最近來源更新{% if last_run_status=='partial' %}有部分失敗{% else %}失敗{% endif %}；目前保留先前取得的資料。</p>{% endif %}
   <p class="compact-source-scope">僅涵蓋指定來源，不保證全校完整公告。</p>
   <details><summary>來源、更新與收錄範圍</summary>
-    <p>每小時排程更新，非即時同步；執行時間可能延後。來源摘要可能截短，日期與資格請核對學校原文。所有 Gmail 通知不在此公開收錄範圍內。</p>
+    <p>每小時排程更新，非即時同步；執行時間可能延後。來源摘要可能截短，日期與資格請核對學校原文。私人信件不在此公開收錄範圍內。</p>
     <p>最早已收錄發布時間：{{ oldest }}（台灣時間）。</p>
     {% if history_status=='complete' %}<p>已完成一次歷史掃描：{{ history_completed }}。來源會變動，仍可能有缺漏。</p>{% elif history_status=='incomplete' %}<p>歷史公告補收中，尚未涵蓋全部歷史。</p>{% else %}<p>目前以近期 RSS 資料為主，歷史補收尚未完成。</p>{% endif %}
   </details>

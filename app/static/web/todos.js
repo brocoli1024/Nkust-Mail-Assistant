@@ -62,7 +62,7 @@ function init(){
     for(const r of selected)body.append(row(r));
    }
   }
-  async function load(){if(busy)return;ready=false;say('正在讀取待辦。');try{records=await store.readAll();ready=true;say(scope==='demo'?'示範待辦只留在此頁。':'已讀取此裝置待辦；不會隨 Google 帳號切換。');}catch{say('待辦讀取失敗，並非沒有待辦。請檢查儲存權限、關閉舊分頁後重試；不會清除既有資料。',true);}render();}
+  async function load(){if(busy)return;ready=false;say('正在讀取待辦。');try{records=await store.readAll();ready=true;say(scope==='demo'?'示範待辦只留在此頁。':'已讀取此裝置待辦；不會跨裝置同步。');}catch{say('待辦讀取失敗，並非沒有待辦。請檢查儲存權限、關閉舊分頁後重試；不會清除既有資料。',true);}render();}
   if(detail)controllers.set(cardNode,{setCard(value){card=structuredClone(value);dirty=false;render();},setDirty(){dirty=true;render();}});
   const retry=el('button','重新讀取待辦');retry.type='button';retry.className='button secondary';retry.addEventListener('click',load);if(compact){retryHelp=el('details');retryHelp.className='reading-storage-help';retryHelp.append(el('summary','待辦讀取與重試'),status,retry);area.append(retryHelp);}else area.append(retry);
   area.querySelector('[data-todo-filter]')?.addEventListener('change',render);setInterval(()=>{if(ready&&!busy&&clockKey!==api.renderClockKey(records,new Date()))render();},60000);load();

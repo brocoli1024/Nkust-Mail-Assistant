@@ -16,6 +16,6 @@
     <a href="/settings" {% if active_page == 'settings' %}aria-current="page"{% endif %}>帳號設定</a>
   </nav>
   {% else %}
-  <nav class="main-nav" aria-label="主要導覽"><a href="/public/announcements" {% if active_page == 'public' %}aria-current="page"{% endif %}>公開公告</a><a href="/public/office-mail" {% if active_page == 'office' %}aria-current="page"{% endif %}>公務公告</a><a href="/todos">我的待辦（裝置）</a><a href="/login">Gmail（選用）</a></nav>
+  <nav class="main-nav" aria-label="主要導覽"><a href="/public/announcements" {% if active_page == 'public' %}aria-current="page"{% endif %}>公開公告</a><a href="/public/office-mail" {% if active_page == 'office' %}aria-current="page"{% endif %}>公務公告</a><a href="/todos">我的待辦</a></nav>
   {% endif %}
 </header>

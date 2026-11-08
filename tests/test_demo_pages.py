@@ -95,10 +95,17 @@ def test_demo_source_data_is_immutable_and_search_is_literal():
     assert get_demo_announcement('unknown') is None
 
 
-def test_production_entry_and_login_explain_optional_gmail(web):
+def test_student_pages_hide_gmail_and_keep_manager_signin(web):
+    from bs4 import BeautifulSoup
     client, _, _, _ = web
-    for path in ('/', '/login'):
+    for path in ('/', '/public/office-mail', '/todos'):
         r = client.get(path,follow_redirects=True)
-        assert 'href="/demo"' not in r.text
-        assert '選用' in r.text
-        if path=='/login':assert 'Google 測試名單' in r.text
+        assert r.status_code == 200
+        soup = BeautifulSoup(r.text, 'html.parser')
+        assert [a['href'] for a in soup.select('nav[aria-label="主要導覽"] a')] == ['/public/announcements', '/public/office-mail', '/todos']
+        assert 'Gmail' not in soup.select_one('main').get_text()
+        assert not soup.select('main a[href="/login"], main a[href^="/my/"]')
+    r = client.get('/login')
+    assert '來源管理者登入' in r.text
+    assert 'href="/auth/google"' in r.text and 'Gmail 唯讀授權' in r.text
+    assert 'Google 測試名單' in r.text and '選用：整理 Gmail 公告' not in r.text

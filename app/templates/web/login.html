@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   {% include 'pwa_head.html' %}
-  <title>登入 · NKUST Mail Assistant</title>
+  <title>來源管理者登入 · NKUST Mail Assistant</title>
   <link rel="stylesheet" href="/assets/account.css?v=editorial-1">
 </head>
 <body><div class="site-shell">
@@ -16,15 +16,15 @@
       <p><a class="text-link" href="/public/announcements">免登入瀏覽公開公告</a></p>
     </section>
     <div class="auth-card-wrap"><section class="auth-card" aria-labelledby="connect-title">
-      <h2 id="connect-title">選用：整理 Gmail 公告</h2>
+      <h2 id="connect-title">來源管理者登入</h2>
       <p class="notice" role="status" data-connectivity-status hidden>目前沒有網路。登入與同步需要連線，請連線後重試。</p>
       {% if logged_out %}<p class="notice" role="status">已登出。這台瀏覽器的登入狀態已清除。</p>{% endif %}
       {% if deleted %}<p class="notice" role="status">本站帳號與已同步資料已刪除；Gmail 原始郵件保留。</p>{% endif %}
       {% if deleted and manual_disconnect %}<p class="notice" role="status">Google 授權未能自動解除。請到 <a href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Google 帳戶的第三方連線</a>移除本站授權。</p>{% endif %}
-      <p>使用自己的 Google 帳號登入，連結 Gmail 唯讀授權。</p>
-      <p class="notice">目前須加入 Google 測試名單才能使用 Gmail 整合；瀏覽公開公告不需授權。</p>
+      <p>此入口供既有來源管理使用。管理者以 Google 帳號登入，沿用 Gmail 唯讀授權。</p>
+      <p class="notice">來源管理者須在 Google 測試名單內；一般學生免登入即可閱讀公告與使用此裝置待辦。</p>
       <a class="button" href="/auth/google">使用 Google 登入</a>
-      <p class="muted">僅讀取 Gmail，不會寄信、刪信或修改郵件。登入不會自動同步信件。</p>
+      <p class="muted">只有指定並啟用的提供者會執行背景網址發現；不會寄信、刪信或修改郵件。</p>
       <p><a class="text-link dark" href="/privacy">閱讀資料使用說明</a></p>
     </section></div>
   </main>
