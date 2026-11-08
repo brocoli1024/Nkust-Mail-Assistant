@@ -4,7 +4,7 @@ const {createTodoStore,nextSnooze,projectTodo}=require('../app/static/web/todo-s
 const now='2026-10-29T16:00:00Z';
 const card={source:{kind:'public',source_ref:'synthetic',title:'合成待辦',segments:[],url:null},baseline_hash:'a'.repeat(64),fields:{deadline:{value:null,state:'pending'}}};
 function factory(){
- const data=new Map();let tail=Promise.resolve();const f={data,mode:'normal',open(name,version){assert.equal(version,2);const req={};queueMicrotask(()=>{req.result={objectStoreNames:{contains:()=>true},close(){},transaction(){
+ const data=new Map();let tail=Promise.resolve();const f={data,mode:'normal',open(name,version){assert.equal(version,3);const req={};queueMicrotask(()=>{req.result={objectStoreNames:{contains:()=>true},close(){},transaction(){
  let release;const previous=tail;tail=new Promise(r=>release=r);let aborted=false,pending=null;const tx={error:null,abort(){aborted=true;queueMicrotask(()=>{tx.onabort?.();release();});},objectStore(){return {
  get(key){const r={};previous.then(()=>queueMicrotask(()=>{r.result=structuredClone(data.get(key));r.onsuccess?.();if(!pending&&!aborted){tx.oncomplete?.();release();}}));return r;},
  getAll(){const r={};previous.then(()=>queueMicrotask(()=>{r.result=structuredClone([...data.values()]);r.onsuccess?.();tx.oncomplete?.();release();}));return r;},

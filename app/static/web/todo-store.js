@@ -20,16 +20,27 @@ function createTodoStore(options={}){
  const factory=options.indexedDB??root.indexedDB;
  function open(){return new Promise((resolve,reject)=>{
   if(!factory){reject(Error('STORAGE_UNAVAILABLE'));return;}let request,failed=false;
-  try{request=factory.open('nkust-campus-assistant',2);}catch{reject(Error('STORAGE_UNAVAILABLE'));return;}
-  request.onupgradeneeded=()=>{for(const name of ['publicActionCards','publicTodos'])if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:'source_ref'});};
+  try{request=factory.open('nkust-campus-assistant',3);}catch{reject(Error('STORAGE_UNAVAILABLE'));return;}
+  request.onupgradeneeded=()=>{for(const name of ['publicActionCards','publicTodos','pushBindings','pushOutbox'])if(!request.result.objectStoreNames.contains(name))request.result.createObjectStore(name,{keyPath:'source_ref'});};
   request.onblocked=request.onerror=()=>{failed=true;reject(Error('STORAGE_UNAVAILABLE'));};
-  request.onsuccess=()=>{if(failed){request.result.close();return;}resolve(request.result);};
+  request.onsuccess=()=>{if(failed){request.result.close();return;}request.result.onversionchange=()=>request.result.close();resolve(request.result);};
  });}
+ function queueCancellation(tx,todo){
+  if(!['done','removed'].includes(todo.status))return;
+  const bindings=tx.objectStore('pushBindings'),request=bindings.get(todo.source_ref);
+  request.onsuccess=()=>{try{
+   const binding=request.result;if(!binding?.desired?.enabled)return;
+   const intent={...binding.desired,enabled:false,deadline:null,remind_at:null,
+    client_revision:Math.max(binding.client_revision,todo.revision)+1,operation_id:root.crypto.randomUUID()};
+   binding.client_revision=intent.client_revision;binding.desired=intent;binding.state='pending_sync';
+   bindings.put(binding);tx.objectStore('pushOutbox').put({source_ref:todo.source_ref,epoch:binding.epoch,intent,expected_revision:binding.server_revision});
+  }catch{tx.abort();}};
+ }
  async function transaction(sourceRef,modify){const db=await open();try{return await new Promise((resolve,reject)=>{
  let tx,result,failure;
- try{tx=db.transaction('publicTodos',modify?'readwrite':'readonly');tx.oncomplete=()=>failure?reject(failure):resolve(result);tx.onabort=tx.onerror=()=>reject(failure||Error(tx.error?.name==='QuotaExceededError'?'STORAGE_QUOTA':'STORAGE_UNAVAILABLE'));
+ try{tx=db.transaction(['publicTodos','pushBindings','pushOutbox'],modify?'readwrite':'readonly');tx.oncomplete=()=>failure?reject(failure):resolve(result);tx.onabort=tx.onerror=()=>reject(failure||Error(tx.error?.name==='QuotaExceededError'?'STORAGE_QUOTA':'STORAGE_UNAVAILABLE'));
  const store=tx.objectStore('publicTodos'),request=modify?store.get(sourceRef):store.getAll();
- request.onerror=()=>{failure=Error('STORAGE_UNAVAILABLE');};request.onsuccess=()=>{try{if(modify){const old=request.result?validate(request.result):null;result=modify(old);validate(result);store.put(result);}else result=request.result.map(r=>validate(r));}catch(e){failure=e.name==='QuotaExceededError'?Error('STORAGE_QUOTA'):e;tx.abort();}};
+ request.onerror=()=>{failure=Error('STORAGE_UNAVAILABLE');};request.onsuccess=()=>{try{if(modify){const old=request.result?validate(request.result):null;result=modify(old);validate(result);store.put(result);queueCancellation(tx,result);}else result=request.result.map(r=>validate(r));}catch(e){failure=e.name==='QuotaExceededError'?Error('STORAGE_QUOTA'):e;tx.abort();}};
  }catch(e){failure=Error(e.name==='QuotaExceededError'?'STORAGE_QUOTA':'STORAGE_UNAVAILABLE');try{tx?.abort();}catch{}reject(failure);}
  });}finally{db.close();}}
  return {readAll(){return transaction();},async change({operation,card,sourceRef,expectedRevision,now=new Date().toISOString(),snoozeUntil}){
