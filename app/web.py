@@ -40,7 +40,7 @@ class RedactQuery(logging.Filter):
 
 
 def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth,
-               session_enabled=False, session_secret=None, demo_enabled=False, discovery_settings=None):
+               session_enabled=False, session_secret=None, demo_enabled=False, discovery_settings=None, push_settings=None):
     """OAuth-only default preserves Phase 2 callers; app below enables sessions."""
     @asynccontextmanager
     async def lifespan(app):
@@ -65,6 +65,17 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             from app.services.office_mail_discovery import run_office_discovery
             app.state.discovery_settings = discovery_settings or DiscoverySettings.load()
             app.state.discovery_runner = lambda: run_office_discovery(database, app.state.discovery_settings, app.state.gmail_for_user)
+            from app.push.config import PushSettings
+            from app.push.security import PushCipher
+            from app.push.repository import PushRepository
+            from app.push.transport import PushSender
+            from app.push.dispatcher import run_due
+            from datetime import datetime, timezone
+            app.state.push_settings = (push_settings or PushSettings.from_env()).validate()
+            push_cipher = PushCipher(oauth.encryption_key)
+            app.state.push_repo = PushRepository(database, push_cipher, app.state.push_settings.rate_hash_key.encode(), app.state.push_settings)
+            push_sender = PushSender(app.state.push_settings, push_cipher)
+            app.state.push_runner = lambda: run_due(database, push_sender, datetime.now(timezone.utc))
             app.state.attempts = OAuthAttempts(database, app.state.tokens)
             if session_enabled:
                 app.state.sessions = SessionService(database,
@@ -96,6 +107,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         app.include_router(office_router)
         from app.api.office_discovery import router as discovery_router
         app.include_router(discovery_router)
+        from app.api.push import router as push_router
+        app.include_router(push_router)
         if demo_enabled:
             app.include_router(demo_router)
         else:
@@ -183,6 +196,13 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             return public_error(request, 503)
         return JSONResponse({'error': 'DATABASE_UNAVAILABLE', 'detail': '請稍後重新開始登入。'}, status_code=503)
 
+    from app.push.security import PushError
+    @app.exception_handler(PushError)
+    async def push_error(request, exc):
+        code = str(exc)
+        status = 401 if code == 'PUSH_DEVICE_UNAUTHORIZED' else 429 if code in ('PUSH_RATE_LIMITED','PUSH_CAPACITY_REACHED') else 409 if code in ('PUSH_REVISION_CONFLICT','PUSH_OPERATION_CONFLICT','PUSH_SOURCE_CHANGED','PUSH_SUBSCRIPTION_IN_USE') else 422
+        return JSONResponse({'error':code}, status_code=status)
+
     @app.exception_handler(AuthError)
     async def auth_error(request, exc):
         return JSONResponse({'error': str(exc)}, status_code=400)
@@ -200,7 +220,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         # which correctly fail our CSRF origin check. Account pages must retain
         # same-origin form metadata; OAuth URLs must never disclose their code.
         response.headers['Referrer-Policy'] = (
-            'same-origin' if (request.url.path.startswith('/settings/office-discovery') or request.url.path in ('/dashboard', '/settings', '/account/delete', '/my/todos') or re.fullmatch(r'/my/todos/[0-9]+', request.url.path) or re.fullmatch(r'/announcements/[0-9]+(?:/action-card/corrections|/todos)?', request.url.path)) else 'no-referrer'
+            'same-origin' if (request.url.path.startswith(('/public/','/api/push','/settings/office-discovery')) or request.url.path == '/todos' or request.url.path in ('/dashboard', '/settings', '/account/delete', '/my/todos') or re.fullmatch(r'/my/todos/[0-9]+', request.url.path) or re.fullmatch(r'/announcements/[0-9]+(?:/action-card/corrections|/todos)?', request.url.path)) else 'no-referrer'
         )
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Content-Security-Policy'] = (

@@ -118,3 +118,23 @@ class PushRepository:
                 row=PushRateBucket(key=key,count=0,expires_at=now+timedelta(hours=48));s.add(row)
             if row.count>=limit:raise PushError('PUSH_RATE_LIMITED')
             row.count+=1
+
+    def queue_test(self,device_id,operation_id,now):
+        from .models import PushOperation,PushRateBucket
+        from .security import fingerprint
+        with self.db.transaction() as s:
+            self.lock(s);d=s.get(PushDevice,str(device_id))
+            if not d or not d.enabled:raise PushError('PUSH_DEVICE_UNAUTHORIZED')
+            op=s.get(PushOperation,(str(device_id),str(operation_id)))
+            if op:
+                if op.request_hash!='test':raise PushError('PUSH_OPERATION_CONFLICT')
+                return
+            for scope,limit in [('test-device:'+str(device_id),3),('test-global',300)]:
+                key=scope+':'+now.strftime('%Y%m%d%H')
+                bucket=s.get(PushRateBucket,key)
+                if not bucket:
+                    bucket=PushRateBucket(key=key,count=0,expires_at=now+timedelta(hours=48));s.add(bucket)
+                if bucket.count>=limit:raise PushError('PUSH_RATE_LIMITED')
+                bucket.count+=1
+            s.add(PushReminder(id=str(uuid4()),device_id=d.id,todo_id=str(operation_id),source_ref='__test__',source_version='',client_revision=1,server_revision=1,subscription_version=d.subscription_version,status='pending',remind_at=now,expires_at=now+timedelta(minutes=5),updated_at=now))
+            s.add(PushOperation(device_id=d.id,operation_id=str(operation_id),request_hash='test',result={'status':'queued'},created_at=now))
