@@ -114,6 +114,11 @@ def detail(announcement_id: int, request: Request, q: str = Query('', max_length
                 item['registration_docs'].append(dict(doc,url=normalize_registration_url(doc['url']),read_time=display_time(datetime.fromisoformat(doc['fetched_at'])) if doc.get('fetched_at') else None))
             except (PublicSourceError,KeyError,TypeError,ValueError):continue
         item['article_time'] = display_time(datetime.fromisoformat(article['fetched_at'])) if article and article.get('fetched_at') else None
-        card = build_action_card(public_source(row,article=article))
+        source=public_source(row,article=article)
+        from app.push.sources import resolve_public_ref
+        from app.push.security import PushError
+        try:source.metadata['push_source_version']=resolve_public_ref(session,source.source_ref).version
+        except PushError:pass
+        card = build_action_card(source)
         status = status_data(session)
     return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, back_url=back_url, has_search=has_search, **status, **card_context(card,'public'))

@@ -16,7 +16,7 @@ function init(){
   const detail=area.hasAttribute('data-device-todo'),scope=area.dataset.scope||'public',cardNode=detail?area.closest('[data-card-payload]'):null;
   if(!['public','demo'].includes(scope))continue;
   const status=area.querySelector('[data-todo-status]'),body=area.querySelector(detail?'[data-todo-actions]':'[data-todo-items]');
-  const store=scope==='demo'?makeMemory():api.createTodoStore();let records=[],card=null,dirty=false,ready=false,busy=false,clockKey='';
+  const store=scope==='demo'?makeMemory():api.createTodoStore();let records=[],card=area.dataset.officeTodoCard?JSON.parse(area.dataset.officeTodoCard):null,dirty=false,ready=false,busy=false,clockKey='';
   let retryHelp=null;
   const say=(text,reveal=false)=>{status.textContent=text;if(reveal&&retryHelp)retryHelp.open=true;};
   const button=(target,text,fn)=>{const b=el('button',text);b.type='button';b.className=compact?'button':'button secondary';b.disabled=busy; b.addEventListener('click',fn);target.append(b);};
@@ -24,7 +24,7 @@ function init(){
    if(!ready||busy)return;if(operation==='add'&&(!card||dirty)){say('請先讀取行動卡，並儲存或恢復尚未保存的修正，再加入待辦。',true);return;}
    if(operation==='remove'&&!root.confirm('移除此待辦？公告與修正仍保留，可從公告詳情重新加入。'))return;
    busy=true;render();say('正在保存待辦，請稍候。');
-   try{await store.change({operation,card:operation==='add'?card:undefined,sourceRef:old?.source_ref||card.source.source_ref,expectedRevision:old?.revision||0,snoozeUntil});records=await store.readAll();say(scope==='demo'?'示範待辦已更新；重新載入即重設。':'待辦已保存至此裝置。');}
+   try{await store.change({operation,card:operation==='add'?card:undefined,sourceRef:old?.source_ref||card.source.source_ref,expectedRevision:old?.revision||0,snoozeUntil});records=await store.readAll();root.dispatchEvent?.(new root.Event('nkust:todo-changed'));say(scope==='demo'?'示範待辦已更新；重新載入即重設。':'待辦已保存至此裝置。');}
    catch(e){ready=false;say(e.message==='STALE_SNOOZE'?'日期已跨日，本次未稍後；請重新讀取待辦並確認新的時間與截止提醒。':e.message==='REVISION_CONFLICT'?'其他頁面已更新，本次未覆寫；請按重新讀取待辦後核對。':'保存結果無法確認，請重新讀取待辦；既有資料未清除。',true);}
    finally{busy=false;render();}
   }
@@ -32,7 +32,7 @@ function init(){
    if(r.effective_status!=='done')button(target,'標記完成',()=>change('complete',r));
    if(r.effective_status!=='active')button(target,'重新開啟',()=>change('reopen',r));
    const shownSnooze=api.nextSnooze();
-   target.append(el('p','稍後至 '+labelTime(shownSnooze)+'（明天09:00，台灣時間）重新出現；不發送通知。'));
+   target.append(el('p','稍後至 '+labelTime(shownSnooze)+'（明天09:00，台灣時間）重新出現；不變動另行設定的截止提醒。'));
    if(r.snooze_after_deadline)target.append(el('p','此稍後時間晚於截止日期，請先處理。'));
    button(target,'稍後處理',()=>change('snooze',r,shownSnooze));button(target,'移除待辦',()=>change('remove',r));
   }
@@ -47,7 +47,7 @@ function init(){
     try{root.NkustCalendarUI.mount(article,root.NkustCalendar.projectCard(r.card,{snapshot:true}));}
     catch{article.append(el('p','行事曆匯出暫時無法使用；待辦仍可操作。'));}
    }else article.append(el('p','行事曆匯出暫時無法使用；待辦仍可操作。'));
-   const controls=el('div');controls.className='actions todo-actions';actions(controls,r);article.append(controls);return article;
+   const controls=el('div');controls.className='actions todo-actions';actions(controls,r);article.append(controls);if(scope==='public')root.NkustPushUI?.mount({root:article,record:r});return article;
   }
   function render(){clockKey=api.renderClockKey(records,new Date());body.replaceChildren();if(!ready){body.append(el('p','尚未完整讀取待辦，請重試。'));return;}
    const projected=records.map(r=>api.projectTodo(r,new Date()));
@@ -63,7 +63,7 @@ function init(){
    }
   }
   async function load(){if(busy)return;ready=false;say('正在讀取待辦。');try{records=await store.readAll();ready=true;say(scope==='demo'?'示範待辦只留在此頁。':'已讀取此裝置待辦；不會跨裝置同步。');}catch{say('待辦讀取失敗，並非沒有待辦。請檢查儲存權限、關閉舊分頁後重試；不會清除既有資料。',true);}render();}
-  if(detail)controllers.set(cardNode,{setCard(value){card=structuredClone(value);dirty=false;render();},setDirty(){dirty=true;render();}});
+  if(detail&&cardNode)controllers.set(cardNode,{setCard(value){card=structuredClone(value);dirty=false;render();},setDirty(){dirty=true;render();}});
   const retry=el('button','重新讀取待辦');retry.type='button';retry.className='button secondary';retry.addEventListener('click',load);if(compact){retryHelp=el('details');retryHelp.className='reading-storage-help';retryHelp.append(el('summary','待辦讀取與重試'),status,retry);area.append(retryHelp);}else area.append(retry);
   area.querySelector('[data-todo-filter]')?.addEventListener('change',render);setInterval(()=>{if(ready&&!busy&&clockKey!==api.renderClockKey(records,new Date()))render();},60000);load();
  }

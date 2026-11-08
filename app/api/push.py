@@ -119,3 +119,12 @@ async def trigger(request:Request):
     async for chunk in request.stream():
         if chunk:raise HTTPException(422,'PUSH_TRIGGER_INPUT')
     return asdict(await run_in_threadpool(request.app.state.push_runner))
+
+@router.post('/api/push/device/reset')
+async def reset_cookie(request:Request):
+    enabled(request);await body(request,PushModel)
+    await run_in_threadpool(rate,request,'device-reset',30)
+    # Only forget this cookie. Never authorize deletion/claim of the old device.
+    response=JSONResponse({'status':'reset'})
+    response.delete_cookie(COOKIE,path='/api/push',secure=request.app.state.oauth_settings.secure_cookie,httponly=True,samesite='strict')
+    return response

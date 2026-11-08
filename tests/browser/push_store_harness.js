@@ -34,6 +34,9 @@ document.getElementById('run').addEventListener('click',async()=>{
   const flight=push.flush({api:{...api,save:async item=>{started();await wait;return {server_revision:3,client_revision:item.intent.client_revision,status:'pending'};}},epoch:'epoch-A'});
   await entered;await todos.change({operation:'remove',sourceRef:key,expectedRevision:3});release();await flight;
   assert((await records('pushOutbox'))[0].intent.enabled===false,'舊建立回覆不得清除新取消');
+  await todos.change({operation:'add',card,sourceRef:key,expectedRevision:4});
+  await push.setIntent({sourceRef:key,expectedRevision:5,intent:{enabled:true,source_version:hash,deadline:{kind:'date',value:'2026-12-01',confirmed:true,basis:'user'}}});
+  await push.requestDisable();assert((await push.read('__device__')).pending_disable,'關閉全部必須持久待同步');assert((await records('pushOutbox')).every(r=>!r.intent.enabled),'關閉全部取消全部意圖');
   out.textContent='PASS：v2→v3保留、未啟用零同步、原子abort、離線完成取消、舊epoch隔離、晚到建立回覆與取消競爭均通過。';
  }catch(e){out.textContent='FAIL：'+e.message;}finally{indexedDB.deleteDatabase(name);}
 });

@@ -78,3 +78,17 @@ const request = (url, method = 'GET', mode = 'navigate') =>
   assert.equal(cached.size, 7);
   assert.equal((await dispatch('fetch', request('/assets/account.css?v=editorial-1', 'GET', 'no-cors'))).kind, 'public');
 })().catch(error => { console.error(error); process.exitCode = 1; });
+
+// Visible notification and safe click contracts, separate from existing cache tests.
+(async()=>{
+ let displayed=[],opened=[];self.registration={showNotification:async(title,options)=>displayed.push([title,options])};
+ self.clients.matchAll=async()=>[];self.clients.openWindow=async path=>opened.push(path);
+ async function push(payload){let pending;handlers.push({data:{json:()=>payload},waitUntil:p=>pending=p});await pending;}
+ await push({id:'synthetic',title:'合成截止提醒',path:'/public/office-mail/1',expires_at:new Date(Date.now()+60000).toISOString(),kind:'deadline'});
+ assert.equal(displayed.length,1);assert.equal(displayed[0][1].tag,'nkust-reminder-synthetic');
+ let pending;handlers.notificationclick({notification:{data:displayed[0][1].data,close(){}},waitUntil:p=>pending=p});await pending;
+ assert.equal(opened[0],origin+'/public/office-mail/1');
+ await push({id:'bad',title:'x',path:'https://evil.invalid',expires_at:new Date(Date.now()+60000).toISOString()});
+ await push({id:'expired',title:'x',path:'/public/announcements/1',expires_at:'2000-01-01T00:00:00Z'});
+ assert.equal(displayed.length,1);console.log('visible push and safe click contracts passed');
+})().catch(error=>{console.error(error);process.exitCode=1;});

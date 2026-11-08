@@ -75,7 +75,12 @@ def office_mail_detail(database,pid:int)->dict:
     with database.transaction() as s:
         found=s.execute(_query().where(P.id==pid)).first()
         if not found:raise LookupError('Office announcement not found')
-        return dict(item=_item(*found),**_status(s))
+        from app.services.action_cards import build_action_card,public_source
+        source=public_source(found[0])
+        from app.push.sources import resolve_public_ref
+        source.metadata['push_source_version']=resolve_public_ref(s,source.source_ref).version
+        todo_card=build_action_card(source).model_dump(mode='json')
+        return dict(item=_item(*found),todo_card=todo_card,**_status(s))
 
 
 def office_mail_history(database,pid:int,*,page_number=1)->dict:

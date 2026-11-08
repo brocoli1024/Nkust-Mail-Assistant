@@ -84,7 +84,18 @@ function createPushStore(options={}){
    t.objectStore('pushBindings').delete('__device__');
   }catch(e){fail(e);}};
  });}
- return {read,setDevice,setIntent,flush,reconcile,disableAcknowledged};
+ async function requestDisable(){return tx('readwrite',(t,set,fail)=>{
+  const r=t.objectStore('pushBindings').getAll();r.onsuccess=()=>{try{
+   for(const binding of r.result){
+    if(binding.source_ref==='__device__'){binding.pending_disable=true;t.objectStore('pushBindings').put(binding);continue;}
+    if(!binding.desired?.enabled)continue;
+    const intent={...binding.desired,enabled:false,deadline:null,remind_at:null,client_revision:binding.client_revision+1,operation_id:root.crypto.randomUUID()};
+    binding.desired=intent;binding.client_revision=intent.client_revision;binding.state='pending_sync';t.objectStore('pushBindings').put(binding);
+    t.objectStore('pushOutbox').put({source_ref:binding.source_ref,epoch:binding.epoch,intent,expected_revision:binding.server_revision});
+   }
+  }catch(e){fail(e);}};
+ });}
+ return {read,setDevice,setIntent,flush,reconcile,disableAcknowledged,requestDisable};
 }
 root.NkustPushStore={createPushStore};if(typeof module!=='undefined')module.exports=root.NkustPushStore;
 })(typeof window!=='undefined'?window:globalThis);
