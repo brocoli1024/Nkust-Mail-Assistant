@@ -26,3 +26,26 @@ def test_concurrent_cancel_and_create(database):
     with db.transaction() as s:
         row=s.scalar(select(PushReminder).where(PushReminder.todo_id==str(todo)))
         assert row.status=='cancelled' and row.client_revision==2
+
+from tests import test_push_dispatcher as dispatch
+@pytest.mark.parametrize('contract',[dispatch.test_accepted_not_delivered_and_no_duplicate,dispatch.test_cancel_fence_before_send,dispatch.test_changed_source_sends_review_only,dispatch.test_expired_sending_lease_is_unknown],ids=lambda f:f.__name__)
+def test_dispatch_postgresql(database,contract):contract(database)
+
+def test_two_dispatchers_do_not_duplicate(database):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+    from datetime import timedelta
+    from tests.test_push_devices import NOW
+    from app.push.dispatcher import run_due
+    db,_=database;r,d,i,sender=dispatch.setup(db)
+    entered=Event();release=Event();original=sender.send
+    def send(*args):
+        entered.set();assert release.wait(5);return original(*args)
+    sender.send=send
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first=pool.submit(run_due,db,sender,NOW+timedelta(days=1,hours=1))
+        assert entered.wait(5)
+        try:assert run_due(db,sender,NOW+timedelta(days=1,hours=1)).busy
+        finally:release.set()
+        assert first.result().accepted==1
+    assert len(sender.sent)==1

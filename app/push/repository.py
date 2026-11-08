@@ -49,6 +49,9 @@ class PushRepository:
             row.endpoint_hash=endpoint_hash;row.enabled=True
             row.expires_at=now+timedelta(days=400);row.updated_at=now
             s.flush()
+            # Rotate delivery credentials without losing confirmed pending dates.
+            s.execute(update(PushReminder).where(PushReminder.device_id==row.id,PushReminder.status.in_(('pending','retry'))).values(subscription_version=row.subscription_version))
+            s.execute(update(PushReminder).where(PushReminder.device_id==row.id,PushReminder.status=='sending').values(status='unknown',claim=None,updated_at=now))
             return self.state(row)
 
     def apply_intent(self,device_id,intent,expected_revision,now):
