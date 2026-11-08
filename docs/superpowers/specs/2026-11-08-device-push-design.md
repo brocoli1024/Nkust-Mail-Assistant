@@ -42,6 +42,8 @@
 
 僅在使用者開啟提醒後保存：加密的PushSubscription端點與公鑰／auth資料、裝置版本／有效期、公開公告ID／來源類型、本機待辦不可猜的識別、提醒日期時間、到期界線、確認標記、來源版本與狀態revision。通知標題與來源連結由公開表取得，不接受或保存整份card、私人修正文字、Gmail資料、Email、電話或任意跳轉網址。訂閱端點本身是敏感能力網址，不進日誌、公開JSON、分析工具或錯誤正文。
 
+舊待辦若沒有公開公告ID，只以既有source_ref中的可靠來源key與官方canonical URL精確查公開表，不發網路查找、不以標題合併；找不到時提示重新核對來源，保留舊待辦。
+
 前端加入、完成、稍後、移除原流程仍先完成IndexedDB交易；獨立reminder模組才同步使用者已啟用的提醒。用持久outbox與版本處理斷線／分頁競爭；未開啟提醒、合成示範及私人Gmail待辦不得被這個模組上傳。清除瀏覽器資料可能失去本機管理能力，提供先關閉提醒的說明；伺服器到期清理及410失效處理限制殘留，不承諾瀏覽器清除會立即通知伺服器。
 
 ## API、權限與防濫用
@@ -68,7 +70,7 @@ Render新增預設關閉的PushSettings、獨立VAPID金鑰／subject及觸發Se
 
 ## iPhone與加入主畫面引導（推播核心完成後）
 
-支援iOS16.4以上的主畫面網頁App；先偵測能力及standalone狀態，再由使用者點擊開啟通知，不能初次載入便要求權限。iPhone普通分頁顯示需由主畫面App開啟的狀態，不宣稱已訂閱。
+支援iOS16.4以上的主畫面網頁App；先偵測能力及standalone狀態，再由使用者點擊開啟通知，不能初次載入便要求權限。iPhone普通分頁顯示需由主畫面App開啟的狀態，不宣稱已訂閱。準備公開VAPID公鑰與Service Worker就緒狀態後才允許點擊；點擊處理直接呼叫訂閱／權限API，不能先等待後端網路而失去使用者手勢。訂閱成功後才登記伺服器；後端保存失敗顯示「尚未完成啟用」，不得因瀏覽器已授權就顯示提醒已建立。
 
 第二段新增免登入可見「加入主畫面」入口與繁中步驟。iPhone提供Safari分享→加入主畫面→新增→從圖示開啟的指引；其他支援安裝提示的瀏覽器由使用者點擊後呼叫，不支援時提供選單步驟。已安裝時顯示已在App模式，不重複打擾；關閉引導不影響瀏覽。既有manifest、圖示、service worker沿用，只改必要通知與引導部分，不重做配色。
 
@@ -92,3 +94,7 @@ Email／簡訊、Google Calendar授權、跨裝置帳號同步、私人Gmail推�
 - Cloudflare免費限制：https://developers.cloudflare.com/workers/platform/limits/
 - Render免費時數與休眠：https://render.com/docs/free
 - GitHub schedule延遲：https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows
+
+## 自審結果
+
+已檢查：先推播再引導的實作順序、iPhone安裝前提、既有公務頁無待辦的銜接、日期型與精確時間區別、匿名裝置與Google帳號隔離、未opt-in不保存提醒資料、失去手勢的訂閱風險、離線取消及推播不可保證撤回、免費方案配額、正式啟用門檻。產品程式、正式DB及設定未改。寫實作計畫前仍需使用者審閱此書面規格。
