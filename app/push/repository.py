@@ -43,7 +43,11 @@ class PushRepository:
                 if count>=self.settings.max_devices:raise PushError('PUSH_CAPACITY_REACHED')
                 row=PushDevice(id=str(uuid4()),epoch=str(uuid4()),token_hash=digest,subscription_version=0)
                 s.add(row)
-            # Every subscription registration invalidates in-flight old sends.
+            if row.enabled and row.subscription_cipher and utc(row.expires_at)>utc(now):
+                if self.cipher.decrypt(row.id,row.subscription_version,row.subscription_cipher)==subscription:
+                    row.expires_at=now+timedelta(days=400);row.updated_at=now
+                    return self.state(row)
+            # A genuinely changed subscription invalidates in-flight old sends.
             row.subscription_version+=1
             row.subscription_cipher=self.cipher.encrypt(UUID(row.id),row.subscription_version,subscription)
             row.endpoint_hash=endpoint_hash;row.enabled=True
@@ -60,7 +64,8 @@ class PushRepository:
         from .contracts import MutationResult
         from .models import PushOperation
         from .dates import validate_window
-        from .sources import resolve_public_ref
+        from .sources import resolve_public_ref,parse_public_ref
+        parse_public_ref(intent.source_ref)
         encoded=json.dumps({'intent':intent.model_dump(mode='json'),'expected_revision':expected_revision},sort_keys=True,separators=(',',':'))
         digest=hashlib.sha256(encoded.encode()).hexdigest()
         with self.db.transaction() as s:
@@ -87,6 +92,9 @@ class PushRepository:
                 already_active=row and row.status in ('pending','sending','retry') and row.expires_at and utc(row.expires_at)>utc(now)
                 if not already_active and (own>=self.settings.per_device or total>=self.settings.max_active):raise PushError('PUSH_CAPACITY_REACHED')
             if row is None:
+                own_records=s.scalar(select(func.count()).select_from(PushReminder).where(PushReminder.device_id==str(device_id)))
+                all_records=s.scalar(select(func.count()).select_from(PushReminder))
+                if own_records>=200 or all_records>=50000:raise PushError('PUSH_CAPACITY_REACHED')
                 row=PushReminder(id=str(uuid4()),device_id=str(device_id),todo_id=str(intent.todo_id),server_revision=0)
                 s.add(row)
             row.source_ref=ref.source_ref if ref else intent.source_ref

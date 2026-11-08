@@ -16,7 +16,7 @@ class Deadline(PushModel):
 class ReminderIntent(PushModel):
     todo_id: UUID
     source_ref: str = Field(max_length=8192)
-    source_version: str = Field(max_length=64)
+    source_version: str = Field(max_length=64,pattern=r'^(?:[a-f0-9]{64})?$')
     client_revision: int = Field(strict=True,ge=1,le=2147483647)
     operation_id: UUID
     enabled: StrictBool

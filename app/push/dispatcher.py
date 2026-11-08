@@ -91,6 +91,10 @@ def run_due(db,sender,now,max_jobs=100,budget_seconds=50):
             ids=s.scalars(select(PushReminder.id).where(PushReminder.status.in_(('accepted','failed','unknown','stopped')),PushReminder.updated_at<now-timedelta(days=7)).limit(100)).all()
             # Retain minimal version tombstone, erase payload/date rather than deleting the identity.
             if ids:s.execute(update(PushReminder).where(PushReminder.id.in_(ids)).values(deadline=None,remind_at=None,expires_at=None,status='archived'))
+            receipts=s.execute(select(PushOperation.device_id,PushOperation.operation_id).where(PushOperation.created_at<now-timedelta(days=7)).limit(100)).all()
+            for device_id,operation_id in receipts:s.execute(delete(PushOperation).where(PushOperation.device_id==device_id,PushOperation.operation_id==operation_id))
+            devices=s.scalars(select(PushDevice.id).where(PushDevice.expires_at<now).limit(100)).all()
+            if devices:s.execute(delete(PushDevice).where(PushDevice.id.in_(devices)))
             keys=s.scalars(select(PushRateBucket.key).where(PushRateBucket.expires_at<now).limit(100)).all()
             if keys:s.execute(delete(PushRateBucket).where(PushRateBucket.key.in_(keys)))
     finally:

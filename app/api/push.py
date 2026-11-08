@@ -90,9 +90,20 @@ def reminders(request:Request):
     state=device(request);repo=enabled(request)
     with repo.db.transaction() as s:
         rows=s.scalars(select(PushReminder).where(PushReminder.device_id==str(state.id),PushReminder.source_ref!='__test__')).all()
-        return {'device':asdict(state),'items':[{'todo_id':r.todo_id,'source_ref':r.source_ref,'source_version':r.source_version,
-            'server_revision':r.server_revision,'client_revision':r.client_revision,'status':r.status,
-            'remind_at':r.remind_at,'expires_at':r.expires_at} for r in rows]}
+        from app.push.repository import utc
+        from app.push.sources import resolve_public_ref
+        items=[]
+        for row in rows:
+            status=row.status
+            if status in ('pending','retry'):
+                try:
+                    if resolve_public_ref(s,row.source_ref).version!=row.source_version:status='needs_review'
+                except PushError:status='needs_review'
+            items.append({'todo_id':row.todo_id,'source_ref':row.source_ref,'source_version':row.source_version,
+                'server_revision':row.server_revision,'client_revision':row.client_revision,'status':status,
+                'remind_at':utc(row.remind_at) if row.remind_at else None,'expires_at':utc(row.expires_at) if row.expires_at else None})
+        return {'device':asdict(state),'items':items}
+
 
 @router.put('/api/push/reminders/{todo_id}')
 async def mutate(todo_id:UUID,request:Request):

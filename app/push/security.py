@@ -25,6 +25,8 @@ def validate_subscription(value):
         if len(decode_key(value['keys']['auth']))!=16:raise ValueError()
         pub=decode_key(value['keys']['p256dh'])
         if len(pub)!=65 or pub[0]!=4:raise ValueError()
+        from cryptography.hazmat.primitives.asymmetric import ec
+        ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(),pub)
     except Exception:raise PushError('PUSH_INVALID_SUBSCRIPTION') from None
     return value
 

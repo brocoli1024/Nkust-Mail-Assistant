@@ -95,11 +95,16 @@ function mount({root,record,store:localStore=store,client:localClient=client}){
  localClient.prepare().then(cap=>{capability=cap;openButton.disabled=!cap.ready||record.effective_status==='done';paint();});
 }
 async function deviceControls(root){
- const status=root.querySelector('[data-push-device-status]'),test=root.querySelector('[data-push-test]'),disable=root.querySelector('[data-push-disable]'),reset=root.querySelector('[data-push-reset]');
- const cap=await client.prepare();const meta=await store.read('__device__').catch(()=>null);
- status.textContent=meta?.pending_disable?'提醒關閉待連線同步。':cap.ready?'提醒預設關閉，請在各待辦自行開啟。':reasons[cap.reason];
- test.disabled=!cap.ready||!meta;disable.disabled=!meta;reset.disabled=!cap.ready;
+ const status=root.querySelector('[data-push-device-status]'),test=root.querySelector('[data-push-test]'),disable=root.querySelector('[data-push-disable]'),reset=root.querySelector('[data-push-reset]'),retry=root.querySelector('[data-push-retry]');
+ const cap=await client.prepare();let meta=null;
+ async function refresh(){
+  meta=await store.read('__device__').catch(()=>null);
+  status.textContent=meta?.pending_disable?'提醒關閉待連線同步。':cap.ready?(meta?'此裝置已連線，各筆提醒狀態請看待辦下方。':'提醒預設關閉，請在各待辦自行開啟。'):reasons[cap.reason];
+  test.disabled=!cap.ready||!meta||!!meta.pending_disable;disable.disabled=!meta||!!meta.pending_disable;reset.disabled=!cap.ready;
+ }
+ await refresh();window.addEventListener('nkust:push-state',refresh);
  test.addEventListener('click',async()=>{test.disabled=true;try{await client.test(window.crypto.randomUUID());status.textContent='測試通知已排入發送；請查看裝置通知，不代表裝置已收到。';}catch{status.textContent='測試通知尚未成功排入，請檢查連線與此裝置訂閱。';}finally{test.disabled=false;}});
+ retry?.addEventListener('click',async()=>{retry.disabled=true;try{await sync();await refresh();}finally{retry.disabled=false;}});
  disable.addEventListener('click',async()=>{
   disable.disabled=true;
   try{await store.requestDisable();await client.unsubscribeBrowser();await client.disable();await store.disableAcknowledged(meta.epoch);status.textContent='此裝置全部提醒已關閉。';}

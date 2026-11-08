@@ -55,3 +55,13 @@ def test_json_unknown_private_fields_are_rejected(web):
     client,app,_,_=web;enable(app)
     r=client.post('/api/push/device',json={'subscription':subscription(),'email':'PRIVATE_MARKER'},headers={'Origin':str(client.base_url).rstrip('/')})
     assert r.status_code==422 and 'PRIVATE_MARKER' not in r.text
+
+def test_updated_source_is_reported_before_due_time(web):
+    from tests.test_push_intents import seeded,intent
+    from sqlalchemy import select
+    from app.models.public_announcements import PublicAnnouncement
+    client,app,_,_=web;enable(app);registered=register(client).json();ref=seeded(app.state.database)
+    from uuid import UUID
+    app.state.push_repo.apply_intent(UUID(registered['id']),intent(ref),None,NOW)
+    with app.state.database.transaction() as s:s.scalar(select(PublicAnnouncement)).excerpt='新期限'
+    assert client.get('/api/push/reminders').json()['items'][0]['status']=='needs_review'

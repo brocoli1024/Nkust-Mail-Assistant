@@ -14,7 +14,10 @@ NOW = datetime(2026, 11, 8, tzinfo=timezone.utc)
 def subscription(endpoint='https://fcm.googleapis.com/fcm/send/synthetic'):
     import base64
     enc=lambda b:base64.urlsafe_b64encode(b).decode().rstrip('=')
-    return {'endpoint':endpoint, 'keys':{'p256dh':enc(b'\x04'+b'x'*64),'auth':enc(b'a'*16)}}
+    from cryptography.hazmat.primitives.asymmetric import ec
+    from cryptography.hazmat.primitives.serialization import Encoding,PublicFormat
+    pub=ec.derive_private_key(1,ec.SECP256R1()).public_key().public_bytes(Encoding.X962,PublicFormat.UncompressedPoint)
+    return {'endpoint':endpoint, 'keys':{'p256dh':enc(pub),'auth':enc(b'a'*16)}}
 
 def repository(db):
     return PushRepository(db, PushCipher(Fernet.generate_key().decode()), b'k'*32)

@@ -7,13 +7,17 @@ from app.services.source_history import official_identity
 from .contracts import PublicRef
 from .security import PushError
 
-def resolve_public_ref(session,source_ref):
+def parse_public_ref(source_ref):
     try:
         key,url=json.loads(source_ref)
         if key not in ('nkust-latest','nkust-office-mail') or not isinstance(url,str):raise ValueError()
         canonical=official_identity(url)
         if canonical!=url:raise ValueError()
     except Exception:raise PushError('PUSH_SOURCE_NOT_FOUND') from None
+    return key,canonical
+
+def resolve_public_ref(session,source_ref):
+    key,canonical=parse_public_ref(source_ref)
     row=session.scalar(select(PublicAnnouncement).where(PublicAnnouncement.source_key==key,PublicAnnouncement.canonical_url==canonical))
     if row is None:raise PushError('PUSH_SOURCE_NOT_FOUND')
     latest=session.scalar(select(PublicSourceVersion).where(PublicSourceVersion.source_key==key,PublicSourceVersion.canonical_url==canonical).order_by(PublicSourceVersion.id.desc()).limit(1))
