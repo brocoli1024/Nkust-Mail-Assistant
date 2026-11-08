@@ -365,3 +365,13 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
 .push-reminder-form input[type=checkbox] {width:1.4rem;height:1.4rem;flex-shrink:0;}
 .push-reminder-form blockquote {overflow-wrap:anywhere;margin:.5rem 0;}
 .push-device-controls summary {min-height:44px;cursor:pointer;}
+
+.main-nav .install-open {min-height:44px;padding:8px 12px;background:transparent;color:var(--light-muted);border:1px solid var(--line-dark);border-radius:999px;font:inherit;font-size:.9rem;}
+.install-dialog {width:min(42rem,calc(100% - 2rem));max-height:85dvh;overflow:auto;border:1px solid var(--line-light);border-radius:20px;background:var(--paper);color:var(--ink);padding:clamp(20px,4vw,32px);}
+.install-dialog::backdrop {background:rgb(29 25 26 / 70%);}
+.install-dialog h2 {margin-bottom:1rem;}
+.install-dialog li {margin-bottom:.65rem;}
+@media(max-width:600px){.main-nav .install-open,.main-nav a {font-size:.82rem;padding-inline:9px;}.main-nav .install-open {flex:1 1 auto;}}
+
+.install-dialog .button.secondary {color:var(--ink);border-color:var(--ink);background:transparent;}
+.install-dialog .button.secondary:hover {background:var(--cream);color:var(--ink);}
