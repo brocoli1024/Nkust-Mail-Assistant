@@ -9,7 +9,9 @@ from .security import PushError
 
 def parse_public_ref(source_ref):
     try:
-        key,url=json.loads(source_ref)
+        parsed=json.loads(source_ref)
+        if not isinstance(parsed,list) or len(parsed)!=2 or not all(isinstance(v,str) for v in parsed):raise ValueError()
+        key,url=parsed
         if key not in ('nkust-latest','nkust-office-mail') or not isinstance(url,str):raise ValueError()
         canonical=official_identity(url)
         if canonical!=url:raise ValueError()

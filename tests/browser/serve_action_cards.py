@@ -67,6 +67,8 @@ def todo_harness():return FileResponse(Path(__file__).with_name('todo_store.html
 @app.get('/__qa/push-harness')
 def push_harness():return FileResponse(Path(__file__).with_name('push_store.html'))
 app.mount('/__qa/assets',StaticFiles(directory=Path(__file__).parent))
+rollback_assets=Path(__file__).resolve().parents[2]/'.superpowers/sdd/2026-11-08-device-push/rollback-preview/app/static/web'
+if rollback_assets.is_dir():app.mount('/__qa/rollback-assets',StaticFiles(directory=rollback_assets))
 if __name__=='__main__':
     try:uvicorn.run(app,host='127.0.0.1',port=8766,access_log=False)
     finally:scratch.cleanup()

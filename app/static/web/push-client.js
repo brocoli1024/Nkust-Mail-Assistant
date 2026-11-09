@@ -40,16 +40,23 @@ function createClient(env=root){
   let subscriptionPromise;
   try{subscriptionPromise=registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:capability.key});}
   catch(error){capability={...capability,status:'incomplete'};return Promise.reject(error);}
-  return subscriptionPromise.then(subscription=>api('/device','POST',{subscription:subscription.toJSON()}))
+  return subscriptionPromise.then(subscription=>{const value=subscription.toJSON();return api('/device','POST',{subscription:{endpoint:value.endpoint,keys:{p256dh:value.keys.p256dh,auth:value.keys.auth}}});})
    .then(device=>{capability={...capability,status:'active'};return device;})
    .catch(error=>{capability={...capability,status:'incomplete'};throw error;});
  }
  async function unsubscribeBrowser(){const reg=registration||await env.navigator?.serviceWorker?.getRegistration?.('/');const sub=await reg?.pushManager.getSubscription();if(sub)await sub.unsubscribe();}
- async function reset(){await unsubscribeBrowser();await api('/device/reset','POST',{});capability={...capability,status:'ready'};}
+ async function reset(expectedEpoch){
+  const reg=registration||await env.navigator?.serviceWorker?.getRegistration?.('/');
+  const sub=await reg?.pushManager.getSubscription();
+  if(expectedEpoch==null){try{expectedEpoch=(await api('/reminders')).device.epoch;}catch(error){if(error.code!=='PUSH_DEVICE_UNAUTHORIZED')throw error;}}
+  await api('/device/reset','POST',{expected_epoch:expectedEpoch||null});
+  // Unsubscribe the captured subscription, never look up a replacement from another tab.
+  if(sub)await sub.unsubscribe();capability={...capability,status:'ready'};
+ }
  return {prepare,subscribeFromClick,state:()=>capability,api,
-  list:()=>api('/reminders'),save:item=>api('/reminders/'+item.intent.todo_id,'PUT',{intent:item.intent,expected_revision:item.expected_revision}),
-  source:sourceRef=>api('/source','POST',{source_ref:sourceRef}),test:operationId=>api('/test','POST',{operation_id:operationId}),
-  disable:()=>api('/device','DELETE',{}),unsubscribeBrowser,reset};
+  list:()=>api('/reminders'),save:item=>api('/reminders/'+item.intent.todo_id,'PUT',{intent:item.intent,expected_revision:item.expected_revision,expected_epoch:item.epoch}),
+  source:sourceRef=>api('/source','POST',{source_ref:sourceRef}),test:(operationId,epoch)=>api('/test','POST',{operation_id:operationId,expected_epoch:epoch}),
+  disable:epoch=>api('/device','DELETE',{expected_epoch:epoch}),unsubscribeBrowser,reset};
 }
 root.NkustPushClient={createClient,deadlineWindow};if(typeof module!=='undefined')module.exports=root.NkustPushClient;
 })(typeof window!=='undefined'?window:globalThis);

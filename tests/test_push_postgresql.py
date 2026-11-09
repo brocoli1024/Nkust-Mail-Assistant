@@ -49,3 +49,18 @@ def test_two_dispatchers_do_not_duplicate(database):
         finally:release.set()
         assert first.result().accepted==1
     assert len(sender.sent)==1
+
+@pytest.mark.parametrize('contract',[intents.test_newer_cancel_survives_inflight_reconfiguration],ids=lambda f:f.__name__)
+def test_review_cancel_postgresql(database,contract):contract(database)
+
+def test_cross_epoch_writes_are_rejected_inside_transaction(database):
+    from uuid import uuid4
+    from tests.test_push_devices import repository,subscription,NOW
+    from app.push.security import PushError
+    from app.push.models import PushDevice,PushReminder
+    from sqlalchemy import select
+    db,_=database;r=repository(db);d=r.register_device('a'*43,subscription(),NOW);ref=intents.seeded(db)
+    with pytest.raises(PushError,match='PUSH_DEVICE_CHANGED'):r.apply_intent(d.id,intents.intent(ref,enabled=False),None,NOW,uuid4())
+    with pytest.raises(PushError,match='PUSH_DEVICE_CHANGED'):r.disable(d.id,NOW,uuid4())
+    with db.transaction() as s:
+        assert s.get(PushDevice,str(d.id)).enabled and not s.scalars(select(PushReminder)).all()

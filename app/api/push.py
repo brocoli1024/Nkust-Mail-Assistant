@@ -15,10 +15,12 @@ router=APIRouter()
 COOKIE='nkust_push_device'
 class SubscriptionBody(PushModel):subscription:dict
 class SourceBody(PushModel):source_ref:str=Field(max_length=8192)
-class IntentBody(PushModel):
+class EpochBody(PushModel):expected_epoch:UUID
+class ResetBody(PushModel):expected_epoch:UUID|None=None
+class IntentBody(EpochBody):
     intent:ReminderIntent
     expected_revision:int|None=Field(default=None,strict=True,ge=0,le=2147483647)
-class TestBody(PushModel):operation_id:UUID
+class TestBody(EpochBody):operation_id:UUID
 
 def now():return datetime.now(timezone.utc)
 def enabled(request):
@@ -69,9 +71,9 @@ async def register(request:Request):
 
 @router.delete('/api/push/device')
 async def disable(request:Request):
-    repo=enabled(request);await body(request,PushModel)
+    repo=enabled(request);data=await body(request,EpochBody)
     state=await run_in_threadpool(device,request)
-    await run_in_threadpool(repo.disable,state.id,now())
+    await run_in_threadpool(repo.disable,state.id,now(),data.expected_epoch)
     response=JSONResponse({'status':'disabled'})
     response.delete_cookie(COOKIE,path='/api/push',secure=request.app.state.oauth_settings.secure_cookie,httponly=True,samesite='strict')
     return response
@@ -111,14 +113,14 @@ async def mutate(todo_id:UUID,request:Request):
     if todo_id!=data.intent.todo_id:raise HTTPException(422,'PUSH_TODO_MISMATCH')
     state=await run_in_threadpool(device,request)
     await run_in_threadpool(rate,request,'device-mutation',120,str(state.id))
-    return asdict(await run_in_threadpool(repo.apply_intent,state.id,data.intent,data.expected_revision,now()))
+    return asdict(await run_in_threadpool(repo.apply_intent,state.id,data.intent,data.expected_revision,now(),data.expected_epoch))
 
 @router.post('/api/push/test')
 async def test_notification(request:Request):
     repo=enabled(request);data=await body(request,TestBody);state=await run_in_threadpool(device,request)
-    await run_in_threadpool(repo.queue_test,state.id,data.operation_id,now())
+    created=await run_in_threadpool(repo.queue_test,state.id,data.operation_id,now(),data.expected_epoch)
     # Dispatcher is also lease-safe with cron. A busy runner leaves this durable test pending.
-    await run_in_threadpool(request.app.state.push_runner)
+    if created:await run_in_threadpool(request.app.state.push_runner)
     return JSONResponse({'status':'queued'},status_code=202)
 
 @router.post('/internal/push/run')
@@ -133,7 +135,12 @@ async def trigger(request:Request):
 
 @router.post('/api/push/device/reset')
 async def reset_cookie(request:Request):
-    enabled(request);await body(request,PushModel)
+    repo=enabled(request);data=await body(request,ResetBody)
+    try:state=await run_in_threadpool(device,request)
+    except PushError as error:
+        if str(error)!='PUSH_DEVICE_UNAUTHORIZED':raise
+    else:
+        if data.expected_epoch!=state.epoch:raise PushError('PUSH_DEVICE_CHANGED')
     await run_in_threadpool(rate,request,'device-reset',30)
     # Only forget this cookie. Never authorize deletion/claim of the old device.
     response=JSONResponse({'status':'reset'})

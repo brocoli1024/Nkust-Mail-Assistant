@@ -7,7 +7,7 @@ from sqlalchemy import text
 
 from app.config import Settings
 from app.database.multi_user import MultiUserDatabase
-from app.database.schema import REQUIRED_REVISION
+from app.database.schema import PUBLIC_MAINTENANCE_REVISIONS
 from app.services.public_source import SOURCE_KEY, fetch_feed, PublicSourceError
 from app.services.public_sync import sync_recent, reclassify, backfill_history
 
@@ -36,7 +36,7 @@ def main(argv=None) -> int:
         database = MultiUserDatabase(config.database_url, legacy_path=config.database_path)
         with database.engine.connect() as connection:
             revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
-        if revision != REQUIRED_REVISION:
+        if revision not in PUBLIC_MAINTENANCE_REVISIONS:
             raise PublicSourceError('PUBLIC_MIGRATION_REQUIRED')
         if args.command in ('office-import','office-refresh'):
             from app.services.office_mail_sync import import_office_mail,refresh_office_mail

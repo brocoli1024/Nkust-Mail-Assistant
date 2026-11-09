@@ -2,7 +2,7 @@ import base64
 import hashlib
 import hmac
 import json
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit,urlunsplit
 from cryptography.fernet import Fernet
 
 HOSTS=frozenset(('web.push.apple.com','fcm.googleapis.com','updates.push.services.mozilla.com'))
@@ -20,7 +20,7 @@ def validate_subscription(value):
         endpoint=value['endpoint'];u=urlsplit(endpoint)
         if (not isinstance(endpoint,str) or len(endpoint)>4096 or any(ord(c)<33 or ord(c)>126 for c in endpoint)
             or u.scheme!='https' or u.hostname not in HOSTS or u.username or u.password
-            or u.port not in (None,443) or u.fragment or u.query or not u.path.startswith('/')
+            or u.username is not None or u.password is not None or u.port not in (None,443) or u.fragment or u.query or not u.path.startswith('/')
             or '\\' in endpoint):raise ValueError()
         if len(decode_key(value['keys']['auth']))!=16:raise ValueError()
         pub=decode_key(value['keys']['p256dh'])
@@ -28,7 +28,7 @@ def validate_subscription(value):
         from cryptography.hazmat.primitives.asymmetric import ec
         ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256R1(),pub)
     except Exception:raise PushError('PUSH_INVALID_SUBSCRIPTION') from None
-    return value
+    return {'endpoint':urlunsplit(('https',u.hostname,u.path,'','')),'keys':{'p256dh':value['keys']['p256dh'],'auth':value['keys']['auth']}}
 
 def token_hash(token):
     if not isinstance(token,str) or not 43<=len(token)<=128:raise PushError('PUSH_DEVICE_UNAUTHORIZED')

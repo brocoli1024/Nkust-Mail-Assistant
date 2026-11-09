@@ -45,7 +45,7 @@ def test_scheduled_role_can_sync_but_not_read_private_or_delete(database,monkeyp
         assert import_office_mail(limited,[office_url],source=lambda u:office_doc).added==1
         assert refresh_office_mail(limited,source=lambda u:office_doc).unchanged==1
 
-        for query in ['select * from emails','select * from users','select * from private_todos',
+        for query in ['select * from push_devices','select * from push_reminders','select * from push_operations','select * from push_leases','select * from push_rate_buckets','select * from emails','select * from users','select * from private_todos',
             'select * from office_discovery_state','select * from office_discovery_candidates',
             "insert into office_discovery_candidates(user_id,canonical_url) values(1,'x')",
             "update office_discovery_state set last_status='running'",

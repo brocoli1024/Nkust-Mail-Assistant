@@ -15,7 +15,7 @@ document.getElementById('run').addEventListener('click',async()=>{
   await push.setDevice({epoch:'epoch-A'});
   await push.setIntent({sourceRef:key,expectedRevision:1,intent:{enabled:true,source_version:hash,deadline:{kind:'date',value:'2026-12-01',confirmed:true,basis:'user'},remind_at:'2026-11-30T01:00:00Z'}});
   let calls=0;
-  const api={list:async()=>({device:{epoch:'epoch-A'},items:[]}),save:async item=>{calls++;return {server_revision:1,client_revision:item.intent.client_revision,status:'pending'};}};
+  const api={list:async()=>({device:{epoch:'epoch-A'},items:[]}),save:async item=>{calls++;return {server_revision:1,client_revision:item.intent.client_revision,status:item.intent.enabled?'pending':'cancelled'};}};
   await push.flush({api,epoch:'epoch-A'});assert(calls===1,'明確啟用才同步');
   let rejected=false;try{await NkustTodos.createTodoStore({indexedDB:faultFactory()}).change({operation:'complete',sourceRef:key,expectedRevision:1});}catch{rejected=true;}
   assert(rejected&&(await todos.readAll())[0].status==='active','取消佇列故障時待辦同交易撤回');
@@ -31,9 +31,10 @@ document.getElementById('run').addEventListener('click',async()=>{
   await todos.change({operation:'reopen',sourceRef:key,expectedRevision:2});
   await push.setIntent({sourceRef:key,expectedRevision:3,intent:{enabled:true,source_version:hash,deadline:{kind:'date',value:'2026-12-01',confirmed:true,basis:'user'},remind_at:'2026-11-30T01:00:00Z'}});
   let started,release;const entered=new Promise(r=>started=r),wait=new Promise(r=>release=r);
-  const flight=push.flush({api:{...api,save:async item=>{started();await wait;return {server_revision:3,client_revision:item.intent.client_revision,status:'pending'};}},epoch:'epoch-A'});
+  const sent=[];let serverRevision=2;
+  const flight=push.flush({api:{...api,save:async item=>{started();await wait;sent.push(item.intent.enabled);return {server_revision:++serverRevision,client_revision:item.intent.client_revision,status:item.intent.enabled?'pending':'cancelled'};}},epoch:'epoch-A'});
   await entered;await todos.change({operation:'remove',sourceRef:key,expectedRevision:3});release();await flight;
-  assert((await records('pushOutbox'))[0].intent.enabled===false,'舊建立回覆不得清除新取消');
+  assert(sent.includes(false)&&(await records('pushOutbox')).length===0&&(await push.read(key)).state==='cancelled','新取消必須在舊建立回覆後確實同步');
   await todos.change({operation:'add',card,sourceRef:key,expectedRevision:4});
   await push.setIntent({sourceRef:key,expectedRevision:5,intent:{enabled:true,source_version:hash,deadline:{kind:'date',value:'2026-12-01',confirmed:true,basis:'user'}}});
   await push.requestDisable();assert((await push.read('__device__')).pending_disable,'關閉全部必須持久待同步');assert((await records('pushOutbox')).every(r=>!r.intent.enabled),'關閉全部取消全部意圖');

@@ -52,3 +52,11 @@ def test_fetch_metadata_does_not_change_version(database):
     record('two')
     with db.transaction() as s:b=resolve_public_ref(s,ref.source_ref)
     assert a.version==b.version
+
+def test_newer_cancel_survives_inflight_reconfiguration(database):
+    db,_=database;r=repository(db);d=r.register_device('a'*43,subscription(),NOW);ref=seeded(db);todo=uuid4()
+    r.apply_intent(d.id,intent(ref,todo,1),None,NOW)
+    assert r.apply_intent(d.id,intent(ref,todo,2),1,NOW).server_revision==2
+    # Completion was queued while rev2 was in flight and still knows server revision 1.
+    assert r.apply_intent(d.id,intent(ref,todo,3,False),1,NOW).status=='cancelled'
+    with pytest.raises(PushError):r.apply_intent(d.id,intent(ref,todo,2),2,NOW)

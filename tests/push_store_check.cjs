@@ -8,3 +8,5 @@ for(const name of ['todo-store.js','action-card-store.js','push-store.js']) {
 }
 const todo=fs.readFileSync('app/static/web/todo-store.js','utf8');assert.ok(todo.includes('queueCancellation'));
 console.log('push store schema and public API contracts passed; native IDB harness required separately');
+
+assert.equal(typeof api.createPushStore({indexedDB:{}}).retireDevice,'function','explicit local recovery must preserve todos and retire only old epoch');

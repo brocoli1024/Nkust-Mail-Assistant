@@ -200,7 +200,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
     @app.exception_handler(PushError)
     async def push_error(request, exc):
         code = str(exc)
-        status = 401 if code == 'PUSH_DEVICE_UNAUTHORIZED' else 429 if code in ('PUSH_RATE_LIMITED','PUSH_CAPACITY_REACHED') else 409 if code in ('PUSH_REVISION_CONFLICT','PUSH_OPERATION_CONFLICT','PUSH_SOURCE_CHANGED','PUSH_SUBSCRIPTION_IN_USE') else 422
+        status = 401 if code == 'PUSH_DEVICE_UNAUTHORIZED' else 429 if code in ('PUSH_RATE_LIMITED','PUSH_CAPACITY_REACHED') else 409 if code in ('PUSH_DEVICE_CHANGED','PUSH_REVISION_CONFLICT','PUSH_OPERATION_CONFLICT','PUSH_SOURCE_CHANGED','PUSH_SUBSCRIPTION_IN_USE') else 422
         return JSONResponse({'error':code}, status_code=status)
 
     @app.exception_handler(AuthError)

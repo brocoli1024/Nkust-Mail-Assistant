@@ -6,12 +6,12 @@ const el=(tag,text)=>{const node=document.createElement(tag);if(text!==undefined
 const labelTime=value=>new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',dateStyle:'short',timeStyle:'short',hourCycle:'h23'}).format(new Date(value));
 const inputTime=value=>new Date(Date.parse(value)+8*3600000).toISOString().slice(0,16);
 const reasons={disabled:'截止推播尚未開放；待辦仍會保存在此裝置。',home_screen_required:'iPhone／iPad 請先加入主畫面，從圖示開啟後才能設定通知（iOS 16.4 以上）。',unsupported:'此瀏覽器不支援裝置推播；仍可使用待辦與行事曆匯出。',denied:'瀏覽器已封鎖通知。若要啟用，請自行在瀏覽器的網站設定允許通知後重開此頁。',prepare_failed:'提醒功能準備失敗，請確認連線後重新開啟此頁；待辦仍保留。'};
-const states={pending_sync:'提醒變更待連線同步',pending:'已排程；尚未交付推播服務',retry:'推播服務忙碌，正在等待重試',accepted:'推播服務已接受；不代表裝置已顯示或你已讀取',unknown:'發送結果不明，為避免重複通知不自動重送',cancelled:'提醒已取消',stopped:'提醒已停止，請重新核對設定',failed:'推播服務未接受，請檢查訂閱後重新設定',archived:'這次提醒已結束',needs_review:'公告已更新，請重新核對截止並儲存',conflict:'其他分頁已更新，請重新核對後儲存',device_changed:'此提醒屬於先前裝置連線，請重新確認啟用'};
+const states={pending_sync:'提醒變更待連線同步',pending:'已排程；尚未交付推播服務',retry:'推播服務忙碌，正在等待重試',accepted:'推播服務已接受；不代表裝置已顯示或你已讀取',unknown:'發送結果不明，為避免重複通知不自動重送',cancelled:'提醒已取消',stopped:'提醒已停止，請重新核對設定',failed:'推播服務未接受，請檢查訂閱後重新設定',archived:'這次提醒已結束',needs_review:'公告已更新，請重新核對截止並儲存',conflict:'其他分頁已更新，請重新核對後儲存',device_changed:'此提醒屬於先前裝置連線，請重新確認啟用',retired_unknown:'此筆舊裝置提醒已在本機停用；伺服器取消狀態未確認，請重新設定'};
 let syncing=false;
 async function sync(){
  if(syncing)return;syncing=true;
  try{const device=await store.read('__device__');if(!device)return;
-  if(device.pending_disable){await client.disable();await store.disableAcknowledged(device.epoch);}
+  if(device.pending_disable){await client.disable(device.epoch);await store.disableAcknowledged(device.epoch);}
   else{await store.flush({api:client,epoch:device.epoch});await store.reconcile({api:client});}
  }catch{}finally{syncing=false;window.dispatchEvent(new Event('nkust:push-state'));}
 }
@@ -68,9 +68,11 @@ function mount({root,record,store:localStore=store,client:localClient=client}){
    const subscription=localClient.subscribeFromClick();
    subscription.then(async device=>{
     await localStore.setDevice(device);
-    await localStore.setIntent({sourceRef:record.source_ref,expectedRevision:record.revision,intent:{enabled:true,source_version:source.version,deadline:confirmed,remind_at:when}});
-    const result=await localStore.flush({api:localClient,epoch:device.epoch});
-    message.textContent=result.pending?'已存此裝置，提醒變更待連線同步；尚未確認伺服器排程。':'提醒已排程；推播可能因網路、系統設定或裝置離線延遲。';
+    const saved=await localStore.setIntent({sourceRef:record.source_ref,expectedRevision:record.revision,intent:{enabled:true,source_version:source.version,deadline:confirmed,remind_at:when}});
+    await localStore.flush({api:localClient,epoch:device.epoch});
+    const acknowledged=await localStore.read(record.source_ref);
+    const pending=acknowledged?.desired?.operation_id!==saved.desired.operation_id||!['pending','accepted','retry'].includes(acknowledged?.state);
+    message.textContent=pending?'已存此裝置，提醒變更待連線同步；尚未確認伺服器排程。':'提醒已排程；推播可能因網路、系統設定或裝置離線延遲。';
     await paint();window.dispatchEvent(new Event('nkust:push-state'));
    }).catch(error=>{message.textContent=error.code==='PUSH_SUBSCRIPTION_IN_USE'||error.code==='PUSH_DEVICE_UNAUTHORIZED'?'裝置連線已失效。請到「此裝置提醒設定」重設訂閱，再重新確認此筆提醒。':'此筆提醒尚未完成啟用；請檢查通知權限與連線後重試，待辦仍保留。';})
     .finally(()=>{save.disabled=false;});
@@ -103,15 +105,15 @@ async function deviceControls(root){
   test.disabled=!cap.ready||!meta||!!meta.pending_disable;disable.disabled=!meta||!!meta.pending_disable;reset.disabled=!cap.ready;
  }
  await refresh();window.addEventListener('nkust:push-state',refresh);
- test.addEventListener('click',async()=>{test.disabled=true;try{await client.test(window.crypto.randomUUID());status.textContent='測試通知已排入發送；請查看裝置通知，不代表裝置已收到。';}catch{status.textContent='測試通知尚未成功排入，請檢查連線與此裝置訂閱。';}finally{test.disabled=false;}});
+ test.addEventListener('click',async()=>{test.disabled=true;try{await client.test(window.crypto.randomUUID(),meta.epoch);status.textContent='測試通知已排入發送；請查看裝置通知，不代表裝置已收到。';}catch{status.textContent='測試通知尚未成功排入，請檢查連線與此裝置訂閱。';}finally{test.disabled=false;}});
  retry?.addEventListener('click',async()=>{retry.disabled=true;try{await sync();await refresh();}finally{retry.disabled=false;}});
  disable.addEventListener('click',async()=>{
   disable.disabled=true;
-  try{await store.requestDisable();await client.unsubscribeBrowser();await client.disable();await store.disableAcknowledged(meta.epoch);status.textContent='此裝置全部提醒已關閉。';}
+  try{await store.requestDisable(meta.epoch);await client.disable(meta.epoch);await store.disableAcknowledged(meta.epoch);status.textContent='此裝置全部提醒已關閉。';}
   catch{status.textContent='提醒關閉待連線同步；尚未確認伺服器停止。請保持此頁並恢復連線。';}
   finally{window.dispatchEvent(new Event('nkust:push-state'));}
  });
- reset.addEventListener('click',async()=>{reset.disabled=true;try{await client.reset();status.textContent='已重設此瀏覽器連線。請重新開頁，在需要的待辦重新確認啟用；先前裝置不會被認領。';}catch{status.textContent='重設尚未完成，請確認連線後重試。';}finally{reset.disabled=false;}});
+ reset.addEventListener('click',async()=>{reset.disabled=true;try{const previous=await store.read('__device__');await client.reset(previous?.epoch);if(previous)await store.retireDevice(previous.epoch);status.textContent='已重設此瀏覽器連線，待辦保留。先前伺服器取消狀態未確認，請在需要的待辦重新核對啟用。';}catch{status.textContent='重設尚未完成，請確認連線後重試。';}finally{reset.disabled=false;}});
  if(meta)sync();
 }
 window.NkustPushUI={mount};

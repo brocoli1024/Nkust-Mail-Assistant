@@ -5,7 +5,7 @@ from sqlalchemy.engine import make_url
 def validate_test_target(raw,marker):
     try:
         url=make_url(raw)
-        if marker!='yes' or url.get_backend_name()!='postgresql' or url.host not in ('localhost','127.0.0.1','::1') or not (url.database or '').startswith('nkust_disposable'):raise ValueError()
+        if url.query or marker!='yes' or url.get_backend_name()!='postgresql' or url.host not in ('localhost','127.0.0.1','::1') or not (url.database or '').startswith('nkust_disposable'):raise ValueError()
         production=os.environ.get('DATABASE_URL')
         if production:
             p=make_url(production)
@@ -21,9 +21,17 @@ class NoSkip:
         if self.skipped:session.exitstatus=1
 
 def main():
-    try:validate_test_target(os.environ.get('NKUST_TEST_POSTGRES_URL',''),os.environ.get('NKUST_PUSH_TEST_DISPOSABLE',''))
+    try:
+        target=validate_test_target(os.environ.get('NKUST_TEST_POSTGRES_URL',''),os.environ.get('NKUST_PUSH_TEST_DISPOSABLE',''))
+        limited=os.environ.get('NKUST_TEST_PUBLIC_SYNC_URL')
+        if limited:
+            other=validate_test_target(limited,'yes')
+            if (target.host,target.port,target.database)!=(other.host,other.port,other.database) or other.username!='nkust_public_sync':raise ValueError()
     except ValueError:
         print('PUSH_TEST_TARGET_REFUSED: explicit disposable loopback PostgreSQL target required.');return 2
+    # libpq environment must not override an explicitly verified loopback target.
+    for name in tuple(os.environ):
+        if name.upper().startswith('PG'):os.environ.pop(name,None)
     import pytest
     plugin=NoSkip()
     targets=['tests/test_push_postgresql.py','tests/test_postgresql.py'] if '--push-only' in sys.argv else []

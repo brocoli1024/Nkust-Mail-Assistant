@@ -45,6 +45,7 @@ function createPushStore(options={}){
   if(!binding||binding.epoch!==item.epoch)return;
   get(t,'pushOutbox',item.source_ref,current=>{
    binding.server_revision=Math.max(binding.server_revision||0,result.server_revision);
+   if(current&&current.intent.operation_id!==item.intent.operation_id&&current.intent.client_revision>item.intent.client_revision&&current.expected_revision===item.expected_revision){current.expected_revision=result.server_revision;t.objectStore('pushOutbox').put(current);}
    if(current?.intent.operation_id===item.intent.operation_id){t.objectStore('pushOutbox').delete(item.source_ref);binding.state=result.status;}
    t.objectStore('pushBindings').put(binding);set(binding);
   },fail);
@@ -52,20 +53,26 @@ function createPushStore(options={}){
  async function mark(item,state){return tx('readwrite',(t,set,fail)=>get(t,'pushBindings',item.source_ref,binding=>{
   if(binding?.desired?.operation_id===item.intent.operation_id){binding.state=state;t.objectStore('pushBindings').put(binding);}
  },fail));}
- let flushing=false;
- async function flush({api,epoch}){
-  if(flushing)return {busy:true};flushing=true;let synced=0,pending=0;
-  try{
-   const items=await outbox();if(!items.length)return {synced,pending};
-   let remote;try{remote=await api.list();}catch{return {synced,pending:items.length,unauthorized:true};}
-   if(remote.device.epoch!==epoch)return {synced,pending:items.length,deviceChanged:true};
+ let activeRun=null;
+ function flush(options){
+  if(activeRun)return activeRun.then(()=>flush(options));
+  activeRun=flushOnce(options).finally(()=>{activeRun=null;});return activeRun;
+ }
+ async function flushOnce({api,epoch}){
+  let synced=0;const tried=new Set();
+  if(!(await outbox()).length)return {synced,pending:0};
+  let remote;try{remote=await api.list();}catch{return {synced,pending:(await outbox()).length,unauthorized:true};}
+  if(remote.device.epoch!==epoch)return {synced,pending:(await outbox()).length,deviceChanged:true};
+  while(tried.size<100){
+   const items=(await outbox()).filter(item=>!tried.has(item.intent.operation_id));if(!items.length)break;
    for(const item of items){
-    if(item.epoch!==epoch){pending++;await mark(item,'device_changed');continue;}
+    if(tried.size>=100)break;tried.add(item.intent.operation_id);
+    if(item.epoch!==epoch){await mark(item,'device_changed');continue;}
     try{const result=await api.save(item);await acknowledge(item,result);synced++;}
-    catch(e){pending++;await mark(item,e.code==='PUSH_SOURCE_CHANGED'?'needs_review':e.code==='PUSH_REVISION_CONFLICT'?'conflict':'pending_sync');}
+    catch(e){await mark(item,e.code==='PUSH_SOURCE_CHANGED'?'needs_review':e.code==='PUSH_REVISION_CONFLICT'?'conflict':e.code==='PUSH_DEVICE_CHANGED'?'device_changed':'pending_sync');}
    }
-   return {synced,pending};
-  }finally{flushing=false;}
+  }
+  return {synced,pending:(await outbox()).length};
  }
  async function reconcile({api}){
   const local=await read('__device__');if(!local?.epoch)return null;
@@ -78,24 +85,35 @@ function createPushStore(options={}){
    },fail);
   });return remote;
  }
- async function disableAcknowledged(epoch){return tx('readwrite',(t,set,fail)=>{
-  const r=t.objectStore('pushBindings').getAll();r.onsuccess=()=>{try{
-   for(const b of r.result)if(b.source_ref!=='__device__'&&b.epoch===epoch){b.state='cancelled';b.desired.enabled=false;t.objectStore('pushBindings').put(b);t.objectStore('pushOutbox').delete(b.source_ref);}
-   t.objectStore('pushBindings').delete('__device__');
-  }catch(e){fail(e);}};
+ async function cleanupEpoch(epoch,state){return tx('readwrite',(t,set,fail)=>{
+  get(t,'pushBindings','__device__',device=>{
+   const r=t.objectStore('pushBindings').getAll();r.onsuccess=()=>{try{
+    for(const binding of r.result)if(binding.source_ref!=='__device__'&&binding.epoch===epoch){
+     binding.state=state;binding.desired.enabled=false;t.objectStore('pushBindings').put(binding);
+     get(t,'pushOutbox',binding.source_ref,item=>{if(item?.epoch===epoch)t.objectStore('pushOutbox').delete(binding.source_ref);},fail);
+    }
+    if(device?.epoch===epoch)t.objectStore('pushBindings').delete('__device__');
+   }catch(e){fail(e);}};
+  },fail);
  });}
- async function requestDisable(){return tx('readwrite',(t,set,fail)=>{
-  const r=t.objectStore('pushBindings').getAll();r.onsuccess=()=>{try{
-   for(const binding of r.result){
-    if(binding.source_ref==='__device__'){binding.pending_disable=true;t.objectStore('pushBindings').put(binding);continue;}
-    if(!binding.desired?.enabled)continue;
-    const intent={...binding.desired,enabled:false,deadline:null,remind_at:null,client_revision:binding.client_revision+1,operation_id:root.crypto.randomUUID()};
-    binding.desired=intent;binding.client_revision=intent.client_revision;binding.state='pending_sync';t.objectStore('pushBindings').put(binding);
-    t.objectStore('pushOutbox').put({source_ref:binding.source_ref,epoch:binding.epoch,intent,expected_revision:binding.server_revision});
-   }
-  }catch(e){fail(e);}};
+ function disableAcknowledged(epoch){return cleanupEpoch(epoch,'cancelled');}
+ function retireDevice(epoch){return cleanupEpoch(epoch,'retired_unknown');}
+ async function requestDisable(expectedEpoch){return tx('readwrite',(t,set,fail)=>{
+  get(t,'pushBindings','__device__',device=>{
+   if(!device||expectedEpoch&&device.epoch!==expectedEpoch)throw Error('DEVICE_CHANGED');
+   device.pending_disable=true;t.objectStore('pushBindings').put(device);
+   const r=t.objectStore('pushBindings').getAll();r.onsuccess=()=>{try{
+    for(const binding of r.result){
+     if(binding.source_ref==='__device__'||binding.epoch!==device.epoch||!binding.desired?.enabled)continue;
+     const intent={...binding.desired,enabled:false,deadline:null,remind_at:null,client_revision:binding.client_revision+1,operation_id:root.crypto.randomUUID()};
+     binding.desired=intent;binding.client_revision=intent.client_revision;binding.state='pending_sync';t.objectStore('pushBindings').put(binding);
+     t.objectStore('pushOutbox').put({source_ref:binding.source_ref,epoch:binding.epoch,intent,expected_revision:binding.server_revision});
+    }
+   }catch(e){fail(e);}};
+  },fail);
  });}
- return {read,setDevice,setIntent,flush,reconcile,disableAcknowledged,requestDisable};
+
+ return {read,setDevice,setIntent,flush,reconcile,disableAcknowledged,requestDisable,retireDevice};
 }
 root.NkustPushStore={createPushStore};if(typeof module!=='undefined')module.exports=root.NkustPushStore;
 })(typeof window!=='undefined'?window:globalThis);

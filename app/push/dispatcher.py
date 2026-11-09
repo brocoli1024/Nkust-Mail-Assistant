@@ -87,8 +87,10 @@ def run_due(db,sender,now,max_jobs=100,budget_seconds=50):
                 else:row.status='failed';result.stopped+=1
         with db.transaction() as s:
             result.pending=s.scalar(select(func.count()).select_from(PushReminder).where(PushReminder.status.in_(('pending','retry')),PushReminder.remind_at<=now))
-            # Cancellation tombstones and operation receipts persist for device lifetime: delayed intents must not resurrect.
-            ids=s.scalars(select(PushReminder.id).where(PushReminder.status.in_(('accepted','failed','unknown','stopped')),PushReminder.updated_at<now-timedelta(days=7)).limit(100)).all()
+            # Minimal cancellation tombstones persist for device lifetime; operation receipts expire after seven days.
+            tests=s.scalars(select(PushReminder.id).where(PushReminder.source_ref=='__test__',or_(PushReminder.expires_at<now-timedelta(days=7),PushReminder.updated_at<now-timedelta(days=7))).limit(100)).all()
+            if tests:s.execute(delete(PushReminder).where(PushReminder.id.in_(tests)))
+            ids=s.scalars(select(PushReminder.id).where(PushReminder.status.in_(('accepted','failed','unknown','stopped','cancelled')),PushReminder.updated_at<now-timedelta(days=7)).limit(100)).all()
             # Retain minimal version tombstone, erase payload/date rather than deleting the identity.
             if ids:s.execute(update(PushReminder).where(PushReminder.id.in_(ids)).values(deadline=None,remind_at=None,expires_at=None,status='archived'))
             receipts=s.execute(select(PushOperation.device_id,PushOperation.operation_id).where(PushOperation.created_at<now-timedelta(days=7)).limit(100)).all()

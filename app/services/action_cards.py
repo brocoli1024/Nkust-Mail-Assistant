@@ -66,6 +66,7 @@ def build_action_card(source, *, legacy=None, ai_references=()):
         refs.append({'status':ref.get('status') if ref.get('status') in ('completed','failed','pending') else 'unknown',
             'version':str(ref.get('version') or '')[:255],'result':result,'warning':warning})
     payload=source.model_dump(mode='json')
+    if source.kind=='public':payload['metadata'].pop('push_source_version',None)  # Bookkeeping must preserve existing correction baselines.
     if source.kind=='public' and 'article' in payload['metadata']:
         payload['metadata']['article'].pop('error',None)  # Fetch failures do not invalidate edits to unchanged text.
         for doc in payload['metadata'].get('related',[]):
