@@ -1,6 +1,6 @@
 # 裝置推播與主畫面引導驗收（2026-11-10）
 
-狀態：本機建置與獨立 PostgreSQL 已完成；正式環境仍是 afa0f03／schema0010。新推播尚未啟用，未聲稱真實裝置已收到通知。
+狀態：本機建置與獨立 PostgreSQL 已完成；正式環境已部署 fed4ca9／schema0011，原公告與待辦回歸可用。新推播尚未啟用，未聲稱真實裝置已收到通知。
 
 ## 已完成
 
@@ -22,13 +22,13 @@
 
 | 項目 | 實際狀態 |
 |---|---|
-| Render | 已登入，既有Free服務，Live仍afa0f03；Hobby工作區僅1服務，免費時數8.77/750，未付費升級 |
-| Cloudflare | 本人已登入，Workers Free $0，無既有應用，當日請求0/100000；尚未建立此排程 |
+| Render | 已登入，既有Free服務，Live fed4ca9；Hobby工作區僅1服務，免費時數8.77/750，未付費升級 |
+| Cloudflare | 本人已登入，Workers Free $0，無既有應用，當日請求0/100000；已建立 nkust-deadline-push，固定用途程式16cd4c6c已發布；尚無cron |
 | Neon | 原專案Free、PostgreSQL18、新加坡、production、6小時歷史；舊手動快照仍保留 |
 | 新備份／還原 | 免費快照名額已滿，保留舊快照；已建立同專案備份與還原演練分支，見下方 |
 | 新正式祕密 | 尚未設定；由本人使用互動工具產生、輸入及提交 |
 
-待完成：production 0011加法遷移、flag關閉部署與原功能回歸、本人設定新祕密及必要當下啟用確認、真實Cloudflare cron兩輪、桌面／Android／iPhone主畫面實測。iPhone關閉網頁後接收、拒絕／撤銷、取消及點擊回公告均未實機驗收。
+待完成：本人設定新祕密及必要當下啟用確認、真實Cloudflare cron兩輪、桌面／Android／iPhone主畫面實測。iPhone關閉網頁後接收、拒絕／撤銷、取消及點擊回公告均未實機驗收。
 
 不因服務accepted、合成介面PASS或安裝引導存在就宣稱裝置送達或整體上線完成。操作次序與限制見[維運文件](device-push-operations.md)。
 
@@ -37,4 +37,13 @@
 - 備份 push-pre0011-20261110：br-summer-river-az0m4c40，由 production br-frosty-term-azcuok6j 建立完整資料／schema，同專案且未接應用，保留既有舊快照與預設分支。
 - 從備份建立 push-restorecheck-20261110：br-muddy-thunder-azc0z6w9。升級前 schema0010 與原資料彙總一致。
 - 只在還原演練分支執行凍結 SQL，成功提交0011；原有使用者／郵件／私人公告／公開公告彙總未變，nkust_public_sync 無 push_devices SELECT 權限。未在文件紀錄私人資料筆數或憑證。
-- production 尚未升級；兩個隔離分支保留，不自動刪除資料或升級付費方案。
+- production 已套用同一0011交易，升級後彙總一致且公開同步角色拒存取推播表；兩個隔離分支保留，不自動刪除資料或升級付費方案。
+
+## 正式網站發布檢查
+
+- 將 fed4ca9 快進推到既有 codex/web-deployment，並推送相容回復分支；main未修改。
+- 發布前進入設定核對，發現原 Auto-Deploy 實際為 On Commit，先保存為 Off，再推送。先前只見 Manual Deploy 按鈕不能證明自動部署關閉。
+- production0011驗證後，Render手動指定fed4ca9發布，已實際看到Live及正式網站新版。
+- 公開清單、公務清單（20則）、待辦讀取、加入主畫面對話框可用；裝置提醒明確顯示尚未開放，未要求通知權限。
+- 原來源頁顯示更新過期；GitHub既有第41輪在新版發布前已因OFFICE_DISCOVERY_TRIGGER_UNCONFIRMED失敗，並有單篇PUBLIC_ARTICLE_BODY警告。已使用既有工作流程重跑失敗job核對0011相容，不改原排程或權限。結果待補。
+- Render六項名稱與非祕密false／subject已備好；Cloudflare同名Secret欄位已備好。新值由本人輸入、儲存；尚未收到完成回覆，不啟用旗標或cron。

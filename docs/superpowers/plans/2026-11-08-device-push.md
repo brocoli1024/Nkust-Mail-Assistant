@@ -143,4 +143,4 @@
 
 pywebpush 2.5.0 公開介面已從發行來源核對：`webpush` 支援 requests_session／ttl／timeout；HTTP 呼叫使用 session.post。來源 commit `7c2e75fcd6e1b9b8dc75d09cbc06373fae09c184`，見 [官方程式](https://github.com/web-push-libs/pywebpush/blob/7c2e75fcd6e1b9b8dc75d09cbc06373fae09c184/pywebpush/__init__.py) 及 [PyPI](https://pypi.org/project/pywebpush/)。VAPID 使用函式庫公開入口傳私鑰；安裝時核對 Python／cryptography 相容，不能為解依賴任意降版既有安全套件。
 
-已自行逐項比對核准規格：八任務涵蓋日期、匿名隔離、持久取消、限流、端點傳輸、工作語義、公務待辦、iPhone 手勢、安裝與正式門檻。五項 Review Focus 均有具名測試；共用型別及 API 用語一致。補強 v3 原子交易與相容回復，避免僅靠提交後 JS callback 取消。文件為計畫，所有 checkbox 尚未執行；沒有修改產品程式、正式資料庫或服務設定。下一步由使用者審閱本計畫，確認後沿用本對話內逐任務實作。
+已自行逐項比對核准規格：八任務涵蓋日期、匿名隔離、持久取消、限流、端點傳輸、工作語義、公務待辦、iPhone 手勢、安裝與正式門檻。五項 Review Focus 均有具名測試；共用型別及 API 用語一致。補強 v3 原子交易與相容回復，避免僅靠提交後 JS callback 取消。執行狀態以各項 checkbox 與2026-11-10驗收報告為準。Task1–7已完成；Task8正式網站已關閉推播發布，仍待本人設定新憑證、啟用確認、真cron與實機結果。
