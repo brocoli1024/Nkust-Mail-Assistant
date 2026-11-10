@@ -45,5 +45,21 @@
 - 發布前進入設定核對，發現原 Auto-Deploy 實際為 On Commit，先保存為 Off，再推送。先前只見 Manual Deploy 按鈕不能證明自動部署關閉。
 - production0011驗證後，Render手動指定fed4ca9發布，已實際看到Live及正式網站新版。
 - 公開清單、公務清單（20則）、待辦讀取、加入主畫面對話框可用；裝置提醒明確顯示尚未開放，未要求通知權限。
-- 原來源頁顯示更新過期；GitHub既有第41輪在新版發布前已因OFFICE_DISCOVERY_TRIGGER_UNCONFIRMED失敗，並有單篇PUBLIC_ARTICLE_BODY警告。已使用既有工作流程重跑失敗job核對0011相容，不改原排程或權限。結果待補。
+- 原來源頁顯示更新過期；GitHub既有第41輪在新版發布前已因OFFICE_DISCOVERY_TRIGGER_UNCONFIRMED失敗，並有單篇PUBLIC_ARTICLE_BODY警告。已使用既有工作流程重跑失敗job核對0011相容，不改原排程或權限。attempt2實際成功：feed／articles／office_mail／discovery退出碼均0。discovery保留有界待處理警告，未誤列全部已收完。
 - Render六項名稱與非祕密false／subject已備好；Cloudflare同名Secret欄位已備好。新值由本人輸入、儲存；尚未收到完成回覆，不啟用旗標或cron。
+
+## 啟用設定檢查續作
+
+- 本人已確認Render／Cloudflare儲存新祕密，且另於啟用當下同意flag與cron。未將任何值寫入此文件。
+- 啟用操作後的API仍false；核對發現原旗標未持久更新。使用已顯示的非祕密欄精準改true並驗保存後重新部署。
+- 啟用部署dep-dbpb7ndbedkc7388mmpg啟動失敗：config.py第28行PUSH_CONFIGURATION_INVALID，原因為Subject帶有變數名稱前綴。Subject已更正為本站HTTPS網址。既有健康版本仍提供公告，未啟用cron。
+- 其他祕密可能有同樣的整行貼上格式；已交本人確認四個Render憑證及Cloudflare相同trigger只填等號右側值。未讀取、記錄或代改秘密。須等本人確認再部署與觀察真cron。
+
+- 本人回覆格式確認後，重新部署仍在公私鑰驗證失敗。只顯示可公開公鑰檢查，確認伺服器儲存值仍含NKUST_PUSH_VAPID_PUBLIC_KEY=前綴；未讀取私鑰。已備妥Render Edit，交本人修正Value並明確按Save only。Cloudflare原Unsaved changes已由本人Save，已確認消失且Secret存在。cron仍未啟用，API仍false；不得宣稱正式推播完成。
+
+## 正式啟用成功（後續驗收仍進行）
+
+- 本人完成Render修正並按Save only；重新載入伺服器設定後，公鑰不含前綴、base64url格式正確。私鑰沒有被顯示或記錄。
+- 重新部署0cd04f4於台灣時間2026-11-10 14:24:17回報Your service is live；公開/api/push/config實際HTTP200、enabled=true且有公鑰。公私鑰已通過伺服器配對驗證。
+- Cloudflare重新載入確認已存在每5分鐘規則（不是只有編輯草稿）；保留既有單一規則，不重複新增。正在核對真實scheduled結果，尚未列兩輪通過。
+- 已請本人進行iPhone主畫面App通知測試。測試通知的正確點擊入口為/todos；真正截止提醒才進來源詳情。尚未收到實機結果。
