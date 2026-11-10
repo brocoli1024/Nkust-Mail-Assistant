@@ -44,7 +44,8 @@ def test_standard_library_receives_pinned_session():
     assert isinstance(calls[0]['requests_session'],PinnedPushSession)
     assert calls[0]['ttl']==15 and calls[0]['content_encoding']=='aes128gcm'
 
-def test_real_webpush_crypto_uses_public_adapter(monkeypatch):
+@pytest.mark.parametrize('use_setup_subject',[False,True])
+def test_real_webpush_crypto_uses_public_adapter(monkeypatch,use_setup_subject):
     import base64
     from cryptography.hazmat.primitives.asymmetric import ec
     from cryptography.hazmat.primitives.serialization import Encoding,PublicFormat
@@ -56,7 +57,9 @@ def test_real_webpush_crypto_uses_public_adapter(monkeypatch):
     def post(self,url,data=None,headers=None,timeout=None,**kw):
         captured.append((data,headers));return SimpleNamespace(status_code=201,text='',headers={})
     monkeypatch.setattr(PinnedPushSession,'post',post)
-    settings=SimpleNamespace(vapid_private_key=enc(private.private_numbers().private_value.to_bytes(32,'big')),vapid_subject='mailto:test@example.invalid')
+    from app.push.keygen import create_values
+    subject=create_values()['NKUST_PUSH_VAPID_SUBJECT'] if use_setup_subject else 'mailto:test@example.invalid'
+    settings=SimpleNamespace(vapid_private_key=enc(private.private_numbers().private_value.to_bytes(32,'big')),vapid_subject=subject)
     result=PushSender(settings,None).send(sub,{'title':'合成通知'},60,datetime.now(timezone.utc))
     assert result.status=='accepted' and captured and isinstance(captured[0][0],bytes)
     assert b'title' not in captured[0][0]

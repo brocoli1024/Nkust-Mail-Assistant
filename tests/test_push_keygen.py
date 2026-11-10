@@ -11,3 +11,10 @@ def test_generated_values_match_validated_config_and_are_distinct():
 def test_noninteractive_use_refuses_to_print_credentials():
     output=io.StringIO();assert main(stdin=io.StringIO(),stdout=output)==2
     assert output.getvalue()=='PUSH_SETUP_REQUIRES_PRIVATE_TERMINAL\n'
+
+
+def test_config_rejects_subject_rejected_by_actual_vapid_signer():
+    import pytest
+    a=create_values()
+    cfg=PushSettings(enabled=True,vapid_public_key=a['NKUST_PUSH_VAPID_PUBLIC_KEY'],vapid_private_key=a['NKUST_PUSH_VAPID_PRIVATE_KEY'],vapid_subject='https://nkust-mail-assistant.onrender.com/',trigger_secret=a['NKUST_PUSH_TRIGGER_SECRET'],rate_hash_key=a['NKUST_PUSH_RATE_HASH_KEY'])
+    with pytest.raises(ValueError,match='PUSH_CONFIGURATION_INVALID'):cfg.validate()

@@ -34,5 +34,11 @@ class PushSettings:
                 private=ec.derive_private_key(int.from_bytes(decode_key(self.vapid_private_key),'big'),ec.SECP256R1())
                 from cryptography.hazmat.primitives.serialization import Encoding,PublicFormat
                 if private.public_key().public_bytes(Encoding.X962,PublicFormat.UncompressedPoint)!=raw:raise ValueError()
+                # Exercise the actual library's public signing API before accepting settings.
+                # A syntactically valid HTTPS URI may still be rejected by its subject validator.
+                from py_vapid import Vapid
+                import time
+                Vapid.from_string(self.vapid_private_key).sign({'sub':self.vapid_subject,
+                    'aud':'https://web.push.apple.com','exp':int(time.time())+3600})
             except Exception:raise ValueError('PUSH_CONFIGURATION_INVALID') from None
         return self

@@ -9,7 +9,7 @@ def create_values():
     return {
         'NKUST_PUSH_VAPID_PUBLIC_KEY':encode(key.public_key().public_bytes(Encoding.X962,PublicFormat.UncompressedPoint)),
         'NKUST_PUSH_VAPID_PRIVATE_KEY':encode(key.private_numbers().private_value.to_bytes(32,'big')),
-        'NKUST_PUSH_VAPID_SUBJECT':'https://nkust-mail-assistant.onrender.com/',
+        'NKUST_PUSH_VAPID_SUBJECT':'https://nkust-mail-assistant.onrender.com',
         'NKUST_PUSH_TRIGGER_SECRET':secrets.token_urlsafe(48),
         'NKUST_PUSH_RATE_HASH_KEY':secrets.token_urlsafe(48),
     }
