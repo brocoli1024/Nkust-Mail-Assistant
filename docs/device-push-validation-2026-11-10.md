@@ -75,3 +75,12 @@
 
 - 2026-11-10 14:50:46及14:55:42（Asia/Taipei）兩個真正scheduled事件均有PUSH_TRIGGER_OK。不是預覽或手動測試；固定目標、manual禁止自動轉址、本人同步trigger後的正式規則。
 - Render deadc47傳送安全診斷於14:51:29實際Live。iPhone既有3筆測試unknown仍不盲目重送，等待15:00新小時額度後僅測一次，核對固定錯誤分類。iPhone送達／點擊／撤銷與實際截止通知尚未通過。
+
+## iPhone簽署失敗定位與修正
+
+- 本人確認一直從iPhone主畫面App測試；不是只在Safari分頁。15:00／15:01新測試仍unknown，固定傳送分類PUSH_TRANSPORT_EXCEPTION；Neon只讀彙總test unknown5、deadline pending1。
+- 本機實際py_vapid公用簽署介面重現：初始工具提供的HTTPS Subject帶結尾斜線，被函式庫嚴格sub檢查拒絕，尚未發出HTTP。先前僅驗字首與配對、及mailto合成案例，漏掉真實預設Subject。
+- RED→GREEN：實際WebPush加密簽署改以設定工具預設Subject驗；設定檢查實際呼叫公開sign介面，上線前拒絕函式庫無法簽署的Subject。預設與正式非祕密Subject移除結尾斜線，不更換金鑰、不關閉嚴格驗證、不重建訂閱。52項相關回歸通過。
+- 修正ab3dedf已於15:09:22實際Live；正等待修正後單次真機測試，尚未宣稱真機送達；原unknown不盲目重送。
+
+- ab3dedf部署後重新只讀彙總仍為5筆舊test unknown、1筆deadline pending，尚未觀察到新的修正後測試。正式API／cron啟用；Task8仍待iPhone實收、點擊與其他實機門檻，不能列整體完成。

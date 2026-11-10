@@ -59,3 +59,5 @@ PowerShell：`./scripts/verify-push-postgresql.ps1 -PythonExecutable <本機虛�
 相容回復分支 `codex/device-push-rollback-20261108`，驗收 SHA `d4a8383bad690bc79493dec9c7f655f52c10a585`。先關閉 flag 與 cron，使用已授權維護流程持久停用未送工作，再部署相容回復程式。保留五張新表，不回寫舊備份覆蓋正常資料，也不刪瀏覽器資料庫；重新啟用須重新核對，避免舊工作復活。已提交服務的通知不能保證撤回。
 
 Cloudflare Workers不支援redirect:error，建構Request即會TypeError；以manual接收原始回應並拒絕3xx，不能改用follow。[官方Request文件](https://developers.cloudflare.com/workers/runtime-apis/request/)
+
+HTTPS型VAPID Subject使用https://nkust-mail-assistant.onrender.com（不帶結尾斜線）。現行py_vapid的嚴格檢查拒絕帶路徑／結尾斜線的Subject；設定驗證必須透過其公開sign介面完成本機簽章，不只檢查startswith或金鑰配對。不能因此關閉VAPID驗證或改用no-strict。
