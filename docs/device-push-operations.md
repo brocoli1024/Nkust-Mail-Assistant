@@ -54,7 +54,7 @@ Render 免費工作區每月750小時共同計算；五分鐘檢查可能使單�
 
 `NKUST_TEST_POSTGRES_URL` 必須是獨立 loopback nkust_disposable* 測試庫；另設 NKUST_PUSH_TEST_DISPOSABLE=yes。不得使用 DATABASE_URL 或正式 Neon。若做受限角色驗收，NKUST_TEST_PUBLIC_SYNC_URL 必須指向同一測試庫且 username=nkust_public_sync。驗收器拒絕連線 query 覆寫並移除 libpq 環境覆寫，任何略過使整體失敗。
 
-PowerShell：`./scripts/verify-push-postgresql.ps1 -PythonExecutable <本機虛擬環境python>`。`-PushOnly` 供較小的 PostgreSQL 核心回歸；正式驗收仍跑全套與19項 Node 檢查、原生瀏覽器 harness。
+PowerShell：`./scripts/verify-push-postgresql.ps1 -PythonExecutable <本機虛擬環境python>`。`-PushOnly` 供較小的 PostgreSQL 核心回歸；正式驗收仍跑全套與18項 Node 檢查、原生瀏覽器 harness。
 
 相容回復分支 `codex/device-push-rollback-20261108`，驗收 SHA `d4a8383bad690bc79493dec9c7f655f52c10a585`。先關閉 flag 與 cron，使用已授權維護流程持久停用未送工作，再部署相容回復程式。保留五張新表，不回寫舊備份覆蓋正常資料，也不刪瀏覽器資料庫；重新啟用須重新核對，避免舊工作復活。已提交服務的通知不能保證撤回。
 

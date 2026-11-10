@@ -6,7 +6,7 @@
 
 - 實作基礎與審查修正 commit：45f9c7d。核准規格／計畫日期2026-11-08，跨日續作2026-11-10。
 - 最終完整獨立 PostgreSQL：817 passed、0 skipped，139.96秒。兩個既有 Starlette／anyio 相依套件棄用警告；無新失敗。測試目標本機127.0.0.1:55439、全新合成 schema、非管理員 owner，另有受限 nkust_public_sync 角色；未連正式 Neon 執行開發測試。
-- 19項 Node 檢查全部通過；涵蓋既有分類／搜尋、公開閱讀、行事曆、校區、待辦及新 push／安裝流程。
+- 18項 Node 檢查全部通過；涵蓋既有分類／搜尋、公開閱讀、行事曆、校區、待辦及新 push／安裝流程。
 - Chrome 原生 IndexedDB：v2→v3保留、quota／abort一起撤回、未 opt-in 零上傳、離線取消、晚到建立回覆後取消確實同步、busy期間第二筆不漏送、舊epoch回覆不清新裝置、遺失取消回覆後重設仍保留待辦，均實際觀察 PASS。
 - 本機合成提醒介面：確認截止與保存範圍後才啟用，前一天09:00、服務確認與最少資料同步 PASS；沒有要求真實通知權限或送實際推播。手機390×844主畫面引導已檢查並修正按鈕對比。
 
@@ -61,8 +61,17 @@
 
 - 本人完成Render修正並按Save only；重新載入伺服器設定後，公鑰不含前綴、base64url格式正確。私鑰沒有被顯示或記錄。
 - 重新部署0cd04f4於台灣時間2026-11-10 14:24:17回報Your service is live；公開/api/push/config實際HTTP200、enabled=true且有公鑰。公私鑰已通過伺服器配對驗證。
-- Cloudflare重新載入確認已存在每5分鐘規則（不是只有編輯草稿）；保留既有單一規則，不重複新增。正在核對真實scheduled結果，尚未列兩輪通過。
+- Cloudflare重新載入確認已存在每5分鐘規則（不是只有編輯草稿）；保留既有單一規則，不重複新增。兩輪真scheduled已通過，具體時戳見下方。
 - 已請本人進行iPhone主畫面App通知測試。測試通知的正確點擊入口為/todos；真正截止提醒才進來源詳情。尚未收到實機結果。
 
 - 真cron14:25及14:30均執行，但PUSH_TRIGGER_FAILED；未將排程存在誤列為成功。新增僅有界HTTP狀態碼的診斷，RED→GREEN涵蓋401／503、正文不讀與網路例外不洩漏。Git9e8bea5、CF診斷版本3972fb89；等待14:35後真事件。Render仍是已驗收0cd04f4，沒有因Worker修正重新部署網站。
 - iPhone本人回報可找到且可點開啟截止提醒，但仍找不到確認或遇設定錯誤，尚未提供實際提示；目前等待文字診斷，不宣稱實機通過。
+
+- 更正前端檔案計數：重新列出並逐檔執行，目前共有18個tests/*check.cjs，18個全過；原19項為計數誤植，原生瀏覽器harness仍另列，不混算。
+- Cloudflare不支援redirect:error，導致之前尚未送出HTTP就失敗。改manual並拒收3xx後，14:40／14:45真事件明確401；本人將Render現值同步至CF且Deploy後，14:50:46真scheduled日誌PUSH_TRIGGER_OK。第二輪待觀察。
+- Neon只讀彙總確認1筆deadline pending、3筆test unknown，沒有將unknown當服務接受或送達。新增固定傳送例外分類（不輸出例外字串），25項傳送／dispatcher／API回歸通過；Render正部署deadc47。測試額度15:00重設，等待實機再次測試。
+
+## 真cron驗收通過
+
+- 2026-11-10 14:50:46及14:55:42（Asia/Taipei）兩個真正scheduled事件均有PUSH_TRIGGER_OK。不是預覽或手動測試；固定目標、manual禁止自動轉址、本人同步trigger後的正式規則。
+- Render deadc47傳送安全診斷於14:51:29實際Live。iPhone既有3筆測試unknown仍不盲目重送，等待15:00新小時額度後僅測一次，核對固定錯誤分類。iPhone送達／點擊／撤銷與實際截止通知尚未通過。
