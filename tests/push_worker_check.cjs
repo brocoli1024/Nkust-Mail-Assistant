@@ -5,7 +5,7 @@ assert.deepEqual(config.triggers.crons,['*/5 * * * *']);
 let calls=[],logs=[];const context={Response,AbortSignal,console:{log(value){logs.push(value);}},fetch:async(url,options)=>{calls.push([url,options]);return new Response('{}',{status:200});}};
 vm.runInNewContext(source,context);
 (async()=>{assert.equal((await context.worker.fetch()).status,404);await context.worker.scheduled({}, {NKUST_PUSH_TRIGGER_SECRET:'synthetic-secret'},{});
-assert.equal(calls.length,1);assert.ok(calls[0][0].endsWith('/internal/push/run'));assert.equal(calls[0][1].method,'POST');assert.equal(calls[0][1].redirect,'error');assert.equal(calls[0][1].body,'');assert.ok(!source.includes('DATABASE_URL'));for(const status of [401,503]){
+assert.equal(calls.length,1);assert.ok(calls[0][0].endsWith('/internal/push/run'));assert.equal(calls[0][1].method,'POST');assert.equal(calls[0][1].redirect,'manual');assert.equal(calls[0][1].body,'');assert.ok(!source.includes('DATABASE_URL'));for(const status of [302,401,503]){
  logs=[];let bodyRead=false;
  context.fetch=async()=>({ok:false,status,text(){bodyRead=true;throw Error('private-body');}});
  await assert.rejects(context.worker.scheduled({}, {NKUST_PUSH_TRIGGER_SECRET:'synthetic-secret'},{}),/PUSH_TRIGGER_FAILED/);

@@ -32,7 +32,7 @@ Cloudflare 只設 Secret 型別的 NKUST_PUSH_TRIGGER_SECRET。不放資料庫�
 
 原始碼 `workers/deadline-push/src/index.js`；設定檔 `wrangler.jsonc`。服務名 nkust-deadline-push，只有 scheduled 工作；HTTP fetch 回 404，不建立公開資料查詢接口。
 
-每五分鐘 `*/5 * * * *`，只向固定 `https://nkust-mail-assistant.onrender.com/internal/push/run` 發空 POST 與 Bearer 憑證；禁止轉址，150 秒有界逾時，不自動重送不明請求。只記安全結果碼。不要把 Worker 的手動測試當成真正 cron 已驗證。
+每五分鐘 `*/5 * * * *`，只向固定 `https://nkust-mail-assistant.onrender.com/internal/push/run` 發空 POST 與 Bearer 憑證；使用manual禁止自動轉址，所有3xx視為失敗，150 秒有界逾時，不自動重送不明請求。只記安全結果碼。不要把 Worker 的手動測試當成真正 cron 已驗證。
 
 Cloudflare cron 設定傳播可能需要最多約15分鐘；以實際 scheduled 日誌確認。[官方 cron 文件](https://developers.cloudflare.com/workers/configuration/cron-triggers/)
 
@@ -57,3 +57,5 @@ Render 免費工作區每月750小時共同計算；五分鐘檢查可能使單�
 PowerShell：`./scripts/verify-push-postgresql.ps1 -PythonExecutable <本機虛擬環境python>`。`-PushOnly` 供較小的 PostgreSQL 核心回歸；正式驗收仍跑全套與19項 Node 檢查、原生瀏覽器 harness。
 
 相容回復分支 `codex/device-push-rollback-20261108`，驗收 SHA `d4a8383bad690bc79493dec9c7f655f52c10a585`。先關閉 flag 與 cron，使用已授權維護流程持久停用未送工作，再部署相容回復程式。保留五張新表，不回寫舊備份覆蓋正常資料，也不刪瀏覽器資料庫；重新啟用須重新核對，避免舊工作復活。已提交服務的通知不能保證撤回。
+
+Cloudflare Workers不支援redirect:error，建構Request即會TypeError；以manual接收原始回應並拒絕3xx，不能改用follow。[官方Request文件](https://developers.cloudflare.com/workers/runtime-apis/request/)
