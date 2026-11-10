@@ -1,9 +1,10 @@
 """Standard Web Push crypto with a bounded, TLS-verified pinned transport."""
 from dataclasses import dataclass
-import ipaddress,json,socket,time
+import ipaddress,json,logging,socket,ssl,time
 from urllib.parse import urlsplit
 import requests
 from concurrent.futures import ThreadPoolExecutor,TimeoutError as FutureTimeout
+_LOG=logging.getLogger('nkust.push.transport')
 _DNS_POOL=ThreadPoolExecutor(max_workers=2,thread_name_prefix="push-dns")
 from app.services.public_source import _PinnedHTTPSConnection
 from .security import HOSTS,PushError
@@ -59,10 +60,22 @@ class PushSender:
             status=response.status_code
         except WebPushException as error:
             response=error.response
-            if response is None:return SendOutcome('unknown','PUSH_OUTCOME_UNKNOWN')
+            if response is None:
+                _LOG.warning('PUSH_WEBPUSH_NO_RESPONSE')
+                return SendOutcome('unknown','PUSH_OUTCOME_UNKNOWN')
             status=response.status_code
         except PushError:return SendOutcome('failed','PUSH_ENDPOINT_REJECTED')
-        except Exception:return SendOutcome('unknown','PUSH_OUTCOME_UNKNOWN')
+        except Exception as error:
+            # Fixed categories only. Exception text may contain capability URLs or credentials.
+            if isinstance(error,(TimeoutError,requests.Timeout)):code='PUSH_TRANSPORT_TIMEOUT'
+            elif isinstance(error,ssl.SSLError):code='PUSH_TLS_FAILED'
+            elif isinstance(error,socket.gaierror):code='PUSH_DNS_FAILED'
+            elif isinstance(error,AttributeError):code='PUSH_ADAPTER_ATTRIBUTE_ERROR'
+            elif isinstance(error,OSError):code='PUSH_CONNECTION_FAILED'
+            elif isinstance(error,(ValueError,TypeError)):code='PUSH_CRYPTO_OR_INPUT_FAILED'
+            else:code='PUSH_TRANSPORT_EXCEPTION'
+            _LOG.warning(code)
+            return SendOutcome('unknown','PUSH_OUTCOME_UNKNOWN')
         if 200<=status<=202:return SendOutcome('accepted','PUSH_PROVIDER_ACCEPTED')
         if status in (404,410):return SendOutcome('invalid','PUSH_SUBSCRIPTION_EXPIRED')
         if status==429 or 500<=status<=599:return SendOutcome('retryable','PUSH_PROVIDER_RETRY')

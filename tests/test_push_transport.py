@@ -28,11 +28,13 @@ def test_endpoint_public_dns_and_no_redirect():
     assert session.post(subscription()['endpoint'],data=b'x',timeout=1).status_code==302
     Connection.status=201
 
-def test_timeout_is_unknown_not_retry():
+def test_timeout_is_unknown_not_retry(caplog):
     def timeout(**kw):raise TimeoutError('sensitive endpoint must not escape')
     sender=PushSender(SimpleNamespace(vapid_private_key='x',vapid_subject='mailto:test@example.invalid'),None,webpush_fn=timeout)
     result=sender.send(subscription(),{'id':'x'},60,NOW)
     assert result.status=='unknown' and 'sensitive' not in repr(result)
+    assert 'PUSH_TRANSPORT_TIMEOUT' in caplog.text
+    assert 'sensitive endpoint' not in caplog.text
 
 def test_standard_library_receives_pinned_session():
     calls=[]
@@ -67,3 +69,11 @@ def test_dns_resolution_respects_budget():
     with pytest.raises((PushError,TimeoutError)):
         PinnedPushSession(resolver=slow,connection_factory=Connection).post(subscription()['endpoint'],data=b'x',timeout=.01)
     assert time.monotonic()-start<.15
+
+
+def test_adapter_exception_diagnostic_never_logs_private_detail(caplog):
+    def broken(**kw):raise AttributeError('private subscription and credential')
+    sender=PushSender(SimpleNamespace(vapid_private_key='x',vapid_subject='https://example.invalid'),None,webpush_fn=broken)
+    assert sender.send(subscription(),{'id':'test'},60,NOW).status=='unknown'
+    assert 'PUSH_ADAPTER_ATTRIBUTE_ERROR' in caplog.text
+    assert 'private subscription' not in caplog.text
