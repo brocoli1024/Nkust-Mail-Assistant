@@ -136,11 +136,11 @@
 - [x] **Step 1 — 建立可失敗驗收：** 測試腳本連獨立 PostgreSQL，拒絕正式 DB／未明確測試標記，任何 PG skip 視驗收失敗；涵蓋 0010→0011 保留資料、雙 worker、限流、裝置隔離、公開同步角色拒存取、v3 回復可讀。實機表列 iPhone 主畫面、桌面／Android 明確授權、關頁接收、撤銷、取消、點擊回公告；尚未操作先標未驗證。
 - [x] **Step 2 — 記錄基線：** 原有 Python 全套、全部既有 .cjs 與新測試；環境失敗先處理，不能將 skip 列通過。核對無意改動 Gmail／OAuth／GitHub 公告排程。
 - [x] **Step 3 — 完成本機與獨立驗收：** `python -m pytest -q`、每個 `tests/*check.cjs`、真實 IndexedDB harness、`scripts/verify-push-postgresql.ps1` 均保存摘要。執行專案要求的全變更 review，修正後只重跑受影響與必要回歸；不以靜態測試替代 iPhone 實機。
-- [ ] **Step 4 — 有序啟用與觀察：** 先備份並驗還原／0011 加法遷移與 v3 相容回復版本；在正式操作前確認既有授權適用及必要當下安全確認。先關閉 flag 部署；檢查原公告與來源管理者收錄正常。由本人完成新憑證輸入儲存；確認 Cloudflare 免費方案、Render 同工作區 750 小時額度與費用限制後才啟用 cron。至少觀察兩次真正 scheduled run 和明確測試通知；由使用者在 iPhone 實機完成授權／關頁接收，不以服務 accepted 代替。缺權限、實機或額度時如實停在對應門檻。回復需關閉 flag／cron，持久停用未送工作後使用 schema0011／IDBv3 相容程式；重新啟用前重新核對提醒，不讓舊工作復活。
-- [ ] **Step 5 — Commit／交付：** `docs: record device push validation and operations`。報告分列本機完成、獨立 PG、部署、真 cron、裝置實測；未完成任一不得宣稱整體完成。保留秘密與私有郵件隔離。
+- [x] **Step 4 — 有序啟用與觀察：** 先備份並驗還原／0011 加法遷移與 v3 相容回復版本；在正式操作前確認既有授權適用及必要當下安全確認。先關閉 flag 部署；檢查原公告與來源管理者收錄正常。由本人完成新憑證輸入儲存；確認 Cloudflare 免費方案、Render 同工作區 750 小時額度與費用限制後才啟用 cron。至少觀察兩次真正 scheduled run 和明確測試通知；由使用者在 iPhone 實機完成授權／關頁接收，不以服務 accepted 代替。缺權限、實機或額度時如實停在對應門檻。回復需關閉 flag／cron，持久停用未送工作後使用 schema0011／IDBv3 相容程式；重新啟用前重新核對提醒，不讓舊工作復活。
+- [x] **Step 5 — Commit／交付：** `docs: record device push validation and operations`。報告分列本機完成、獨立 PG、部署、真 cron、裝置實測；未完成任一不得宣稱整體完成。保留秘密與私有郵件隔離。
 
 ## 函式庫核對依據與自審
 
 pywebpush 2.5.0 公開介面已從發行來源核對：`webpush` 支援 requests_session／ttl／timeout；HTTP 呼叫使用 session.post。來源 commit `7c2e75fcd6e1b9b8dc75d09cbc06373fae09c184`，見 [官方程式](https://github.com/web-push-libs/pywebpush/blob/7c2e75fcd6e1b9b8dc75d09cbc06373fae09c184/pywebpush/__init__.py) 及 [PyPI](https://pypi.org/project/pywebpush/)。VAPID 使用函式庫公開入口傳私鑰；安裝時核對 Python／cryptography 相容，不能為解依賴任意降版既有安全套件。
 
-已自行逐項比對核准規格：八任務涵蓋日期、匿名隔離、持久取消、限流、端點傳輸、工作語義、公務待辦、iPhone 手勢、安裝與正式門檻。五項 Review Focus 均有具名測試；共用型別及 API 用語一致。補強 v3 原子交易與相容回復，避免僅靠提交後 JS callback 取消。執行狀態以各項 checkbox 與2026-11-10驗收報告為準。Task1–7已完成；Task8已正式啟用、兩輪真cron及iPhone測試收件／回待辦通過；11-12完整獨立PG820項全過，正式deadline已有accepted且本人回報實收，尚待本次自動通知及點擊目的地確認。其他裝置與撤銷條件維持未實測，不宣稱全部完成。
+已自行逐項比對核准規格：八任務涵蓋日期、匿名隔離、持久取消、限流、端點傳輸、工作語義、公務待辦、iPhone 手勢、安裝與正式門檻。五項 Review Focus 均有具名測試；共用型別及 API 用語一致。補強 v3 原子交易與相容回復，避免僅靠提交後 JS callback 取消。執行狀態以各項 checkbox 與2026-11-10驗收報告為準。Task1–7已完成；Task8已正式啟用、兩輪真cron及iPhone測試收件／回待辦通過；11-12完整獨立PG820項全過，正式deadline已有accepted且本人回報實收，本人已確認本次到時自動通知且點擊回到對應公告，Task8核心交付完成。其他裝置與撤銷條件維持未實測，不宣稱所有情境均已完成。
