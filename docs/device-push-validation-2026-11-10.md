@@ -1,86 +1,54 @@
-# 裝置推播與主畫面引導驗收（2026-11-10）
+# 裝置推播與主畫面引導驗收（2026-11-10；11-12補驗）
 
-狀態：本機建置與獨立 PostgreSQL 已完成；正式環境已部署 fed4ca9／schema0011，原公告與待辦回歸可用。正式推播API已啟用，但真cron觸發失敗正在診斷，iPhone操作尚未驗收；未聲稱裝置收到通知。
+狀態：正式推播 API 已啟用；兩輪真實 Cloudflare cron、iPhone 測試通知實收與點擊回待辦已通過。11-12本人回報再次實收，正式deadline有accepted紀錄，待確認本次點擊對應公告；完整實機矩陣尚未完成。不得把服務接受或測試通知成功寫成所有截止通知均已送達。
 
-## 已完成
-
-- 實作基礎與審查修正 commit：45f9c7d。核准規格／計畫日期2026-11-08，跨日續作2026-11-10。
-- 最終完整獨立 PostgreSQL：817 passed、0 skipped，139.96秒。兩個既有 Starlette／anyio 相依套件棄用警告；無新失敗。測試目標本機127.0.0.1:55439、全新合成 schema、非管理員 owner，另有受限 nkust_public_sync 角色；未連正式 Neon 執行開發測試。
-- 18項 Node 檢查全部通過；涵蓋既有分類／搜尋、公開閱讀、行事曆、校區、待辦及新 push／安裝流程。
-- Chrome 原生 IndexedDB：v2→v3保留、quota／abort一起撤回、未 opt-in 零上傳、離線取消、晚到建立回覆後取消確實同步、busy期間第二筆不漏送、舊epoch回覆不清新裝置、遺失取消回覆後重設仍保留待辦，均實際觀察 PASS。
-- 本機合成提醒介面：確認截止與保存範圍後才啟用，前一天09:00、服務確認與最少資料同步 PASS；沒有要求真實通知權限或送實際推播。手機390×844主畫面引導已檢查並修正按鈕對比。
-
-獨立審查範圍58d4f8a..5caaf1d，提出1項Critical、10項Important與1項Minor。已逐項補重現測試及修正：真實 serializer、epoch寫入、取消競爭、測試連線覆寫、重設恢復、端點別名、既有修正baseline、測試容量／重送、source_ref型別、busy假成功、日期保留與註解。817項是修正後結果；沒有把原審查的「不宜合併」假稱為再次獨立審查通過。
-
-## 回復與來源排程
-
-- 相容回復 d4a8383：獨立 PostgreSQL smoke PASS；schema0011下公開／公務／待辦可讀、私人登入與隔離正常、新push路由404。
-- 原生瀏覽器回復驗收 PASS：回復程式可讀IDBv3待辦及修正歷史，資料保留且仍原子排入取消；不以刪庫處理版本問題。SW保留安全處理以銜接已提交訊息。
-- 遠端 main=9784e02、codex/web-deployment=b11092f（發布前讀取）；每小時17分的既有工作流程checkout部署分支。新增公開CLI0010／0011銜接測試通過，不更改原排程或管理者Gmail整合。
-
-## 正式啟用前查核
+## 正式環境
 
 | 項目 | 實際狀態 |
 |---|---|
-| Render | 已登入，既有Free服務，Live fed4ca9；Hobby工作區僅1服務，免費時數8.77/750，未付費升級 |
-| Cloudflare | 本人已登入，Workers Free $0，無既有應用，當日請求0/100000；已建立 nkust-deadline-push，固定用途程式16cd4c6c已發布；尚無cron |
-| Neon | 原專案Free、PostgreSQL18、新加坡、production、6小時歷史；舊手動快照仍保留 |
-| 新備份／還原 | 免費快照名額已滿，保留舊快照；已建立同專案備份與還原演練分支，見下方 |
-| 新正式祕密 | 尚未設定；由本人使用互動工具產生、輸入及提交 |
+| Render | 既有 Free 服務，正式程式 ab3dedf，2026-11-10 15:09:22（Asia/Taipei）Live；NKUST_PUSH_ENABLED=true |
+| Neon | 原專案 PostgreSQL18、production、公用 schema0011；未新增服務或升級方案 |
+| Cloudflare | Workers Free，nkust-deadline-push，每5分鐘；程式對應432320b，憑證更新另有平台版本 |
+| 真 cron | 14:50:46、14:55:42兩個 scheduled 事件均有 PUSH_TRIGGER_OK；不是預覽或手動測試 |
+| iPhone | 本人確認從主畫面 App 操作，實際收到測試通知，點擊可回我的待辦；資料庫另有 test accepted 紀錄 |
 
-待完成：本人設定新祕密及必要當下啟用確認、真實Cloudflare cron兩輪、桌面／Android／iPhone主畫面實測。iPhone關閉網頁後接收、拒絕／撤銷、取消及點擊回公告均未實機驗收。
+主畫面入口、公開公告、公務公告（原收錄清單）、待辦與詳情返回已在正式站操作確認。加入主畫面不自動授權通知；每筆提醒須本人核對截止與同意。測試通知回 /todos，真正截止／來源變更提醒才回公告詳情。
 
-不因服務accepted、合成介面PASS或安裝引導存在就宣稱裝置送達或整體上線完成。操作次序與限制見[維運文件](device-push-operations.md)。
+Render 發布前實際查到 Auto-Deploy 為 On Commit，已先保存 Off，才推送與手動發布。只更新既有 codex/web-deployment；main及原工作流程不改。原公告收錄第41輪的既有失敗已重跑成功，feed／articles／office_mail／discovery均退出0；discovery仍有有界待處理警告，不宣稱全部歷史公告已收完。沒有變更Gmail來源帳號、OAuth、Session或既有加密金鑰。
 
-## 備份與還原演練（正式專案隔離分支）
+## 測試證據
 
-- 備份 push-pre0011-20261110：br-summer-river-az0m4c40，由 production br-frosty-term-azcuok6j 建立完整資料／schema，同專案且未接應用，保留既有舊快照與預設分支。
-- 從備份建立 push-restorecheck-20261110：br-muddy-thunder-azc0z6w9。升級前 schema0010 與原資料彙總一致。
-- 只在還原演練分支執行凍結 SQL，成功提交0011；原有使用者／郵件／私人公告／公開公告彙總未變，nkust_public_sync 無 push_devices SELECT 權限。未在文件紀錄私人資料筆數或憑證。
-- production 已套用同一0011交易，升級後彙總一致且公開同步角色拒存取推播表；兩個隔離分支保留，不自動刪除資料或升級付費方案。
+- 本期原完整獨立 PostgreSQL：817 passed、0 skipped（139.96秒）；目標本機127.0.0.1:55439、全新合成schema、非管理員owner及受限nkust_public_sync。正式Neon未用於開發測試。實際簽章修正後於11-12完成完整獨立回歸：820 passed、0 skipped，321.15秒，驗收器退出0；本機測試PostgreSQL已停止。
+- 最新傳送、設定、裝置、邊界、API及dispatcher回歸：52 passed。涵蓋實際設定工具的HTTPS Subject，使用真實pywebpush加密／VAPID簽章及假的網路邊界，沒有用部署秘密做測試。
+- 重新列出並逐檔執行18個 tests/*check.cjs，全過。先前文件19項為計數誤植；原生瀏覽器harness另列，不混算。
+- Chrome 原生IDB：v2→v3保留、quota／abort一起撤回、未opt-in零上傳、離線取消、晚到建立後取消確實同步、busy第二筆不漏送、舊epoch不清新裝置、重設仍保留待辦均觀察PASS。本機合成表單最少資料同步與前一天09:00規則PASS；手機390×844引導檢查及對比修正已做。
+- 一次獨立全變更審查提出1項Critical、10項Important及1項Minor，已在45f9c7d逐項重現修正。未將原審查假稱為修正後再次獨立批准。兩個既有Starlette／anyio棄用警告仍存在。
 
-## 正式網站發布檢查
+## 備份、遷移與回復
 
-- 將 fed4ca9 快進推到既有 codex/web-deployment，並推送相容回復分支；main未修改。
-- 發布前進入設定核對，發現原 Auto-Deploy 實際為 On Commit，先保存為 Off，再推送。先前只見 Manual Deploy 按鈕不能證明自動部署關閉。
-- production0011驗證後，Render手動指定fed4ca9發布，已實際看到Live及正式網站新版。
-- 公開清單、公務清單（20則）、待辦讀取、加入主畫面對話框可用；裝置提醒明確顯示尚未開放，未要求通知權限。
-- 原來源頁顯示更新過期；GitHub既有第41輪在新版發布前已因OFFICE_DISCOVERY_TRIGGER_UNCONFIRMED失敗，並有單篇PUBLIC_ARTICLE_BODY警告。已使用既有工作流程重跑失敗job核對0011相容，不改原排程或權限。attempt2實際成功：feed／articles／office_mail／discovery退出碼均0。discovery保留有界待處理警告，未誤列全部已收完。
-- Render六項名稱與非祕密false／subject已備好；Cloudflare同名Secret欄位已備好。新值由本人輸入、儲存；尚未收到完成回覆，不啟用旗標或cron。
+同專案完整備份 push-pre0011-20261110（br-summer-river-az0m4c40），由production br-frosty-term-azcuok6j建立；保留原舊手動快照與預設分支，未升級方案或開放新讀取者。
 
-## 啟用設定檢查續作
+從備份建立 push-restorecheck-20261110（br-muddy-thunder-azc0z6w9）。先確認schema0010與原資料彙總一致，再套凍結0011交易；原有使用者／郵件／私人公告／公開公告彙總未變，公開同步角色無push_devices SELECT。production之後套相同交易，遷移當下再次確認彙總一致與權限拒絕。沒有在文件記錄私人資料筆數、連線字串或憑證。
 
-- 本人已確認Render／Cloudflare儲存新祕密，且另於啟用當下同意flag與cron。未將任何值寫入此文件。
-- 啟用操作後的API仍false；核對發現原旗標未持久更新。使用已顯示的非祕密欄精準改true並驗保存後重新部署。
-- 啟用部署dep-dbpb7ndbedkc7388mmpg啟動失敗：config.py第28行PUSH_CONFIGURATION_INVALID，原因為Subject帶有變數名稱前綴。Subject已更正為本站HTTPS網址。既有健康版本仍提供公告，未啟用cron。
-- 其他祕密可能有同樣的整行貼上格式；已交本人確認四個Render憑證及Cloudflare相同trigger只填等號右側值。未讀取、記錄或代改秘密。須等本人確認再部署與觀察真cron。
+相容回復分支已推送：codex/device-push-rollback-20261108，d4a8383bad690bc79493dec9c7f655f52c10a585。獨立PG smoke及原生IDBv3回復讀取／取消PASS。回復須先停flag／cron、持久停用未送工作，保留新表與IDBv3；不能直接部署舊v2 opener、downgrade或用舊備份覆蓋正常資料。詳見[維運文件](device-push-operations.md)。
 
-- 本人回覆格式確認後，重新部署仍在公私鑰驗證失敗。只顯示可公開公鑰檢查，確認伺服器儲存值仍含NKUST_PUSH_VAPID_PUBLIC_KEY=前綴；未讀取私鑰。已備妥Render Edit，交本人修正Value並明確按Save only。Cloudflare原Unsaved changes已由本人Save，已確認消失且Secret存在。cron仍未啟用，API仍false；不得宣稱正式推播完成。
+## 正式驗收發現並修正
 
-## 正式啟用成功（後續驗收仍進行）
+1. Cloudflare Workers不實作redirect:error，請求尚未送出就TypeError。改manual並拒收3xx；補302／401／503及無敏感內容診斷測試。本人同步同一Trigger Secret並Deploy後，兩輪真cron成功。[官方Request文件](https://developers.cloudflare.com/workers/runtime-apis/request/)
+2. 初始設定Subject結尾斜線被py_vapid嚴格sub驗證拒絕。先前只驗字首與金鑰配對、以及mailto合成案例，漏掉真實預設。已以真實設定重現RED→GREEN，移除非秘密Subject結尾斜線，啟動前用公開sign介面驗實際簽章；不關閉嚴格驗證、不更換金鑰或重建訂閱。
+3. 初期結果不明的測試沒有盲目重送。傳送診斷只記固定分類，Worker只記有界HTTP狀態碼，不記例外字串、正文、端點、auth或秘密。新憑證與修正均由本人輸入提交；未進聊天、Git或CI。
 
-- 本人完成Render修正並按Save only；重新載入伺服器設定後，公鑰不含前綴、base64url格式正確。私鑰沒有被顯示或記錄。
-- 重新部署0cd04f4於台灣時間2026-11-10 14:24:17回報Your service is live；公開/api/push/config實際HTTP200、enabled=true且有公鑰。公私鑰已通過伺服器配對驗證。
-- Cloudflare重新載入確認已存在每5分鐘規則（不是只有編輯草稿）；保留既有單一規則，不重複新增。兩輪真scheduled已通過，具體時戳見下方。
-- 已請本人進行iPhone主畫面App通知測試。測試通知的正確點擊入口為/todos；真正截止提醒才進來源詳情。尚未收到實機結果。
+## 尚待完成與限制
 
-- 真cron14:25及14:30均執行，但PUSH_TRIGGER_FAILED；未將排程存在誤列為成功。新增僅有界HTTP狀態碼的診斷，RED→GREEN涵蓋401／503、正文不讀與網路例外不洩漏。Git9e8bea5、CF診斷版本3972fb89；等待14:35後真事件。Render仍是已驗收0cd04f4，沒有因Worker修正重新部署網站。
-- iPhone本人回報可找到且可點開啟截止提醒，但仍找不到確認或遇設定錯誤，尚未提供實際提示；目前等待文字診斷，不宣稱實機通過。
+- 真正截止提醒：11-12唯讀查核deadline已accepted，本人回報實收；本次是否為未按測試按鈕的自動提醒及點擊對應公告仍待回覆，不能先列全部通過。鎖定畫面條件未另外確認。
+- 真機撤銷／拒絕授權、取消後不再收到、桌面／Android：尚未實機驗收；相關隔離、取消競爭與狀態行為已有獨立PG／瀏覽器驗證。
+- 稍後處理不變動另行設定的提醒；清除裝置資料可能失去管理能力，須照UI重設並重新核對。Safari分頁與主畫面App資料可能分開，不自動上傳搬移。
+- 免費服務、冷啟動、網路、推播提供者與裝置設定可能延遲；accepted不等於已顯示／已讀。未知結果不盲目重試；測試每裝置每小時最多3次，舊unknown不當成未送成功而任意重送。
 
-- 更正前端檔案計數：重新列出並逐檔執行，目前共有18個tests/*check.cjs，18個全過；原19項為計數誤植，原生瀏覽器harness仍另列，不混算。
-- Cloudflare不支援redirect:error，導致之前尚未送出HTTP就失敗。改manual並拒收3xx後，14:40／14:45真事件明確401；本人將Render現值同步至CF且Deploy後，14:50:46真scheduled日誌PUSH_TRIGGER_OK。第二輪待觀察。
-- Neon只讀彙總確認1筆deadline pending、3筆test unknown，沒有將unknown當服務接受或送達。新增固定傳送例外分類（不輸出例外字串），25項傳送／dispatcher／API回歸通過；Render正部署deadc47。測試額度15:00重設，等待實機再次測試。
+Task8仍進行中。以實際觀察補結果，不宣稱整體正式驗收全部完成。
 
-## 真cron驗收通過
+## 2026-11-12補驗
 
-- 2026-11-10 14:50:46及14:55:42（Asia/Taipei）兩個真正scheduled事件均有PUSH_TRIGGER_OK。不是預覽或手動測試；固定目標、manual禁止自動轉址、本人同步trigger後的正式規則。
-- Render deadc47傳送安全診斷於14:51:29實際Live。iPhone既有3筆測試unknown仍不盲目重送，等待15:00新小時額度後僅測一次，核對固定錯誤分類。iPhone送達／點擊／撤銷與實際截止通知尚未通過。
-
-## iPhone簽署失敗定位與修正
-
-- 本人確認一直從iPhone主畫面App測試；不是只在Safari分頁。15:00／15:01新測試仍unknown，固定傳送分類PUSH_TRANSPORT_EXCEPTION；Neon只讀彙總test unknown5、deadline pending1。
-- 本機實際py_vapid公用簽署介面重現：初始工具提供的HTTPS Subject帶結尾斜線，被函式庫嚴格sub檢查拒絕，尚未發出HTTP。先前僅驗字首與配對、及mailto合成案例，漏掉真實預設Subject。
-- RED→GREEN：實際WebPush加密簽署改以設定工具預設Subject驗；設定檢查實際呼叫公開sign介面，上線前拒絕函式庫無法簽署的Subject。預設與正式非祕密Subject移除結尾斜線，不更換金鑰、不關閉嚴格驗證、不重建訂閱。52項相關回歸通過。
-- 修正ab3dedf已於15:09:22實際Live；正等待修正後單次真機測試，尚未宣稱真機送達；原unknown不盲目重送。
-
-- ab3dedf部署後重新只讀彙總仍為5筆舊test unknown、1筆deadline pending，尚未觀察到新的修正後測試。正式API／cron啟用；Task8仍待iPhone實收、點擊與其他實機門檻，不能列整體完成。
+- Render仍Live ab3dedf。Cloudflare近一小時顯示0 Errors，23:00、23:05、23:10等scheduled事件皆PUSH_TRIGGER_OK；沒有重新部署、重建角色或更換秘密。
+- 正式Neon只執行截止／測試狀態分組SELECT，確認真正deadline已有accepted，沒有讀取裝置端點、郵件或秘密，沒有修改提醒。
+- 上次完整回歸的未完成紀錄不算通過。新一輪將合成本機PG啟動、完整驗收及finally停止放同一受控行程，820項全過、0略過、2個既有相依棄用警告；完整結束後已停止測試庫。
