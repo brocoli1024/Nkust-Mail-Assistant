@@ -1,5 +1,34 @@
 from datetime import datetime, timezone
+import http.client
+import socket
+import ssl
 import pytest
+
+
+@pytest.mark.parametrize('exception, code', [
+    (socket.gaierror('private detail'), 'PUBLIC_SOURCE_DNS'),
+    (TimeoutError('private detail'), 'PUBLIC_SOURCE_TIMEOUT'),
+    (ssl.SSLCertVerificationError('private detail'), 'PUBLIC_SOURCE_TLS_CERTIFICATE'),
+    (ssl.SSLError('private detail'), 'PUBLIC_SOURCE_TLS'),
+    (ConnectionResetError('private detail'), 'PUBLIC_SOURCE_CONNECTION'),
+    (http.client.HTTPException('private detail'), 'PUBLIC_SOURCE_PROTOCOL'),
+    (OSError('private detail'), 'PUBLIC_SOURCE_NETWORK'),
+    (ValueError('private detail'), 'PUBLIC_SOURCE_UNAVAILABLE'),
+])
+def test_download_failure_classification(exception, code):
+    import time
+    from app.services.public_source import _download
+    from app.services.public_articles import failure_detail
+    from app.services.office_mail_sync import _safe_code
+
+    def resolve(*args, **kwargs):
+        raise exception
+
+    with pytest.raises(PublicSourceError) as caught:
+        _download('https://www.nkust.edu.tw/', deadline=time.monotonic()+30, resolver=resolve)
+    assert str(caught.value) == code
+    assert failure_detail(1, 'article', caught.value)['error_code'] == code
+    assert _safe_code(caught.value) == code
 
 from app.services.public_source import PublicSourceError, parse_feed, normalize_public_url, fetch_feed
 

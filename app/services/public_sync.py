@@ -35,6 +35,7 @@ class SyncResult:
     unchanged: int = 0
     failed: int = 0
     status: str = 'success'
+    error_code: str | None = None
 
 
 class SourceLease:
@@ -163,6 +164,7 @@ def sync_recent(database, *, source=None, now=None) -> SyncResult:
     except Exception as exc:
         result = SyncResult(failed=1, status='failed')
         error = str(exc) if isinstance(exc, PublicSourceError) else 'PUBLIC_SYNC_FAILED'
+        result.error_code = error
     finally:
         try:
             if run_id is not None:

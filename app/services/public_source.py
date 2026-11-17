@@ -159,6 +159,20 @@ def _download(url, *, deadline, resolver=socket.getaddrinfo, connection_factory=
             connection.close()
     except PublicSourceError:
         raise
+    except socket.gaierror:
+        raise PublicSourceError('PUBLIC_SOURCE_DNS') from None
+    except TimeoutError:
+        raise PublicSourceError('PUBLIC_SOURCE_TIMEOUT') from None
+    except ssl.SSLCertVerificationError:
+        raise PublicSourceError('PUBLIC_SOURCE_TLS_CERTIFICATE') from None
+    except ssl.SSLError:
+        raise PublicSourceError('PUBLIC_SOURCE_TLS') from None
+    except ConnectionError:
+        raise PublicSourceError('PUBLIC_SOURCE_CONNECTION') from None
+    except http.client.HTTPException:
+        raise PublicSourceError('PUBLIC_SOURCE_PROTOCOL') from None
+    except OSError:
+        raise PublicSourceError('PUBLIC_SOURCE_NETWORK') from None
     except Exception:
         raise PublicSourceError('PUBLIC_SOURCE_UNAVAILABLE') from None
 
