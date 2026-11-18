@@ -64,3 +64,9 @@ GitHub 建立 `azure-demo` environment（建議指定 reviewer），設定 Varia
 驗收後從 Azure Portal 檢查專用 resource group 的資源清單，刪除**該示範群組**以清理環境；同時移除不再使用的 OIDC 信任及 GitHub environment。不要使用正式服務所在群組。
 
 參考：[Container Apps Bicep](https://learn.microsoft.com/azure/templates/microsoft.app/2025-01-01/containerapps)、[Azure OIDC](https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure-openid-connect)。
+
+## 實際驗證紀錄（2026-11-18）
+
+[GitHub Actions run 44222677926](https://github.com/brocoli1024/Nkust-Mail-Assistant/actions/runs/44222677926)：Ubuntu / Python 3.12 的 497 項測試全部通過、沒有跳過，包含獨立 PostgreSQL。Ruff 與兩份 Bicep 編譯成功。容器演練實際產生 DATABASE_UNAVAILABLE 告警，恢復後 ready 200，pg_dump 備份還原到第二個資料庫並驗證合成 marker；演練計時約 2.01 秒。
+
+該次依賴掃描因 PyPI 15 秒網路逾時而失敗，CI gate 正確阻擋。已將掃描 timeout 提高為 60 秒；不忽略漏洞或掃描失敗。Azure 資源部署、外部通知送達與正式 Render 設定尚未執行。
