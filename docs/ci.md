@@ -2,7 +2,7 @@
 
 ## 流程
 
-`.github/workflows/ci.yml` 在 Push 到 `codex/web-deployment`、以該分支為目標的 PR，以及手動執行時運作。
+`.github/workflows/ci.yml` 在 Push 到 `codex/web-deployment` 或 `codex/ci-pipeline`、以 `codex/web-deployment` 為目標的 PR，以及手動執行時運作。
 
 1. Python 3.12、Node 22 與一次性的 PostgreSQL 16 service container。
 2. 安裝開發及 Web 依賴，執行 `alembic upgrade head` 與全部 pytest。
@@ -11,6 +11,8 @@
 5. Ruff 檢查程式正確性；pip-audit 掃描正式與開發依賴及其間接依賴。掃描出漏洞或掃描本身失敗都會阻擋 CI。
 
 Ruff 第一階段只啟用 E9、F63、F7、F82，避免把既有程式格式重整混入 CI 修改。這不是完整型別檢查或完整安全稽核。
+
+維運擴充另加入 Container recovery drill：編譯 Azure Bicep、建置 Docker、實際停止隔離 PostgreSQL 並驗證恢復與備份還原。`CI gate` 同時要求這項工作成功。詳見 [維運文件](operations.md)。
 
 CI 不引用任何 repository secrets，不讀取正式 Neon 連線或 Gmail 憑證。資料庫帳密及 OAuth 設定均為合成值，資料庫隨 runner 銷毀。不要把 `.env`、token、真實郵件或資料庫備份提交到 Git。
 

@@ -2,7 +2,7 @@ name: Code CI
 
 on:
   push:
-    branches: [codex/web-deployment]
+    branches: [codex/web-deployment, codex/ci-pipeline]
   pull_request:
     branches: [codex/web-deployment]
   workflow_dispatch:
@@ -114,10 +114,28 @@ jobs:
       - name: Audit development and test dependencies
         run: python -m pip_audit -r requirements-dev.txt -r requirements-ci.txt
 
+  containers:
+    name: Container recovery drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate infrastructure templates
+        run: |
+          az bicep build --file infra/azure/foundation.bicep --outfile /tmp/foundation.json
+          az bicep build --file infra/azure/app.bicep --outfile /tmp/app.json
+      - name: Build container, disconnect database and restore synthetic backup
+        run: python scripts/recovery_drill.py
+
   gate:
     name: CI gate
     if: ${{ always() }}
-    needs: [tests, static, audit]
+    needs: [tests, static, audit, containers]
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -126,7 +144,9 @@ jobs:
           TESTS_RESULT: ${{ needs.tests.result }}
           STATIC_RESULT: ${{ needs.static.result }}
           AUDIT_RESULT: ${{ needs.audit.result }}
+          CONTAINERS_RESULT: ${{ needs.containers.result }}
         run: |
           test "$TESTS_RESULT" = success
           test "$STATIC_RESULT" = success
           test "$AUDIT_RESULT" = success
+          test "$CONTAINERS_RESULT" = success

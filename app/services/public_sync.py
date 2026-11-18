@@ -134,6 +134,12 @@ def finish_run(database, run_id, result, error_code=None, *, now=None):
             setattr(row, key, value)
         row.finished_at = now or utcnow()
         row.error_code = error_code
+        elapsed = max(0, (aware(row.finished_at) - aware(row.started_at)).total_seconds() * 1000)
+    # Emit success only after the transaction commits.
+    from app.observability import emit
+    emit('public_sync', run_id=run_id, status=result.status, duration_ms=elapsed,
+         added=result.added, updated=result.updated, unchanged=result.unchanged, failed=result.failed,
+         error_type='sync_failed' if error_code else None)
 
 
 def sync_recent(database, *, source=None, now=None) -> SyncResult:

@@ -1,0 +1,11 @@
+# Allow-list: never send .env, credentials, mail databases or .git to Docker.
+**
+!Dockerfile
+!requirements-web.txt
+!alembic.ini
+!alembic/
+!alembic/**
+!app/
+!app/**
+**/__pycache__/**
+**/*.pyc

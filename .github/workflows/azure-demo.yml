@@ -1,0 +1,59 @@
+name: Deploy isolated Azure demo
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: azure-demo
+  cancel-in-progress: false
+jobs:
+  deploy:
+    # Requires an explicitly configured environment; no push-triggered cloud spend.
+    environment: azure-demo
+    if: ${{ github.ref == 'refs/heads/codex/ci-pipeline' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      checks: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require successful CI for this exact commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          result=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?filter=latest" --jq '[.check_runs[] | select(.name == "CI gate" and .app.slug == "github-actions")] | if length == 1 then .[0].conclusion else "missing" end')
+          test "$result" = success
+      - name: Login with short-lived OIDC identity
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Provision isolated foundation and build the immutable image
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+        run: |
+          test -n "$RESOURCE_GROUP"
+          registry=$(az deployment group create --resource-group "$RESOURCE_GROUP" --name nkust-demo-foundation --template-file infra/azure/foundation.bicep --query properties.outputs.registryName.value -o tsv)
+          az acr build --registry "$registry" --image "nkust-demo:$GITHUB_SHA" .
+      - name: Deploy synthetic-only demo
+        env:
+          RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+          MONITORING_TOKEN: ${{ secrets.MONITORING_TOKEN }}
+        run: |
+          test "${#MONITORING_TOKEN}" -ge 32
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ['RUNNER_TEMP']) / 'demo-parameters.json'
+          p.write_text(json.dumps({'imageTag': {'value': os.environ['GITHUB_SHA']}, 'monitoringToken': {'value': os.environ['MONITORING_TOKEN']}}))
+          p.chmod(0o600)
+          PY
+          az deployment group create --resource-group "$RESOURCE_GROUP" --name nkust-demo-app --template-file infra/azure/app.bicep --parameters "@$RUNNER_TEMP/demo-parameters.json" --query properties.outputs.demoUrl.value -o tsv
+      - name: Remove temporary parameter file
+        if: ${{ always() }}
+        run: python -c "import os; from pathlib import Path; (Path(os.environ['RUNNER_TEMP']) / 'demo-parameters.json').unlink(missing_ok=True)"

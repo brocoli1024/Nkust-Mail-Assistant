@@ -39,6 +39,8 @@ def main(argv=None) -> int:
         print(json.dumps(asdict(result)))
         return 0 if result.status == 'success' else 1
     except Exception as exc:
+        from app.observability import emit
+        emit('public_sync_error', error_type='maintenance_failed')
         code = str(exc) if isinstance(exc, PublicSourceError) else 'PUBLIC_MAINTENANCE_FAILED'
         print(json.dumps({'status': 'failed', 'error_code': code}))
         return 1
