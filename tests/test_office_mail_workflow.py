@@ -66,7 +66,7 @@ def test_discovery_trigger_runs_after_other_stages_fail(monkeypatch):
   calls.append(command)
   return subprocess.CompletedProcess(command,1 if 'sync' in command or 'articles' in command else 0,stdout='',stderr='')
  assert main(run=run)==1
- assert calls[-1][-1].endswith('trigger_office_discovery.py') and len(calls)==4
+ assert calls[-2][-1].endswith('trigger_office_discovery.py') and len(calls)==5
 
 
 def test_discovery_pending_is_warning_in_summary(monkeypatch,tmp_path):

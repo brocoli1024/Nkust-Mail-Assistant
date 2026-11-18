@@ -72,6 +72,13 @@ def main(*,run=subprocess.run):
                 results['discovery']=1;print('OFFICE_DISCOVERY_TRIGGER_RESULT_INVALID',flush=True)
         except OSError:results['discovery']=1;print('OFFICE_DISCOVERY_TRIGGER_START_FAILED',flush=True)
     else:print('Office discovery: skipped (not configured).',flush=True)
+    if any(results.get(name, 0) != 0 for name in ('feed', 'articles', 'office_mail')):
+        print('Public maintenance stage: source_diagnostics', flush=True)
+        try:
+            run([sys.executable, '-m', 'scripts.diagnose_public_sources'],
+                check=False, timeout=120)
+        except (OSError, subprocess.TimeoutExpired):
+            print('SOURCE_DIAGNOSTICS_INCOMPLETE', flush=True)
     success=all(code==0 or name in warnings for name,code in results.items())
     summary=os.environ.get('GITHUB_STEP_SUMMARY')
     if summary:

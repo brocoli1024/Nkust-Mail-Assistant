@@ -157,3 +157,11 @@ main工作流66756fb沿用既有Secret與cron每小時17分、checkout部署分�
 ## 公務新信發現（2026-11-08正式啟用）
 
 指定提供者可供官方網址發現，普通使用者不自動提供來源。首次14天、之後重疊24小時；每次20封／3個公開候選，未完接續。只儲存私人URL候選與進度，匿名官方頁通過檢查後才發布。新信完整檢查與既有內容重讀分開顯示。公開同步角色不獲取私有新表權限，Actions只用專用觸發Secret，不用Gmail token或私人DB連線。設定預設關閉；正式環境經本人確認後啟用，schema已升級0010並備妥相容回復版本。官方摘要郵件的精確HTTPS /Mail/View/ID會轉為同ID的匿名MailView候選，仍拒絕查詢參數與非官方主機。正式首次新增2篇、總數3篇，另有147個候選待續及1個安全拒絕；掃完時間窗不代表候選均已發布。main工作流9784e02保留每小時17分cron並接上專用觸發Secret；啟用後首次自動cron仍待實際觀察，手動已驗證。詳細驗收與啟用步驟見[持續收錄驗收](office-discovery-validation-2026-11-05.md)。
+
+### 失敗後自動連線診斷
+
+feed、articles 或 office_mail 任一階段非零結束時，既有同步工作會執行 source_diagnostics。搜尋 GitHub 日誌的 SOURCE_DIAGNOSTICS_GITHUB 與 SOURCE_DIAGNOSTICS_RENDER，可對照同一組固定公開網址：最新消息 RSS 與公務網站首頁。此探測用於區分主機／網路故障；個別公告路徑的內容或權限問題仍須查看原匯入結果。
+
+報告包含 UTC 時間、DNS 耗時、最多兩個已驗證的公開 IP、TCP／TLS／headers／body 的累計毫秒時間、HTTP 狀態及失敗 phase/error。timings_ms 從每個 IP 的測試開始累計，相鄰數值相減就是該階段耗時。每個 IP 最多約10秒，每階段 socket 等待最多5秒，只取最多1024 bytes樣本並記錄長度。診斷不跟隨轉址，不輸出本文、標頭、原始例外或憑證。DNS只選最多兩個地址，兩個入口可能各只有一個地址。
+
+Render 的 /internal/source-diagnostics/run 沿用既有 discovery trigger secret，拒絕自訂網址、query 和 body，每個應用程序最多每5分鐘接受一次。GitHub 呼叫固定Render端點並驗證回報欄位，404代表新版端點尚未可用或來源設定停用，401代表授權失敗。診斷總流程由120秒 subprocess timeout限制，診斷失敗不覆蓋原同步結果。GitHub端完成後才執行Render端探測，屬相近時間的對照；精確時間請核對checked_at。

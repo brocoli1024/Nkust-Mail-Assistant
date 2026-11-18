@@ -107,6 +107,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         app.include_router(office_router)
         from app.api.office_discovery import router as discovery_router
         app.include_router(discovery_router)
+        from app.api.source_diagnostics import router as diagnostics_router
+        app.include_router(diagnostics_router)
         from app.api.push import router as push_router
         app.include_router(push_router)
         if demo_enabled:
