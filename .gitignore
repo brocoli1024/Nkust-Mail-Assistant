@@ -23,3 +23,6 @@ data/samples/private/
 data/audit-cache/
 data/web-dependency-audit.json
 data/public-readiness-preview/
+data/ci-*/
+data/ci-*.xml
+ci-results.xml
