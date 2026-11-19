@@ -1,0 +1,139 @@
+/* Personal display edits only: no source parsing, AI or network calls. */
+(function(root){
+'use strict';
+const keys=['summary','action','audience','materials','deadline','event_date'];
+const limits={summary:160,action:1200,audience:1200,materials:1200,deadline:10,event_date:10};
+const object=x=>x!==null && typeof x==='object' && !Array.isArray(x);
+function validateCorrectionPatch(raw){
+  if(!object(raw)||Object.keys(raw).some(k=>!['fields','action_decision','deadline_kind'].includes(k))||!object(raw.fields||{}))throw Error('INVALID_PATCH');
+  const out={fields:{},action_decision:raw.action_decision||'unknown',deadline_kind:raw.deadline_kind||'unknown'};
+  if(!['yes','no','unknown'].includes(out.action_decision)||!['registration','application','submission','unknown'].includes(out.deadline_kind))throw Error('INVALID_PATCH');
+  for(const [key,c] of Object.entries(raw.fields||{})){
+    if(!keys.includes(key)||!object(c)||Object.keys(c).some(k=>!['mode','value','quote','confirmed'].includes(k))||!['inherit','value','pending'].includes(c.mode))throw Error('INVALID_PATCH');
+    const change={mode:c.mode,value:c.value??null,quote:c.quote??null,confirmed:c.confirmed??false};
+    if(typeof change.confirmed!=='boolean'||(change.quote!==null&&(typeof change.quote!=='string'||Array.from(change.quote).length>2000)))throw Error('INVALID_PATCH');
+    if(c.mode!=='value'){
+      if(change.value!==null||change.quote!==null||change.confirmed)throw Error('INVALID_PATCH');
+    }else{
+      if(typeof change.value!=='string'||!change.value.trim()||Array.from(change.value).length>limits[key])throw Error('INVALID_PATCH');
+      if(['deadline','event_date'].includes(key)){
+        const d=new Date(change.value+'T00:00:00Z');
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(change.value)||!change.confirmed||!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==change.value||change.value.startsWith('0000'))throw Error('INVALID_DATE');
+      }
+    }
+    out.fields[key]=change;
+  }
+  return out;
+}
+function applyLocalPatch(card,raw){
+  const patch=validateCorrectionPatch(raw),out=structuredClone(card);
+  for(const [key,c] of Object.entries(patch.fields)){
+    if(c.mode==='inherit')continue;
+    const evidence=[];
+    for(const [i,s] of (card.source.segments||[]).entries()){
+      const at=c.quote?s.text.indexOf(c.quote):-1;
+      if(at>=0)evidence.push({segment:i,quote:c.quote,start:Array.from(s.text.slice(0,at)).length,end:Array.from(s.text.slice(0,at)).length+Array.from(c.quote).length,role:key,year_inferred:false});
+    }
+    out.fields[key]={value:c.mode==='value'?c.value:null,state:c.mode==='value'?'user_confirmed':'pending',origin:'user',evidence,
+      warnings:c.quote&&!evidence.length?['個人補充，系統未驗證來源']:[]};
+    if(key==='action')out.requires_action=c.mode==='value'?({yes:true,no:false,unknown:null})[patch.action_decision]:null;
+    if(key==='deadline')out.deadline_kind=c.mode==='value'?patch.deadline_kind:'unknown';
+  }
+  return out;
+}
+function fieldDisplay(card,key){
+  const f=card.fields[key];
+  if(f.state==='stale'&&f.origin==='linked_form')return {value:f.value||'填表資料待核對',state:'報名來源最近讀取失敗；保留上次資料，請核對最新表單。'};
+  if(f.state==='stale')return {value:f.value||'資訊待重新核對',state:'RSS內容已變更，本文待更新；舊解析結果僅供參考。'};
+  if(f.value)return {value:f.value,state:f.origin==='user'?'我的修正 · 使用者確認，非系統驗證':f.origin==='linked_form'?'公告連結的兌換表單':'來源規則辨識'};
+  if(f.origin==='user')return {value:'待確認',state:'我的修正 · 保留待確認'};
+  const article=card.source.metadata?.article||{};
+  if(card.source.kind==='public'&&!article.text)return {value:'尚待讀取完整原文',state:article.error?'本文讀取失敗，稍後重試；目前僅有來源摘要。':'目前僅有來源摘要，完整資訊尚未讀取。'};
+  if(f.evidence?.length||(['deadline','event_date'].includes(key)&&(card.candidates||[]).some(e=>e.role===null&&card.source.segments[e.segment].kind!=='title')))return {value:'資訊待核對',state:'日期年份、用途或多個候選資訊尚未能確定，請查看依據。'};
+  const ticket=card.source.metadata?.registration_ticket;
+  const ticketFailed=ticket&&(card.source.metadata?.related||[]).some(d=>d.url===ticket.source_url&&d.error);
+  if(key==='deadline'&&ticket)return {value:ticket.name+'販售截止：'+ticket.ends_at.slice(0,16).replace('T',' ')+'（台灣時間）',state:(ticketFailed?'票券來源最近讀取失敗，這是上次成功資料。':'')+'這是票券販售期限；兌換表單截止尚未確認。'};
+  const labels={deadline:'截止說明',event_date:'活動日期',materials:'材料說明',audience:'適用對象',action:'行動說明',summary:'摘要'};
+  return {value:'本文未找到'+labels[key],state:'請核對完整公告、附件或報名頁；不代表沒有相關規定。'};
+}
+function formatLocalHistory(record){return record?JSON.stringify({baselines:record.baselines,revisions:record.revisions},null,2):'尚無紀錄';}
+const api={validateCorrectionPatch,applyLocalPatch,formatLocalHistory,fieldDisplay};root.NkustActionCards=api;
+if(typeof module!=='undefined')module.exports=api;
+if(typeof document==='undefined')return;
+function init(){
+  for(const node of document.querySelectorAll('[data-card-payload]')){
+    let payload;try{payload=JSON.parse(node.dataset.cardPayload);}catch{continue;}
+    if(!['public','demo'].includes(payload.scope))continue;
+    const base=payload.base_card,editor=node.querySelector('[data-local-editor]'),status=node.querySelector('[data-correction-status]');
+    if(!editor)continue;
+    let record=null,expected=0,ready=false,store=null,rendered=false,displayed=base;
+    const tools=node.querySelector('[data-reading-tools]');
+    const revealEditor=()=>{editor.hidden=false;editor.open=true;if(tools)tools.open=true;};
+    const paintDates=()=>{if(payload.scope!=='public'||!root.NkustReadingDates)return;const box=node.querySelector('[data-reading-date-notices]');if(!box)return;box.replaceChildren();for(const text of root.NkustReadingDates.cardDates(displayed).notices){const p=document.createElement('p');p.textContent=text;box.append(p);}};
+    root.setInterval?.(paintDates,60000);
+    const message=text=>{status.textContent=text;};
+    const invalidate=reason=>{root.NkustCalendarUI?.setDirty(node,reason);root.NkustTodoUI?.setDirty(node);};
+    const control=name=>Array.from(editor.querySelectorAll('[name]')).find(e=>e.name===name);
+    const fill=patch=>{
+      for(const key of keys){const c=patch?.fields?.[key];control(key+'.mode').value=c?.mode||'inherit';control(key+'.value').value=c?.value||'';control(key+'.quote').value=c?.quote||'';const check=control(key+'.confirmed');if(check)check.checked=!!c?.confirmed;}
+      control('action_decision').value=patch?.action_decision||'unknown';control('deadline_kind').value=patch?.deadline_kind||'unknown';
+    };
+    const paint=card=>{
+      for(const key of keys){const f=card.fields[key];
+        const box=node.querySelector('[data-card-evidence="'+key+'"]');box.replaceChildren();
+        if(f.evidence?.length){const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent='查看依據';detail.append(summary);for(const e of f.evidence){const quote=document.createElement('blockquote');quote.textContent=e.quote;detail.append(quote);const label=document.createElement('p');label.textContent='依據：'+({title:'來源標題',excerpt:'來源摘要',original:'郵件公告原文',official_text:'官方公告本文',linked_form:'公告連結的兌換表單'}[card.source.segments?.[e.segment]?.kind]||'來源待確認');detail.append(label);const ref=card.source.metadata?.source_links?.[String(e.segment)];if(ref&&/^https:\/\/(?:docs\.google\.com|[a-z0-9-]+\.kktix\.cc)\//.test(ref.url)){const link=document.createElement('a');link.href=ref.url;link.textContent='開啟這份來源';link.target='_blank';link.rel='noopener noreferrer';detail.append(link);}}box.append(detail);}
+        const ticket=key==='deadline'&&!f.value&&f.origin!=='user'?card.source.metadata?.registration_ticket:null;
+        if(!f.evidence?.length&&ticket){const detail=document.createElement('details'),summary=document.createElement('summary'),quote=document.createElement('blockquote'),scope=document.createElement('p');summary.textContent='查看票券販售依據';quote.textContent=ticket.quote;scope.textContent='票種：'+ticket.name+'；這不是兌換表單截止。';detail.append(summary,scope,quote);if(/^https:\/\/[a-z0-9-]+\.kktix\.cc\//.test(ticket.source_url)){const link=document.createElement('a');link.href=ticket.source_url;link.textContent='開啟票券來源';link.target='_blank';link.rel='noopener noreferrer';detail.append(link);}box.append(detail);}
+        const warnings=node.querySelector('[data-card-warnings="'+key+'"]');warnings.replaceChildren();for(const text of (f.warnings||[]).filter(x=>x!=='日期或角色待確認')){const p=document.createElement('p');p.textContent=text;warnings.append(p);}
+        const display=fieldDisplay(card,key);node.querySelector('[data-card-field="'+key+'"]').textContent=display.value;const state=node.querySelector('[data-card-state="'+key+'"]');state.textContent=display.state;state.hidden=payload.scope==='public'&&display.state==='來源規則辨識';}
+
+      displayed=card;paintDates();
+      root.NkustTodoUI?.setCard(node,card);
+      root.NkustCalendarUI?.setCard(node,card);
+      const d=card.fields.deadline;node.querySelector('[data-deadline-passed]').hidden=payload.scope==='public'||!(d.value&&['supported','user_confirmed'].includes(d.state)&&d.value<payload.taipei_today);
+    };
+    function render(){
+      const latest=record?.revisions?.at(-1),same=latest?.baseline_hash===base.baseline_hash;
+      const patch=same&&latest.operation==='save'?latest.patch:null;
+      paint(patch?applyLocalPatch(base,patch):base);fill(patch);
+      node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);
+      if(latest&&!same)message('來源或解析版本已變更，舊修正未套用，請重新核對後儲存。');rendered=true;
+    }
+    const savingEnabled=value=>{for(const selector of ['[data-save]','[data-reset]','[data-erase]']){const button=editor.querySelector(selector);if(button)button.disabled=!value;}};
+    async function load(preserveInputs=false){
+      savingEnabled(false);ready=false;invalidate('正在重新讀取修正，先前的匯出確認已取消；請完成核對後再確認。');
+      try{
+        if(payload.scope==='public'){store=root.NkustActionCardStore.createActionCardStore();record=await store.read(base.source.source_ref);}
+        expected=record?.revision||0;if(!preserveInputs)render();else{node.querySelector('[data-local-history]').textContent=formatLocalHistory(record);message('已讀取裝置最新版本，輸入仍保留，請核對歷史後再儲存。');}ready=true;editor.hidden=false;savingEnabled(true);
+      }catch(e){revealEditor();invalidate('修正讀取失敗，無法確認目前版本，匯出已停用；請重新載入頁面核對。');message('無法讀取裝置修正，尚未清除既有資料。請重新載入重試。');}
+    }
+    function readPatch(){
+      const fields={};for(const key of keys){const mode=control(key+'.mode').value;fields[key]={mode};if(mode==='value')fields[key]={mode,value:control(key+'.value').value,quote:control(key+'.quote').value||null,confirmed:!!control(key+'.confirmed')?.checked};}
+      return validateCorrectionPatch({fields,action_decision:control('action_decision').value,deadline_kind:control('deadline_kind').value});
+    }
+    async function commit(operation){
+      if(!ready)return;
+      invalidate('正在更新修正，先前的匯出確認已取消；成功後請重新核對。');
+      try{
+        const patch=operation==='save'?readPatch():null;
+        ready=false;message('正在儲存，請稍候。');
+        if(payload.scope==='public')record=await store.commit({card:base,patch,operation,expectedRevision:expected});
+        else{record=record||{schema_version:1,source_ref:base.source.source_ref,revision:0,baselines:{},revisions:[]};record.baselines[base.baseline_hash]=base;record.revision++;record.revisions.push({revision:record.revision,baseline_hash:base.baseline_hash,operation,patch:patch||{fields:{}},created_at:new Date().toISOString()});}
+        expected=record.revision;render();message(payload.scope==='demo'?'示範修正已更新；重新載入會重設。':'已保存至此裝置（裝置記錄時間：'+new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',dateStyle:'short',timeStyle:'short'}).format(new Date())+'）。');
+      }catch(e){editor.open=true;message(e.message==='REVISION_CONFLICT'?'其他分頁已更新，本次未儲存；請先重新讀取裝置版本並核對，輸入仍保留。':'尚未儲存：請核對日期、確認欄、字數或裝置儲存空間，輸入仍保留。');}
+      finally{ready=true;}
+    }
+    const refresh=node.querySelector('[data-refresh]');if(payload.scope==='public'){refresh.hidden=false;refresh.addEventListener('click',()=>load(rendered));}
+    editor.addEventListener('input',()=>{message('有尚未儲存的修正。');root.NkustTodoUI?.setDirty(node);root.NkustCalendarUI?.setDirty(node);});
+    editor.querySelector('[data-save]').addEventListener('click',()=>commit('save'));
+    editor.querySelector('[data-reset]').addEventListener('click',()=>commit('reset'));
+    editor.querySelector('[data-erase]')?.addEventListener('click',async()=>{
+      if(!ready||!root.confirm('永久刪除此公告在此裝置的修正歷史？不影響公開公告。'))return;
+      ready=false;invalidate('正在刪除裝置修正，先前匯出確認已取消；完成後請重新核對。');
+      try{await store.erase(base.source.source_ref,expected);record=null;expected=0;render();message('此公告的裝置修正已刪除。');}catch{invalidate('無法確認修正刪除結果，匯出已停用；請重新載入頁面核對。');message('未能刪除；可能已有其他分頁更新，請重新載入核對。');}finally{ready=true;}
+    });
+    load();
+  }
+}
+document.addEventListener('DOMContentLoaded',init);
+})(typeof window!=='undefined'?window:globalThis);

@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 
 from sqlalchemy.exc import OperationalError
 from tests.test_sessions import web
+from fastapi.testclient import TestClient
+from app.web import create_app
 from tests.test_auth import oauth
 from app.models.public_announcements import PublicSourceState, PublicSyncRun
 
@@ -51,9 +53,12 @@ def test_request_logs_never_include_untrusted_values(web, caplog):
     assert 'PRIVATE' not in json.dumps(records)
 
 
-def test_demo_disables_real_accounts(web, monkeypatch):
-    client, _, _, _ = web
+def test_demo_disables_real_accounts(web, oauth, monkeypatch):
+    _, _, _, settings = web
     monkeypatch.setenv('DEMO_MODE', '1')
-    for path in ('/auth/google', '/auth/google/callback', '/sync', '/api/me'):
-        assert client.get(path).status_code == 403
-    assert client.get('/demo').status_code == 200
+    app = create_app(settings, oauth, session_enabled=True, demo_enabled=True,
+                     session_secret='test-only-session-secret-32-characters')
+    with TestClient(app, base_url='http://localhost') as client:
+        for path in ('/auth/google', '/auth/google/callback', '/sync', '/api/me', '/internal/source-diagnostics/run'):
+            assert client.get(path).status_code == 403
+        assert client.get('/demo').status_code == 200

@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+const r=require('../app/static/web/office-mail-reading.js');
+const path='/public/office-mail?q=test&campus=jiangong&mode=priority&page=2';
+const item=r.readingRecord(path,'12',450,1000);
+assert.equal(r.restoreOffset(item,path,'#office-12',1500),450);
+assert.equal(r.restoreOffset(item,path.replace('jiangong','qijin'),'#office-12',1500),null);
+assert.equal(r.restoreOffset(item,path,'#office-13',1500),null);
+assert.equal(r.restoreOffset(item,path,'#office-12',2000000),null);
+assert.equal(r.readingRecord('/announcements','12',450,1000),null);
+assert.equal(r.readingRecord('https://evil.invalid','12',450,1000),null);
+console.log('Office reading query and source isolation passed');

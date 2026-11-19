@@ -22,3 +22,14 @@ def test_cli_failure_does_not_print_secrets(monkeypatch,capsys):
     monkeypatch.setattr('app.public_cli.Settings.load',fail)
     assert main(['sync'])==1
     assert 'PRIVATE-MARKER' not in capsys.readouterr().out
+
+def test_public_cli_remains_compatible_during_additive_push_upgrade(database,monkeypatch,capsys):
+    from alembic import command
+    db,config=database
+    command.downgrade(config,'0010')
+    monkeypatch.setattr('app.public_cli.Settings.load',lambda:Settings(database_url=db.engine.url))
+    monkeypatch.setattr('app.public_cli.fetch_feed',lambda:feed(item()))
+    assert main(['sync'])==0
+    assert json.loads(capsys.readouterr().out)['status']=='success'
+    command.upgrade(config,'head')
+    assert main(['sync'])==0

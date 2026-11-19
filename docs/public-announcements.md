@@ -1,19 +1,27 @@
 # 公開公告維護手冊
 
 本功能是「公開資料＋私人 Gmail」整合版。公開區免登入，私人郵件仍沿用 Google OAuth / 帳號隔離。
-10/28 工作區發布紀錄記載曾部署公開公告版；本次新增功能未部署，亦未重新確認今天正式環境的版本與收錄數。請區分本分支可執行的功能、歷史發布紀錄與正式環境現況。
+2026-11-05 產品版本 b2d4cc6、schema 0009；本文補強首次正式執行8篇成功、0失敗。每小時公開同步已啟用，首次手動 Actions 驗收成功；當時132則、最後成功更新23:00。歷史階段文件保留當時未部署狀態，最新證據見[發布紀錄](release-2026-11-01.md)。
 
-## 學生入口與合成示範
+## 學生入口
 
-首頁 `/` 提供「瀏覽公開公告」及「體驗合成示範」。公開清單 `/public/announcements` 可免登入搜尋、分類及篩選學生相關；學生相關是規則提示，不代表本人符合資格。
+首頁 `/` 以303直接導向 `/public/announcements`，保留查詢字串；可免登入搜尋、分類及篩選學生相關。學生相關是規則提示，不代表本人符合資格。裝置待辦在 `/todos`。
 
-`/demo` 及 `/demo/announcements/{demo_id}` 使用獨立的三則合成資料；每頁明示非高科大真實公告，日期固定、不代表仍可報名。示範支援搜尋與分類，不讀取資料庫或私人 Session、不呼叫 Gmail、AI 或來源擷取，也不匯入資料庫。來源與真實收錄狀態只出現在公開頁，不套用到合成資料。示範不是「已加入待辦」的模擬，第一階段沒有待辦保存功能。
+正式預設不掛載合成示範；`/demo` 及 `/demo/announcements/{demo_id}` 轉回公開清單。示範僅供內部測試明確 `demo_enabled=True` 啟用，不寫入公開資料庫。
 
-Gmail 是選用的私人整合，需登入與唯讀授權，目前仍有 Google 測試名單限制；不影響公開閱讀與示範。管理者啟動 `app.web:app` 仍需既有資料庫、OAuth 與 Session 設定。單人入口 `app.main:app` 不提供這套多人公開／示範路由，不能直接公開部署。
+Gmail 是選用的私人整合，仍有 Google 測試名單限制，不影響公開閱讀。管理者啟動 `app.web:app` 仍需既有資料庫、OAuth 與 Session 設定；單人 `app.main:app` 不能直接作為多人公開服務。
 
-公開首頁、清單、詳情均顯示來源、最後成功更新（台灣時間）、失敗提示與收錄限制；歷史補收詳情可展開。讀取失敗時有繁中錯誤頁與重試入口，來源更新失敗則繼續顯示已收錄資料；不要以頁面載入時間替代成功更新時間。搜尋無結果與尚無收錄資料分開提示。
+公開頁顯示官方來源、最後成功更新（台灣時間）、失敗／過期提示與收錄限制。來源更新失敗保留資料，超過2小時或尚無成功紀錄提醒；不是用頁面載入時間代替更新時間。搜尋無結果與尚無收錄資料分開提示。
 
-此階段沒有新增 migration、依賴或自動更新排程。驗證結果與限制見 [第一階段驗證紀錄](campus-action-phase1-validation-2026-10-29.md)。
+## 行動資訊與修正保存
+
+既有RSS公開／私人／示範流程沿用既有行動資料；新增公務公告詳情只呈現內容重點，不顯示行動資訊卡。規則與原文支持才呈現確定日期，年份推定／跨年／範圍／角色衝突顯示待確認；截止與活動分欄。來源摘要可能截短；既有 AI 不作唯一依據，不啟用分析、擷取或新權限。
+
+公開修正按儲存才寫入此裝置 IndexedDB（包括用來追溯的公開原文快照），不傳回伺服器，不隨帳號切換；共用瀏覽器可能看到，勿填入私人郵件。額度不足或分頁衝突不會回報成功。可重新讀取版本並保留輸入，來源版本改變時須再核對。清除裝置修正歷史不可還原，但不影響公開公告。
+
+私人修正與原快照存於本人帳號，不進 browser storage；重新解析公告不刪除原快照，帳號刪除會一併刪除本人新資料，備份限制沿用隱私說明。示範修正只用頁面記憶體，重載清空。第三階段另提供明確加入的待辦，第四階段提供確認後下載ICS，第五階段提供保留各來源原文的可靠網址關聯，不實體合併。
+
+詳見 [第二階段驗證](campus-action-phase2-validation-2026-10-29.md)。
 
 ## 收錄範圍
 
@@ -21,14 +29,14 @@ Gmail 是選用的私人整合，需登入與唯讀授權，目前仍有 Google 
 - 官方 RSS：https://www.nkust.edu.tw/p/503-1000-1001.php 。實查回傳 20 則近期公告，不代表歷史全量。
 - 全部收錄指定來源取得的公告。學生相關、分類不影響收錄，未知公告仍保存在「全部」。
 - 摘要只來自來源提供的文字，可能截短；未提供發布時間時顯示未知，不用抓取日猜日期。
-- 不自動抓取處室全文、附件，也不使用 AI。只有指定清單內資料，不保證涵蓋全校或所有 Gmail 通知。
+- 既有可靠官方文章由排程分批讀取本文；每批8篇、最新200則範圍，僅額外讀取本文明示的公開 Google 表單與 KKTIX 票券頁（含允許的 reurl.cc 導向），不抓附件或其他平台，也不使用AI。失敗保留摘要與舊本文，不保證涵蓋全校或所有Gmail通知。
 
 ## 安裝與資料庫
 
 多人網站仍由 `app.web:app` 啟動，使用 `requirements-web.txt`，新增 `defusedxml==0.7.1`。
 執行開發測試則安裝 `requirements-dev.txt`；鎖定環境使用 `requirements-lock.txt` 時也需有 defusedxml。
 
-本版本 migration head 是 **0006**。請先依 Phase 9 手冊備份資料庫與金鑰，再在確認的目的多人庫執行：
+本分支 migration head 是 **0009**；0006 是公開公告版本，0007 新增私人修正快照／歷史表，0008 新增私人待辦，0009 新增公開與私人隔離的來源版本表。10/31 正式發布已通過 schema 0009 gate；本次入口／排程補修沒有新增 migration。請先依 Phase 9 手冊備份資料庫與金鑰，再在確認的目的多人庫執行：
 
 ```powershell
 .\.venv\Scripts\python.exe -m alembic upgrade head
@@ -51,9 +59,19 @@ CLI 不自動遷移；錯誤 `PUBLIC_MIGRATION_REQUIRED` 表示需由維護者�
 同一來源的同步 / 補收 / 重分類共用資料庫 lease；`PUBLIC_SYNC_BUSY` 表示請稍後再試。
 lease 最長 10 分鐘，程序中斷後可在到期後重試。不要手動清除仍在執行中的 lease。
 
-初期沒有自動更新排程，也沒有匿名「立即更新」端點。維護者需自行執行 CLI；
-頁面提供真實最後成功更新、近期失敗及收錄範圍，不承諾每天或即時更新。
-Render Free 會休眠，不能只靠 web 程序內背景迴圈提供可靠排程。
+正式排程位於 main 的 `.github/workflows/public-announcements.yml`，每小時17分（UTC，台灣時間的分鐘相同）嘗試執行，checkout `codex/web-deployment`，不依賴 Render 休眠狀態。不提供匿名「立即更新」端點。
+
+專用 `nkust_public_sync` 角色只讀寫公開公告、狀態、同步紀錄與公開版本及必要序列，讀 schema version；無私人表讀取、DELETE、CREATE 或管理角色權限。grants 見 `scripts/sql/public_sync_grants.sql`，密碼由管理者親自設定，連線只存 `NKUST_PUBLIC_SYNC_DATABASE_URL` Actions Secret。不要用 Neon Roles UI 建立此角色（其預設繼承過大權限）。不要把管理員、Gmail、OAuth 或 Session 憑證加入工作流程。
+
+手動重試：到 GitHub Actions → Update public announcements → Run workflow（main）。檢查 sync 狀態與 JSON 計數，成功後比對網站最後成功更新。憑證到期或失效時由管理者輪替專用角色密碼並更新同名 Secret，不擴大角色權限；不要把密碼放進 issue／聊天／Git。單次執行上限10分鐘，併發序列化，另有既有資料庫lease保護。
+
+GitHub 排程可能延後，公開repo60天無活動可能自動停用；必要時由管理者在 Actions 重新啟用。Render 免費網站首次開啟仍可能需要喚醒。RSS僅近期20則，不等於全歷史。首次手動成功不能當作下一小時排程已驗收。
+
+## 官方本文分批更新
+
+同一個Actions同步步驟在RSS成功後執行 `python -m app.public_cli articles --limit 8`。管理者可手動執行相同命令（limit允許1–20）；仍使用受限公開角色，不需額外權限。CLI的updated表示成功讀取篇數，不代表每篇官方內容有變。失敗回傳partial與exit1，可在Actions檢查；articles JSON另列failures，提供公告編號、article／registration階段及固定安全錯誤碼（官方原文404為PUBLIC_ARTICLE_HTTP_404），不輸出任意例外或憑證；頁面保留之前本文並提示，尚未讀取則維持摘要。
+
+本文保存在現有公開版本JSON，保留RSS；成功讀取時間與清單同步時間分開。RSS改變、本文尚未重讀時舊資訊標待核對；不會覆蓋已加入待辦的快照。日期衝突保留雙方依據，系統缺漏不等於沒有規定。詳見[本文補強說明](public-article-enrichment-2026-10-31.md)。
 
 ## 歷史補收
 
@@ -89,7 +107,7 @@ Render Free 會休眠，不能只靠 web 程序內背景迴圈提供可靠排程
 .\.venv\Scripts\python.exe -m app.public_cli reclassify --source nkust-latest
 ```
 
-`/` 為免登入首頁，`/public/announcements` 為公開清單，`/public/announcements/{id}` 為詳情。
+`/` 直接導向免登入公開清單，`/public/announcements` 為公開清單，`/public/announcements/{id}` 為詳情。
 對象預設全部；學生相關是規則提示，不是資格判斷。搜尋與分類可組合，清除篩選回到全部。
 `/announcements` 仍是私人郵件公告，未登入不能閱讀。公開路由不解析 cookie、也不回退到私人表。
 刪除自己的帳號不會刪除公開公告。PWA 沒有新增離線公告快取。
@@ -104,3 +122,46 @@ git diff --check
 PostgreSQL 實機案例需使用獨立測試庫的 `NKUST_TEST_POSTGRES_URL`；不得沿用正式 DATABASE_URL。
 SQLite 測試或 PostgreSQL 離線編譯不代表正式 Neon 已驗收。
 發布前仍需核對備份、migration、公開頁匿名存取與私人帳號隔離；Google 私人 Gmail 功能的發布限制不變。
+
+## 我的待辦
+
+公開詳情的待辦只保存在裝置 IndexedDB v2，保留 v1 修正資料；/todos 查看，須自行加入才建立。私人待辦在 /my/todos，依帳號隔離，不匯入裝置待辦；示範只用記憶體。稍後到明天09:00台灣時間，顯示確切日期，到期重開頁或每分鐘檢查重新出現，不發推播。待辦保留加入時來源快照，來源變更需自行核對。移除保留內部版本墓碑，防止舊分頁重新覆寫；不刪公告／修正。詳見第三階段驗證紀錄。
+
+## 行事曆檔案
+
+公告詳情及待辦可分別選活動或截止，核對日期、來源及時間後下載.ics。pending/stale日期先回詳情確認修正，AI不作唯一依據；無時間可確認為全天，定時以Asia/Taipei核對後存UTC，結束可不填，不猜持續長度。待辦以加入時快照匯出。原文含未解析時間須自行選擇方式／核對後填寫，修改選項或修正資料後須重新確認。
+
+瀏覽器本機產生，不新增上傳／下載HTTP路由或DB欄位；不改待辦完成狀態、OAuth、行事曆授權或schema。啟動下載不代表落盤或已加入行事曆；重複匯入結果由行事曆軟體決定。私人檔案含私人資訊且為純文字，需自行保護與匯入。驗證結果見第四階段紀錄。
+
+## 來源關聯與留存
+
+匿名 `/public/announcements/{id}/history` 只讀公開資料。本人 `/announcements/{id}/sources` 依可靠的 NKUST HTTPS 404/405/406 文章網址精確關聯公開與自己目前的郵件公告；保留path/query與host差異，僅移除fragment，不採用標題相似度或不可信GUID。相同網址不代表內容、期限、資格相同，請分別核對原文。
+
+`/my/source-history` 每頁20筆，舊公告ID失效後仍可找本人已留存版本；詳細版保留原文、HTML（跳脫為文字）、原解析與來源日期。比較同郵件可靠文章URL前一版本；無可靠URL只比較相同原位置／指紋，不將重新排序的不同公告誤認更新。版本時間是服務觀察時間，解析器改版不一定是官方更新。首次留存前不回填虛構歷史。
+
+在既有public/User同步lease交易內，先留舊版本再更新及留新版本；只省略相鄰相同快照，A→B→A仍留下三份。任何留存寫入失敗會回復整次交易。GET不寫入、不同步，來源讀取失敗顯示503而非空清單。私人資料不放入公開版本表或裝置儲存。刪帳號沿owner/email CASCADE清除本人版本，不動公開或其他帳號，備份清除限制沿原政策。版本紀錄會隨內容變更成長，尚未設定自動刪除。
+
+正式schema 0009已於10/31發布，最新入口／排程補修通過575項獨立PostgreSQL測試；私人正式流程與容量限制仍見發布紀錄。
+
+## 公務公告來源與校區偏好（2026-11-05基線）
+
+此節記錄11/05既有行為；11/08持續收錄的正式狀態見下一節。
+
+`/public/office-mail`使用獨立nkust-office-mail來源。校區可複選／略過，localStorage key nkust-office-campus-v1僅保存version/campuses/skipped；不隨Google帳號或跨裝置同步。相關、全校、未知及其他依序排列，全部模式保留所有資料。排名在SQL分頁前完成。儲存失敗可重試或只套用本次網址，不能宣稱持久保存。
+
+管理者確認匿名可公開後，將HTTPS officemail.nkust.edu.tw/Mail/MailView/正整數網址以UTF8每行一筆寫入檔案，再以既有公開受限角色執行 `python -m app.public_cli office-import --urls-file PATH`；最多20個不同網址、先驗證整份清單，不掃描ID、不匯入Gmail。`office-refresh --limit 8`只重讀已知公告，失敗保留原文與版本。首次正式導入69929（站內ID146），共1篇。
+
+main工作流66756fb沿用既有Secret與cron每小時17分、checkout部署分支，改跑 `python scripts/refresh_public_sources.py`。RSS、本文、公務來源獨立執行；已辨識本文partial警告不阻止公務工作，其他程式／來源失敗仍回報失敗。手動office_url輸入僅供明確公開網址導入；空白是重讀，沒有全校公務新信發現能力。不能把此排序或每小時重讀稱為裝置推播。證據見[公務公告驗收](office-mail-campus-validation-2026-11-04.md)。
+
+
+## 公務新信發現（2026-11-08正式啟用）
+
+指定提供者可供官方網址發現，普通使用者不自動提供來源。首次14天、之後重疊24小時；每次20封／3個公開候選，未完接續。只儲存私人URL候選與進度，匿名官方頁通過檢查後才發布。新信完整檢查與既有內容重讀分開顯示。公開同步角色不獲取私有新表權限，Actions只用專用觸發Secret，不用Gmail token或私人DB連線。設定預設關閉；正式環境經本人確認後啟用，schema已升級0010並備妥相容回復版本。官方摘要郵件的精確HTTPS /Mail/View/ID會轉為同ID的匿名MailView候選，仍拒絕查詢參數與非官方主機。正式首次新增2篇、總數3篇，另有147個候選待續及1個安全拒絕；掃完時間窗不代表候選均已發布。main工作流9784e02保留每小時17分cron並接上專用觸發Secret；啟用後首次自動cron仍待實際觀察，手動已驗證。詳細驗收與啟用步驟見[持續收錄驗收](office-discovery-validation-2026-11-05.md)。
+
+### 失敗後自動連線診斷
+
+feed、articles 或 office_mail 任一階段非零結束時，既有同步工作會執行 source_diagnostics。搜尋 GitHub 日誌的 SOURCE_DIAGNOSTICS_GITHUB 與 SOURCE_DIAGNOSTICS_RENDER，可對照同一組固定公開網址：最新消息 RSS 與公務網站首頁。此探測用於區分主機／網路故障；個別公告路徑的內容或權限問題仍須查看原匯入結果。
+
+報告包含 UTC 時間、DNS 耗時、最多兩個已驗證的公開 IP、TCP／TLS／headers／body 的累計毫秒時間、HTTP 狀態及失敗 phase/error。timings_ms 從每個 IP 的測試開始累計，相鄰數值相減就是該階段耗時。每個 IP 最多約10秒，每階段 socket 等待最多5秒，只取最多1024 bytes樣本並記錄長度。診斷不跟隨轉址，不輸出本文、標頭、原始例外或憑證。DNS只選最多兩個地址，兩個入口可能各只有一個地址。
+
+Render 的 /internal/source-diagnostics/run 沿用既有 discovery trigger secret，拒絕自訂網址、query 和 body，每個應用程序最多每5分鐘接受一次。GitHub 呼叫固定Render端點並驗證回報欄位，404代表新版端點尚未可用或來源設定停用，401代表授權失敗。診斷總流程由120秒 subprocess timeout限制，診斷失敗不覆蓋原同步結果。GitHub端完成後才執行Render端探測，屬相近時間的對照；精確時間請核對checked_at。

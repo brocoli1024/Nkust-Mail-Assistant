@@ -1,0 +1,14 @@
+<section class="reading-actions" aria-label="公告主要操作">
+  <div class="reading-todo" data-device-todo data-compact="true" data-scope="public" data-source-path="{{ request.url.path }}">
+    <div data-todo-actions><p>正在準備待辦功能。</p></div>
+    <p data-todo-status role="status" aria-live="polite">正在讀取此裝置待辦。</p>
+    <noscript>裝置待辦需要 JavaScript；你仍可閱讀公告及開啟來源。</noscript>
+  </div>
+  <div class="reading-source-actions">
+    {% for doc in item.registration_docs if doc.kind in ('form','tickets') %}
+    <a class="button secondary" data-registration-action href="{{ doc.url }}" target="_blank" rel="noopener noreferrer">{{ ('開啟兌換表單' if '兌換' in doc.title else '開啟報名表單') if doc.kind=='form' else '開啟票券頁' }}</a>
+    {% endfor %}
+    {% if item.url %}<a class="button secondary" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">學校原文</a>{% endif %}
+  </div>
+  <details class="reading-action-help"><summary>操作與保存說明</summary><p>公開待辦只保存在此瀏覽器；共用裝置可能看見，清除瀏覽器資料會遺失，不隨 Google 帳號切換。加入待辦不代表符合資格或完成報名。</p><p>外部來源另開分頁，報名開放狀態與資格以來源為準。原文依據與各來源讀取狀態見下方。</p></details>
+</section>

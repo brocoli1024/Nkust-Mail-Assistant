@@ -3,13 +3,17 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   {% include 'pwa_head.html' %}<title>{{ item.title }} · 合成示範</title>
-  <link rel="stylesheet" href="/assets/account.css?v=phase1">
+  <script src="/assets/calendar-ics.js" defer></script><script src="/assets/calendar-controls.js" defer></script><link rel="stylesheet" href="/assets/account.css?v=phase1">
+  <script src="/assets/todo-store.js" defer></script><script src="/assets/todos.js" defer></script>
+  <script src="/assets/action-card-store.js" defer></script>
+  <script src="/assets/action-card.js" defer></script>
 </head>
 <body><div class="site-shell">
   {% set active_page = 'demo' %}{% include 'site_header.html' %}
   <main id="main-content" class="page-content narrow">
     <section class="hero compact public-detail-hero" aria-labelledby="page-title"><div><p class="eyebrow">SYNTHETIC DEMO</p><h1 id="page-title">{{ item.title }}</h1></div></section>
     {% include 'demo_notice.html' %}
+    {% include 'action_card.html' %}
     <article class="detail-card">
       <div class="meta-row"><span class="tag">{{ item.category }}</span><span>示範日期：{{ item.published or '未知' }}</span></div>
       <h2>合成示範摘要</h2>

@@ -3,20 +3,37 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   {% include 'pwa_head.html' %}<title>{{ item.title }} · NKUST Mail Assistant</title>
-  <link rel="stylesheet" href="/assets/account.css?v=public-1">
+  <script src="/assets/calendar-ics.js" defer></script><script src="/assets/calendar-controls.js" defer></script><link rel="stylesheet" href="/assets/account.css?v=focus-1">
+  <script src="/assets/reading-dates.js?v=focus-1" defer></script>
+  <script src="/assets/todo-store.js" defer></script><script src="/assets/todos.js?v=reading-1" defer></script>
+  <script src="/assets/action-card-store.js" defer></script>
+  <script src="/assets/action-card.js?v=focus-1" defer></script>
 </head>
-<body><div class="site-shell">
+<body class="public-reading-page"><div class="site-shell">
   {% set active_page = 'public' %}{% include 'site_header.html' %}
   <main id="main-content" class="page-content narrow">
+    <nav class="reading-back" aria-label="返回公告"><a class="text-link" data-public-back href="{{ back_url }}">← {{ '返回搜尋結果' if has_search else '返回公告清單' }}</a></nav>
     <section class="hero compact public-detail-hero" aria-labelledby="page-title"><div><p class="eyebrow">PUBLIC ANNOUNCEMENT</p><h1 id="page-title">{{ item.title }}</h1></div></section>
+    {% include 'action_card.html' %}
+    {% if item.article and (item.article.error or item.article.registration_error) %}<p class="notice" role="status">最近部分來源讀取失敗，保留上次資料；請核對學校原文與報名來源。</p>{% endif %}
+    <details class="reading-originals"><summary>核對原文、報名來源與版本紀錄</summary>
+    {% include 'linked_registration.html' %}
     <article class="detail-card">
       <div class="meta-row"><span class="tag">{{ item.category or '未分類' }}</span><span>發布：{{ item.published }}</span></div>
       <p>來源：高科大最新消息。{% if item.student_relevance == 'relevant' %}規則提示：學生相關。{% else %}學生相關性尚未確認，請核對原文對象。{% endif %}</p>
+      {% if item.article and item.article.text %}
+      <h2>已讀取的官方本文</h2>
+      <p>最後成功讀取：{{ item.article_time }}（台灣時間）。本文以外來源的讀取範圍及依據，請見本頁核對資訊；未收錄連結與附件請另行核對。</p>
+      {% if item.article.error %}<p class="notice" role="status">最近本文更新失敗，保留上次成功讀取的內容；請開啟官方原文確認最新版本。</p>{% endif %}
+      <details><summary>展開已讀取本文</summary><p class="public-detail-excerpt" style="white-space: pre-wrap">{{ item.article.text }}</p></details>
+      {% elif item.article and item.article.error %}<p class="notice" role="status">官方本文暫時無法讀取，目前僅有來源摘要；排程將於一小時後具備重試條件，依排程順序重試。</p>{% else %}<p>完整本文尚未讀取，排程將分批補收；目前依來源摘要辨識。</p>{% endif %}
       <h2>來源摘要</h2><p class="public-detail-excerpt">{{ item.excerpt or '來源未提供摘要，請開啟學校原文。' }}</p>
       <p class="muted">這是來源提供的摘要，可能截短；活動日期、截止日與參加資格以學校原文為準。</p>
       {% if item.url %}<p><a class="button" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">閱讀學校原文（另開分頁）</a></p>{% endif %}
-      <a class="text-link dark" href="/public/announcements">返回公開公告</a>
+      <p><a class="button secondary" href="/public/announcements/{{ item.id }}/history">查看公開版本紀錄</a></p>
+      <a class="text-link dark" href="{{ back_url }}">{{ '返回搜尋結果' if has_search else '返回公告清單' }}</a>
     </article>
-    {% include 'public_source_status.html' %}
+    </details>
+    {% set compact_source=true %}{% include 'public_source_status.html' %}
   </main>
 </div></body></html>

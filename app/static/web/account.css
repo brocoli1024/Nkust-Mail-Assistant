@@ -182,3 +182,196 @@ input[type="search"] { min-height:48px; width:100%; padding:9px 14px; border:1px
   .public-source-status { padding:16px; }
   .announcement, .detail-card, .filter-panel { min-width:0; }
 }
+.action-card { margin-bottom:24px; }
+.action-card h2 { font-size:1.5rem; margin-bottom:16px; }
+.action-card dd, .action-card pre, .action-card blockquote { overflow-wrap:anywhere; white-space:pre-wrap; }
+.action-card .field-state { font-size:.9rem; color:var(--ink-muted); }
+.action-card summary { min-height:44px; cursor:pointer; padding-block:10px; }
+.action-card details, .card-editor fieldset { margin-block:16px; }
+.action-card blockquote { margin:12px 0; border-left:3px solid var(--ink-muted); padding-left:12px; }
+.card-editor { display:grid; gap:16px; }
+.card-editor label { display:grid; gap:8px; }
+.card-editor textarea { width:100%; min-height:64px; font:inherit; padding:10px; color:var(--ink); background:var(--paper); }
+.card-editor select { min-height:44px; }
+.card-editor fieldset { min-width:0; border:1px solid var(--line-light); padding:16px; }
+[hidden] { display:none !important; }
+/* Only the outer card fields receive row dividers, not evidence containers. */
+.action-card .detail-grid > div > div { padding:0; border:0; }
+.action-card .field-state { margin:8px 0; }
+.action-card .detail-grid details { margin:4px 0; }
+.todo-section{margin-block:2rem;padding-block:1.5rem;border-top:1px solid var(--border,#d7d0c6)}
+.todo-actions{align-items:flex-end;flex-wrap:wrap;gap:1rem}.todo-actions form{max-width:100%}.todo-actions p{max-width:28rem}
+.todo-section button,.todo-row button{min-height:44px}.todo-row pre{white-space:pre-wrap;overflow-wrap:anywhere}
+/* The surrounding dark section must not override text inside paper todo cards. */
+.detail-card.todo-row p{color:var(--ink-muted)}
+.todo-row{margin-block:1rem}.todo-row h2,.todo-row h3{margin-bottom:1rem}
+.calendar-export{margin-block:1.5rem;padding-top:1.5rem;border-top:1px solid var(--line-light)}
+.calendar-export h3{margin-bottom:1rem}.calendar-export fieldset{min-width:0;padding:1rem;border:1px solid #9e9184;border-radius:12px}
+.calendar-export label{display:block;margin-block:1rem;overflow-wrap:anywhere}.calendar-export select,.calendar-export input[type=time],.calendar-export input[type=datetime-local]{display:block;min-height:44px;width:100%;max-width:100%;box-sizing:border-box;color:var(--ink);background:var(--light);padding:.5rem}
+.calendar-export button{min-height:44px}.calendar-export input[type=checkbox]{min-width:20px;min-height:20px;margin-right:.5rem}.calendar-export blockquote{overflow-wrap:anywhere;margin-inline:0}
+.calendar-export summary{min-height:44px;padding-block:.6rem;cursor:pointer}.calendar-export button:disabled{opacity:.5;cursor:not-allowed}
+
+.source-history { overflow-wrap: anywhere; }
+.source-history pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
+.source-history summary { cursor: pointer; padding: 12px 0; }
+.source-history article { margin-block: 16px; }
+
+/* Device todos share the site's paper surface; scope rules to this panel. */
+.device-todo-panel { margin: 0 0 32px; }
+.device-todo-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.device-todo-heading .eyebrow { margin: 0 0 4px; color: var(--ink-muted); }
+.device-todo-heading h2 { margin: 0; font-size: clamp(1.35rem, 2.3vw, 1.8rem); font-weight: 500; letter-spacing: -.025em; }
+.device-todo-badge { flex-shrink: 0; border: 1px solid var(--line-light); border-radius: 999px; padding: 5px 12px; color: var(--ink-muted); font-size: .8rem; }
+.device-todo-intro { margin: 16px 0 4px; }
+.device-todo-privacy, .device-todo-status { color: var(--ink-muted); font-size: .85rem; line-height: 1.6; }
+.device-todo-privacy { margin: 0; }
+.device-todo-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-top: 24px; }
+.device-todo-toolbar label { display: grid; gap: 6px; font-size: .85rem; color: var(--ink-muted); }
+.device-todo-toolbar select { width: 100%; min-height: 44px; padding: 10px 36px 10px 12px; font: inherit; font-size: .95rem; color: var(--ink); background: var(--light); border: 1px solid var(--line-light); border-radius: 10px; }
+.device-todo-status { margin: 16px 0 12px; }
+.device-todo-items > p { margin: 0; padding: 28px 20px; text-align: center; color: var(--ink-muted); background: var(--light); border: 1px dashed var(--line-light); border-radius: 14px; }
+.device-todo-items .todo-row { margin-block: 16px; }
+.device-todo-help { margin-top: 20px; border-top: 1px solid var(--line-light); }
+.device-todo-help summary { display: list-item; min-height: 44px; padding-top: 14px; cursor: pointer; color: var(--ink-muted); font-size: .85rem; }
+.device-todo-help p { color: var(--ink-muted); font-size: .85rem; }
+.device-todo-panel > .button.secondary { margin-top: 8px; color: var(--ink-muted); font-size: .85rem; }
+@media (max-width: 520px) {
+  .device-todo-toolbar { align-items: stretch; }
+  .device-todo-toolbar label, .device-todo-toolbar > .button { width: 100%; }
+}
+
+/* Public reading flow: keep the main actions ahead of advanced editing. */
+.reading-back { padding-top:16px; }
+.public-reading-page .public-detail-hero { min-height:0; padding:16px 0 24px; }
+.public-reading-page .public-detail-hero h1 { font-size:clamp(1.45rem,3vw,2.25rem); line-height:1.45; letter-spacing:-.025em; }
+.public-reading-page .public-detail-hero .eyebrow { display:none; }
+.public-reading-page .public-detail-hero::after { display:none; }
+.reading-actions { position:sticky; top:0; z-index:3; background:var(--paper); border-bottom:1px solid var(--line-light); padding:12px 0 16px; margin-bottom:24px; }
+.reading-source-actions, .reading-todo [data-todo-actions] { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.reading-source-actions { margin-top:8px; }
+.reading-actions .button { min-height:44px; padding:8px 14px; font-size:.95rem; }
+.reading-actions p { margin:8px 0; font-size:.85rem; }
+.reading-actions details { margin:0; }
+.reading-actions summary { min-height:44px; padding:10px 0; font-size:.85rem; color:var(--ink-muted); }
+.reading-actions details[open] { max-height:35dvh; overflow:auto; }
+.correction-field > summary { font-weight:600; }
+.correction-field fieldset { margin-top:0; }
+.public-reading-page .action-card > details:not(.correction-field) { border-top:1px solid var(--line-light); }
+@media(max-width:640px) {
+  .public-reading-page .site-header { gap:10px; padding-block:12px; }
+  .public-reading-page .main-nav { flex-wrap:wrap; gap:4px; }
+  .public-reading-page .main-nav a { font-size:.78rem; padding-inline:8px; white-space:nowrap; }
+  .public-reading-page .detail-card { padding:20px; }
+  .reading-actions { top:0; }
+  .reading-source-actions .button { flex:1 1 auto; }
+}
+
+@media(max-height:600px) { .reading-actions { position:static; } }
+
+/* Focused reading and compact public list metadata. */
+.public-reading-page .reading-summary { grid-column:1 / -1; order:2; }
+.public-reading-page .reading-summary > details { margin:0; }
+.public-reading-page .reading-summary dt { display:none; }
+.public-reading-page .reading-summary dd { font-size:1rem; }
+.public-reading-page .reading-tools { margin-top:20px; }
+.reading-date-notices:empty, .list-date-notices:empty { display:none; }
+.reading-date-notices p { padding:10px 14px; border-left:3px solid var(--ink-muted); background:var(--cream); font-size:.9rem; }
+.reading-qualification { margin-top:16px; font-size:.85rem; color:var(--ink-muted); }
+.reading-originals { margin:20px 0; color:var(--light); border:1px solid var(--line-dark); border-radius:14px; padding:0 16px; }
+.reading-originals > summary { min-height:48px; padding-block:12px; cursor:pointer; }
+.reading-originals > .detail-card { margin-block:16px; }
+.compact-source-status { padding:12px 16px; font-size:.85rem; }
+.compact-source-status .compact-source-line { display:flex; flex-wrap:wrap; gap:4px 16px; margin:0; }
+.compact-source-status a { color:var(--cream); text-underline-offset:4px; }
+.compact-source-status .compact-source-scope { margin:4px 0; }
+.compact-source-status .compact-source-warning { border-left:3px solid var(--cream); padding-left:10px; margin:10px 0; color:var(--cream); }
+.compact-source-status summary { min-height:44px; padding-top:10px; }
+.list-action-dates { display:flex; flex-wrap:wrap; gap:8px 16px; margin-bottom:10px; font-size:.95rem; }
+.list-todo-badge { padding:2px 10px; border-radius:999px; border:1px solid var(--ink-muted); font-size:.8rem; }
+.announcement .list-date-notices { display:grid; gap:4px; font-size:.85rem; color:var(--ink); }
+.list-storage-message { color:var(--cream); }
+.public-filters + .filter-help { margin-top:12px; }
+/* Editing tools must not scroll inputs underneath the reading toolbar. */
+.public-reading-page .action-card:has([data-reading-tools][open]) .reading-actions { position:static; }
+.card-editor input[type="checkbox"] { width:20px; height:20px; flex:0 0 20px; }
+.card-editor label:has(> input[type="checkbox"]) { display:flex; align-items:center; min-height:44px; gap:10px; }
+/* Owned Gmail announcement: extractive highlights before detailed actions. */
+.private-reading-page .hero { min-height:0; padding-block:20px 24px; }
+.private-reading-page .hero h1 { font-size:clamp(1.45rem,3vw,2.25rem); line-height:1.45; }
+.private-reading-page .hero::after, .private-reading-page .eyebrow { display:none; }
+.email-highlights h2 { font-size:1.35rem; line-height:1.5; }
+.email-highlights .email-summary-kind { margin:8px 0 16px; font-size:.85rem; color:var(--ink-muted); }
+.email-highlight-list { margin:0; padding-left:1.35em; }
+.email-highlight-list > li { padding-left:6px; margin-bottom:18px; overflow-wrap:anywhere; }
+.email-highlight-list > li > p { margin-bottom:4px; line-height:1.75; }
+.email-highlight-list summary, .private-original > summary { min-height:44px; padding-block:10px; cursor:pointer; }
+.email-highlight-list summary { font-size:.85rem; color:var(--ink-muted); }
+.email-highlight-list blockquote { margin:8px 0; padding-left:12px; border-left:2px solid var(--line-light); white-space:pre-wrap; overflow-wrap:anywhere; }
+.email-highlights .muted { font-size:.85rem; }
+.email-personal-summary { white-space:pre-wrap; }
+.private-original { border-top:1px solid var(--line-dark); margin-block:24px; }
+.private-original .original { margin-top:12px; }
+@media(max-width:640px) {
+  .private-reading-page .detail-card { padding:20px; }
+  .private-reading-page .site-header { gap:10px; padding-block:12px; }
+  .private-reading-page .main-nav { gap:4px; }
+  .private-reading-page .main-nav a { font-size:.8rem; padding-inline:8px; }
+}
+
+/* Shared official mail: campus preference and source-backed content briefs. */
+.office-mail-page .hero { min-height:0; padding-block:20px 24px; }
+.office-mail-page .hero::after { display:none; }
+.office-mail-page .hero h1 { font-size:clamp(1.5rem,3.5vw,2.4rem); line-height:1.45; }
+.office-mail-page .hero p { margin-top:12px; }
+.office-mail-page .office-preferences { margin-block-end:22px; }
+.office-preferences > details > summary { cursor:pointer; min-height:44px; padding:10px 0; font-weight:600; }
+.office-campus-options { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-block:12px; }
+.office-campus-options label { display:flex; align-items:center; gap:10px; min-height:48px; border:1px solid var(--line-light); border-radius:10px; padding:10px 14px; }
+.office-campus-options input { width:20px; height:20px; margin:0; }
+.office-buttons { display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.office-source-status { font-size:.85rem; }
+.office-source-status p { margin-bottom:8px; }
+.office-list-headline { line-height:1.65; }
+.office-brief h2 { font-size:1.35rem; line-height:1.5; }
+.office-brief-headline { font-size:1.15rem; margin-top:12px; line-height:1.65; }
+.office-brief-section { margin-top:22px; padding-top:18px; border-top:1px solid var(--line-light); }
+.office-brief-section h3 { font-size:1.1rem; line-height:1.5; margin-bottom:12px; }
+.office-brief-item { margin-block:14px; }
+.office-brief-item > p { white-space:pre-wrap; line-height:1.75; }
+.office-brief summary, .office-original > summary { min-height:44px; padding-block:10px; cursor:pointer; }
+.office-brief summary { font-size:.85rem; color:var(--ink-muted); }
+.office-brief blockquote { margin:8px 0; border-left:2px solid var(--line-light); padding-left:12px; white-space:pre-wrap; overflow-wrap:anywhere; }
+.office-brief-warning { margin-top:16px; font-size:.9rem; }
+.office-original { border-block:1px solid var(--line-dark); padding-block:8px; margin-block:20px; }
+@media(max-width:640px) {
+ .office-mail-page .detail-card { padding:20px; }
+ .office-mail-page .site-header { padding-block:12px; gap:10px; }
+ .office-mail-page .main-nav { gap:4px; }
+ .office-mail-page .main-nav a { font-size:.8rem; padding-inline:8px; }
+ .office-buttons > .button { flex:1 1 auto; }
+}
+
+.office-course-details { margin-top:20px; border-top:1px solid var(--line-light); }
+.office-brief [aria-label="公務公告快速重點"] > h3 { font-size:1.1rem; line-height:1.5; margin-top:20px; }
+.office-brief [aria-label="公務公告快速重點"] li { margin-block:8px; overflow-wrap:anywhere; }
+
+/* Progressive deadline controls reuse the existing palette. */
+.push-controls,.push-device-controls {border-top:1px solid var(--line,#d8cfc1);margin-top:1rem;padding-top:1rem;}
+.push-controls .button {margin: .25rem .5rem .25rem 0;min-height:44px;}
+.push-reminder-form {display:grid;gap:1rem;margin-top:1rem;max-width:38rem;}
+.push-reminder-form label {display:grid;gap:.4rem;}
+.push-reminder-form input:not([type=checkbox]),.push-reminder-form select {box-sizing:border-box;width:100%;min-height:44px;font:inherit;padding:.65rem;}
+.push-reminder-form label:has(input[type=checkbox]) {display:flex;align-items:flex-start;gap:.7rem;}
+.push-reminder-form input[type=checkbox] {width:1.4rem;height:1.4rem;flex-shrink:0;}
+.push-reminder-form blockquote {overflow-wrap:anywhere;margin:.5rem 0;}
+.push-device-controls summary {min-height:44px;cursor:pointer;}
+
+.main-nav .install-open {min-height:44px;padding:8px 12px;background:transparent;color:var(--light-muted);border:1px solid var(--line-dark);border-radius:999px;font:inherit;font-size:.9rem;}
+.install-dialog {width:min(42rem,calc(100% - 2rem));max-height:85dvh;overflow:auto;border:1px solid var(--line-light);border-radius:20px;background:var(--paper);color:var(--ink);padding:clamp(20px,4vw,32px);}
+.install-dialog::backdrop {background:rgb(29 25 26 / 70%);}
+.install-dialog h2 {margin-bottom:1rem;}
+.install-dialog li {margin-bottom:.65rem;}
+@media(max-width:600px){.main-nav .install-open,.main-nav a {font-size:.82rem;padding-inline:9px;}.main-nav .install-open {flex:1 1 auto;}}
+
+.install-dialog .button.secondary {color:var(--ink);border-color:var(--ink);background:transparent;}
+.install-dialog .button.secondary:hover {background:var(--cream);color:var(--ink);}

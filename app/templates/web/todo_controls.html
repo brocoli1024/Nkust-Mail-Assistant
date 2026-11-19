@@ -1,0 +1,13 @@
+<section class="todo-section" aria-label="加入我的待辦">
+<h3>我的待辦</h3><p>系統辨識不代表已加入，請自行核對行動與期限。</p>
+{% if scope=='private' %}
+<p>私人待辦只存於目前登入帳號，不寫入裝置儲存。</p>
+{% if todo_entry and todo_entry.status!='removed' %}<p>已加入我的帳號待辦。</p><a class="button secondary" href="/my/todos">追蹤我的待辦</a>
+{% else %}<form method="post" action="/announcements/{{ item.id }}/todos" data-private-add-todo>
+<input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="expected_revision" value="{{ todo_entry.revision if todo_entry else 0 }}">
+<input type="hidden" name="baseline_hash" value="{{ view.base.baseline_hash }}"><input type="hidden" name="card_revision" value="{{ view.revision }}">
+<button class="button" type="submit">加入我的待辦</button></form>{% endif %}
+{% else %}<div data-device-todo data-scope="{{ scope }}" data-source-path="{{ request.url.path }}">
+<p>{{ '示範待辦僅留在此頁，重載即清空。' if scope=='demo' else '公開待辦只保存在此瀏覽器，共用裝置可能看見；不隨登入帳號隔離，清除瀏覽器資料會遺失。' }}</p>
+<p data-todo-status role="status">正在準備待辦功能。</p><div data-todo-actions></div><noscript>請啟用 JavaScript 使用裝置待辦；公告與依據仍可閱讀。</noscript></div>{% endif %}
+</section>

@@ -1,5 +1,8 @@
 """Anonymous public-table views. Never resolve sessions or fetch external data."""
 from typing import Literal
+from datetime import datetime, timedelta, timezone
+from app.services.action_cards import build_action_card, public_source
+from app.api.action_card_corrections import card_context
 from urllib.parse import urlencode
 from fastapi import APIRouter, Request, Query, HTTPException
 from sqlalchemy import select, func, or_
@@ -16,10 +19,12 @@ def display_time(value):
     return aware(value).astimezone(TAIPEI).strftime('%Y-%m-%d %H:%M') if value else '尚無紀錄'
 
 
-def status_data(session):
+def status_data(session, *, now=None):
     state = session.get(S, SOURCE_KEY)
     run = session.scalar(select(R).where(R.source_key == SOURCE_KEY).order_by(R.id.desc()).limit(1))
-    return dict(last_success=display_time(state.last_success_at) if state and state.last_success_at else '尚無成功更新紀錄',
+    last_success_at = state.last_success_at if state else None
+    is_stale = not last_success_at or aware(now or datetime.now(timezone.utc)) - aware(last_success_at) > timedelta(hours=2)
+    return dict(is_stale=is_stale, last_success=display_time(state.last_success_at) if state and state.last_success_at else '尚無成功更新紀錄',
                 oldest=display_time(state.oldest_seen_at if state else None),
                 history_status=state.history_status if state else 'not_started',
                 history_completed=display_time(state.history_completed_at if state else None),
@@ -60,22 +65,60 @@ def announcements(request: Request, q: str = Query('', max_length=200), category
         source_total = session.scalar(select(func.count()).select_from(P).where(P.source_key == SOURCE_KEY))
         total = session.scalar(select(func.count()).select_from(statement.subquery()))
         rows = session.scalars(statement.order_by(P.published_at.desc().nulls_last(), P.id.desc()).offset((page_number-1)*20).limit(20)).all()
-        items = [public_item(row) for row in rows]
+        from app.services.public_articles import latest_articles
+        from app.services.reading_dates import reading_dates
+        articles=latest_articles(session,rows)
+        now=datetime.now(timezone.utc)
+        items=[]
+        for row in rows:
+            item=public_item(row)
+            card=build_action_card(public_source(row,article=articles.get(row.canonical_url)))
+            item.update(reading=reading_dates(card,now=now),todo_ref=card.source.source_ref)
+            items.append(item)
+        reading_query = urlencode(dict(q=q, category=category, audience=audience, page=page_number))
+        for item in items:
+            item['detail_url'] = f"/public/announcements/{item['id']}?{reading_query}"
         status = status_data(session)
     def link(number):
         return '/public/announcements?' + urlencode(dict(q=q,category=category,audience=audience,page=number))
     return page(request, 'public_announcements.html', items=items,total=total,source_total=source_total,q=q,category=category,
                 audience=audience,categories=CATEGORIES,page_number=page_number,source_url=LISTING_URL,
                 previous=link(page_number-1) if page_number>1 else None,
-                following=link(page_number+1) if page_number*20<total else None, **status)
+                following=link(page_number+1) if page_number*20<total else None,
+                student_shortcut='/public/announcements?'+urlencode(dict(q=q,category=category,audience='all' if audience=='student' else 'student',page=1)), **status)
 
 
 @router.get('/public/announcements/{announcement_id}')
-def detail(announcement_id: int, request: Request):
+def detail(announcement_id: int, request: Request, q: str = Query('', max_length=200),
+           category: str = '', audience: Literal['all','student'] = 'all',
+           page_number: int = Query(1, alias='page', ge=1, le=1000000)):
+    if category and category not in (*CATEGORIES, '未分類'):
+        raise HTTPException(422, '未知的公告分類。')
+    has_search = any(key in request.query_params for key in ('q','category','audience','page'))
+    back_url = '/public/announcements'
+    if has_search:
+        back_url += '?' + urlencode(dict(q=q, category=category, audience=audience, page=page_number))
+    back_url += f'#announcement-{announcement_id}'
     with request.app.state.database.transaction() as session:
         row = session.scalar(select(P).where(P.id == announcement_id, P.source_key == SOURCE_KEY))
         if row is None:
             raise HTTPException(404, '找不到公開公告。')
         item = public_item(row)
+        from app.services.public_articles import latest_article
+        article = latest_article(session,row)
+        item['article'] = article
+        item['registration_docs'] = []
+        from app.services.linked_registration import normalize_registration_url
+        for doc in (article or {}).get('related',[]):
+            try:
+                item['registration_docs'].append(dict(doc,url=normalize_registration_url(doc['url']),read_time=display_time(datetime.fromisoformat(doc['fetched_at'])) if doc.get('fetched_at') else None))
+            except (PublicSourceError,KeyError,TypeError,ValueError):continue
+        item['article_time'] = display_time(datetime.fromisoformat(article['fetched_at'])) if article and article.get('fetched_at') else None
+        source=public_source(row,article=article)
+        from app.push.sources import resolve_public_ref
+        from app.push.security import PushError
+        try:source.metadata['push_source_version']=resolve_public_ref(session,source.source_ref).version
+        except PushError:pass
+        card = build_action_card(source)
         status = status_data(session)
-    return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, **status)
+    return page(request, 'public_announcement_detail.html', item=item, source_url=LISTING_URL, back_url=back_url, has_search=has_search, **status, **card_context(card,'public'))

@@ -23,7 +23,7 @@ def web(tmp_path, oauth):
     google = FakeGoogle(oauth)
     settings = Settings(database_url=url)
     app = create_app(settings, oauth, google_factory=lambda _: google,
-                     session_enabled=True, session_secret='test-only-session-secret-32-characters')
+                     session_enabled=True, demo_enabled=True, session_secret='test-only-session-secret-32-characters')
     with TestClient(app, base_url='http://localhost', follow_redirects=False) as client:
         yield client, app, google, settings
 
@@ -65,7 +65,7 @@ def test_login_cookie_hash_and_user_page(web):
     assert client.get('/api/me').json()['email'] == google.claims['email']
     assert google.claims['email'] in client.get('/dashboard').text
     assert client.get('/login').headers['location'] == '/dashboard'
-    assert client.get('/').status_code == 200
+    assert client.get('/').status_code == 303
     assert client.get('/auth/complete').headers['location'] == '/dashboard'
     assert 'private-marker' not in client.get('/settings').text
 
@@ -172,7 +172,7 @@ def test_session_survives_app_restart(web, oauth):
     name = app.state.sessions.cookie_name
     value = client.cookies.get(name)
     other = create_app(settings, oauth, google_factory=lambda _: google,
-                       session_enabled=True, session_secret='test-only-session-secret-32-characters')
+                       session_enabled=True, demo_enabled=True, session_secret='test-only-session-secret-32-characters')
     with TestClient(other, base_url='http://localhost') as second:
         second.cookies.set(name, value)
         assert second.get('/api/me').json()['email'] == 'a@example.invalid'

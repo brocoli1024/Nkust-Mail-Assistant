@@ -35,10 +35,13 @@ class SyncResult:
     unchanged: int = 0
     failed: int = 0
     status: str = 'success'
+    error_code: str | None = None
 
 
 class SourceLease:
-    def __init__(self, database, *, now=None):
+    def __init__(self, database, *, now=None, source_key=SOURCE_KEY):
+        if source_key not in (SOURCE_KEY, "nkust-office-mail"):raise ValueError("Unknown public source")
+        self.source_key=source_key
         self.database, self.owner = database, secrets.token_hex(24)
         self.clock = (lambda: now) if now is not None else utcnow
 
@@ -46,16 +49,16 @@ class SourceLease:
         now = self.clock()
         with self.database.transaction() as session:
             insert = pg_insert if session.bind.dialect.name == 'postgresql' else sqlite_insert
-            session.execute(insert(S).values(source_key=SOURCE_KEY, next_history_page=1,
+            session.execute(insert(S).values(source_key=self.source_key, next_history_page=1,
                 history_status='not_started').on_conflict_do_nothing(index_elements=['source_key']))
-            result = session.execute(update(S).where(S.source_key == SOURCE_KEY,
+            result = session.execute(update(S).where(S.source_key == self.source_key,
                 or_(S.lease_owner.is_(None), S.lease_expires_at <= now)).values(
                 lease_owner=self.owner, lease_expires_at=now + timedelta(minutes=10)))
             if result.rowcount != 1:
                 raise PublicSourceError('PUBLIC_SYNC_BUSY')
 
     def verify(self, session):
-        state = session.scalar(select(S).where(S.source_key == SOURCE_KEY).with_for_update())
+        state = session.scalar(select(S).where(S.source_key == self.source_key).with_for_update())
         if (not state or state.lease_owner != self.owner or not state.lease_expires_at
                 or aware(state.lease_expires_at) <= self.clock()):
             raise PublicSourceError('PUBLIC_SYNC_LEASE_LOST')
@@ -63,16 +66,19 @@ class SourceLease:
 
     def release(self):
         with self.database.transaction() as session:
-            session.execute(update(S).where(S.source_key == SOURCE_KEY, S.lease_owner == self.owner)
+            session.execute(update(S).where(S.source_key == self.source_key, S.lease_owner == self.owner)
                 .values(lease_owner=None, lease_expires_at=None))
 
 
 def store_entries(session, entries, now, result):
     """Call only while holding and verifying a SourceLease in this transaction."""
+    from app.services.source_history import record_public_version
     dates = []
     for entry in entries:
         url = normalize_public_url(entry.url)
         row = session.scalar(select(P).where(P.source_key == SOURCE_KEY, P.canonical_url == url))
+        if row is not None:
+            record_public_version(session,row,now,baseline=True)
         # A listing without an excerpt/date must not erase richer RSS data.
         excerpt = entry.excerpt or (row.excerpt if row else '')
         published = aware(entry.published_at) or (aware(row.published_at) if row else None)
@@ -106,6 +112,7 @@ def store_entries(session, entries, now, result):
         if published:
             dates.append(published)
         session.flush()  # same-response duplicate URLs see the newly inserted row
+        record_public_version(session,row,now)
     return min(dates) if dates else None
 
 
@@ -121,7 +128,7 @@ def apply_classification(row):
 def begin_run(database, lease, mode):
     with database.transaction() as session:
         lease.verify(session)
-        row = R(source_key=SOURCE_KEY, mode=mode, status='running', started_at=lease.clock())
+        row = R(source_key=lease.source_key, mode=mode, status='running', started_at=lease.clock())
         session.add(row)
         session.flush()
         return row.id
@@ -163,6 +170,7 @@ def sync_recent(database, *, source=None, now=None) -> SyncResult:
     except Exception as exc:
         result = SyncResult(failed=1, status='failed')
         error = str(exc) if isinstance(exc, PublicSourceError) else 'PUBLIC_SYNC_FAILED'
+        result.error_code = error
     finally:
         try:
             if run_id is not None:

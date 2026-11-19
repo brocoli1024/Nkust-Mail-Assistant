@@ -1,0 +1,7 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>來源與版本紀錄 · 校園通知待辦助手</title><link rel="stylesheet" href="/assets/account.css?v=source-history-1"></head><body><div class="site-shell">{% include 'site_header.html' %}<main id="main-content" class="page-content narrow source-history"><h1>{{ data.title }} · 版本紀錄</h1>
+<p class="notice">{% if data.private %}這裡只顯示目前帳號的私人來源。{% else %}這裡只顯示公開來源，不含私人郵件。{% endif %}留存時間是本服務觀察時間（Asia/Taipei），不是官方更新時間。首次留存無法還原更早的完整歷史；個人修正不算官方更新。</p>
+{% for item in data["items"] %}<article class="detail-card"><h2>版本 {{ item.id }}</h2><p>留存時間：{{ item.captured }}（台灣）{% if item.baseline %} · 首次留存基準{% endif %}</p>
+{% if data.private %}<h3>{{ item.snapshot.title }}</h3><a class="button secondary" href="/my/source-history/{{ item.id }}">查看此版本與來源差異</a>
+{% else %}{% for change in item.changes %}<p>{{ change }}</p>{% endfor %}{% set snapshot=item.snapshot %}{% include 'source_original.html' %}{% endif %}</article>
+{% else %}<p class="notice">本頁尚無留存版本。首次成功維護／同步後才開始留存，並不代表來源從未更新。</p>{% endfor %}
+{% include 'source_pagination.html' %}<p><a class="text-link dark" href="{{ data.back }}">返回公告</a></p></main></div></body></html>

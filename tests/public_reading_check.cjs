@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const {readingRecord,restoreOffset}=require('../app/static/web/public-reading.js');
+const now=10000000,path='/public/announcements?q=student&category=&audience=student&page=2';
+const r=readingRecord(path,'42',1350,now);
+assert.equal(restoreOffset(r,path,'#announcement-42',now+10),1350);
+for(const [p,h,t] of [[path,'#announcement-43',now+10],[path.replace('page=2','page=1'),'#announcement-42',now+10],[path,'#announcement-42',now+1800001],[path,'#announcement-42',now-1]])assert.equal(restoreOffset(r,p,h,t),null);
+for(const p of ['/my/todos','https://evil.invalid/public/announcements','//evil.invalid/public/announcements','/public/announcements/1','/public/announcements?return_to=https://evil.invalid'])assert.equal(readingRecord(p,'42',20,now),null);
+assert.equal(readingRecord(path,'../private',20,now),null);
+assert.equal(restoreOffset({...r,y:Infinity},path,'#announcement-42',now),null);
+assert.equal(restoreOffset(null,path,'#announcement-42',now),null);
+console.log('Public reading return position boundaries passed');
+assert.equal(restoreOffset(readingRecord('/public/announcements','42',900,now),'/public/announcements?q=&category=&audience=all&page=1','#announcement-42',now),900);

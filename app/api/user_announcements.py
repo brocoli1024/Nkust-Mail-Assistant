@@ -106,9 +106,5 @@ def announcements(request: Request, user=Depends(current_page_user), view: View 
 
 @router.get('/announcements/{announcement_id}')
 def announcement_detail(announcement_id: int, request: Request, user=Depends(current_page_user)):
-    with request.app.state.database.transaction() as session:
-        result = session.execute(owned(user).where(A.id == announcement_id)).first()
-        if result is None:
-            raise HTTPException(404, '找不到公告。')
-        item = item_data(*result, detail=True)
-    return page(request, 'announcement_detail.html', user=user, item=item)
+    from app.api.action_card_corrections import render_private
+    return render_private(request,user,announcement_id)

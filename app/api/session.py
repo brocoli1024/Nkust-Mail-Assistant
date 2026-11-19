@@ -11,6 +11,8 @@ from app.core.session import current_user, current_page_user
 
 router = APIRouter()
 templates = Jinja2Templates(directory=ROOT / 'app/templates/web')
+from app.services.calendar_export import calendar_payload
+templates.env.globals['calendar_payload']=calendar_payload
 
 
 def page(request, template, **context):
@@ -21,7 +23,11 @@ def page(request, template, **context):
 def dashboard(request: Request, user=Depends(current_page_user)):
     from app.api.user_announcements import dashboard_counts
     sessions = request.app.state.sessions
-    return page(request, 'account.html', user=user, title='校園公告', settings=False,
+    from app.services.todos import list_private_todos
+    from app.services.action_card_corrections import CorrectionUnavailable,CorrectionNotFound
+    try:todo_items=list_private_todos(request.app.state.database,user);todo_error=False
+    except (CorrectionUnavailable,CorrectionNotFound):todo_items=[];todo_error=True
+    return page(request, 'account.html', user=user, title='校園公告', settings=False,todo_items=todo_items,todo_error=todo_error,
                 counts=dashboard_counts(request.app.state.database, user),
                 csrf=sessions.csrf(request.cookies.get(sessions.cookie_name)))
 
@@ -29,7 +35,7 @@ def dashboard(request: Request, user=Depends(current_page_user)):
 @router.get('/settings')
 def settings(request: Request, user=Depends(current_page_user)):
     sessions = request.app.state.sessions
-    return page(request, 'account.html', user=user, title='帳號設定', settings=True,
+    return page(request, 'account.html', user=user, title='帳號設定', settings=True,discovery_owner=request.app.state.discovery_settings.enabled and user.google_user_id==request.app.state.discovery_settings.owner_sub,
                 csrf=sessions.csrf(request.cookies.get(sessions.cookie_name)))
 
 

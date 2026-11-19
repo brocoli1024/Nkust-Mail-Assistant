@@ -11,6 +11,7 @@ const windowEvents = {};
 const attributes = {};
 const status = { textContent: '', hidden: true };
 const form = {
+  hasAttribute() { return false; },
   querySelectorAll(selector) {
     assert.equal(selector, 'select');
     return [
@@ -47,3 +48,9 @@ assert.equal(attributes['aria-busy'], undefined);
 assert.equal(status.hidden, true);
 assert.equal(status.textContent, '');
 vm.runInNewContext(source, { document: { getElementById() { return null; } }, window });
+
+form.hasAttribute=()=>true;listeners.length=0;
+vm.runInNewContext(source,{document,window});
+assert.equal(listeners.length,2,'public category and audience always apply immediately');
+const previous=submissions;listeners[0]();listeners[1]();assert.equal(submissions,previous+2);
+console.log('Immediate category/audience, Search/Enter and back feedback passed');
