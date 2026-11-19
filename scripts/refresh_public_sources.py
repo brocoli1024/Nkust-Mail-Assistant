@@ -8,6 +8,21 @@ import sys
 import tempfile
 
 
+def _office_refresh_deferred(stdout):
+    try:
+        report = json.loads(stdout)
+        failures = report['failures']
+        return (
+            report['status'] in ('partial', 'failed')
+            and type(report['failed']) is int
+            and len(failures) == report['failed'] > 0
+            and all(item['error_code'] in ('PUBLIC_SOURCE_TIMEOUT', 'OFFICE_SYNC_BUDGET')
+                    for item in failures)
+        )
+    except (ValueError, KeyError, TypeError):
+        return False
+
+
 def main(*,run=subprocess.run):
     selected=os.environ.get('NKUST_PUBLIC_ANNOUNCEMENT_ID','').strip()
     office_url=os.environ.get('NKUST_PUBLIC_OFFICE_URL','').strip()
@@ -16,6 +31,7 @@ def main(*,run=subprocess.run):
     if not invalid:
         stages.append(('articles',['articles','--limit','1','--announcement-id',selected] if selected else ['articles','--limit','8']))
     warnings=[]
+    deferred = []
     results={'articles':1} if invalid else {}
     if invalid:print('PUBLIC_ANNOUNCEMENT_ID_INVALID',flush=True)
     # The explicit administrator URL is validated again by office-import. Never
@@ -30,11 +46,15 @@ def main(*,run=subprocess.run):
         for name,args in stages:
             print('Public maintenance stage: '+name,flush=True)
             try:
-                process=run([sys.executable,'-m','app.public_cli',*args],check=False,capture_output=name=='articles',text=True)
+                capture = name == 'articles' or args[0] == 'office-refresh'
+                process=run([sys.executable,'-m','app.public_cli',*args],check=False,capture_output=capture,text=True)
                 results[name]=process.returncode
-                if name=='articles':
+                if capture:
                     print(process.stdout or '',end='',flush=True)
                     if process.stderr:print(process.stderr,end='',file=sys.stderr,flush=True)
+                if args[0] == 'office-refresh' and process.returncode == 1 and _office_refresh_deferred(process.stdout):
+                    deferred.append(name)
+                if name=='articles':
                     try:
                         result=json.loads(process.stdout)
                         valid=all(type(result[k]) is int and result[k]>=0 for k in ('updated','failed'))
@@ -65,6 +85,9 @@ def main(*,run=subprocess.run):
                 if report['status'] in ('success','partial') and len(counts)!=5:raise ValueError()
                 discovery_report=report
                 print(json.dumps(report),flush=True)
+                if (process.returncode == 1 and report['status'] == 'partial'
+                    and report['error_code'] == 'OFFICE_DISCOVERY_SOURCE_UNAVAILABLE'):
+                    deferred.append('discovery')
                 if process.returncode==0 and (report['status']=='busy' or report['status']=='partial' and report.get('error_code')=='OFFICE_DISCOVERY_PENDING'):
                     warnings.append('discovery');print('::warning::Office discovery has pending work.',flush=True)
                 elif process.returncode==0 and report['status'] not in ('success','skipped'):results['discovery']=1
@@ -72,7 +95,18 @@ def main(*,run=subprocess.run):
                 results['discovery']=1;print('OFFICE_DISCOVERY_TRIGGER_RESULT_INVALID',flush=True)
         except OSError:results['discovery']=1;print('OFFICE_DISCOVERY_TRIGGER_START_FAILED',flush=True)
     else:print('Office discovery: skipped (not configured).',flush=True)
-    if any(results.get(name, 0) != 0 for name in ('feed', 'articles', 'office_mail')):
+    for name in deferred:
+        try:
+            check = run([sys.executable, '-m', 'app.public_cli', 'office-failure-alert', name],
+                        check=False, capture_output=True, text=True, timeout=30)
+            if check.returncode == 0 and json.loads(check.stdout) == {'alert': False}:
+                warnings.append(name)
+                print(f'::warning::{name} partially completed; deferred items will be retried.', flush=True)
+            else:
+                print(f'::error::{name} still needs attention; see the source results.', flush=True)
+        except (OSError, subprocess.TimeoutExpired, ValueError, TypeError):
+            print(f'::error::{name} notification threshold could not be checked.', flush=True)
+    if deferred or any(results.get(name, 0) != 0 for name in ('feed', 'articles', 'office_mail')):
         print('Public maintenance stage: source_diagnostics', flush=True)
         try:
             run([sys.executable, '-m', 'scripts.diagnose_public_sources'],
@@ -91,7 +125,7 @@ def main(*,run=subprocess.run):
                 report.write('\nDiscovery: '+', '.join(f'{key}: {discovery_report[key]}' for key in ('scanned','discovered','published','rejected','pending') if key in discovery_report)+'\n')
             else:report.write('\nDiscovery: not configured or no valid result.\n')
             report.write('\nOffice refresh rereads known URLs. The separate discovery stage finds new URLs only when configured.\n')
-    print(json.dumps({'status':'success' if success else 'partial','stage_results':results,'warnings':warnings}),flush=True)
+    print(json.dumps({'status':'success' if success and not warnings else 'partial','stage_results':results,'warnings':warnings}),flush=True)
     return 0 if success else 1
 
 

@@ -1,15 +1,36 @@
 """Public source maintenance only; never imports legacy Gmail or AI CLI."""
 import argparse
 from dataclasses import asdict
+from datetime import timedelta
 import json
 from pathlib import Path
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from app.config import Settings
 from app.database.multi_user import MultiUserDatabase
 from app.database.schema import PUBLIC_MAINTENANCE_REVISIONS
 from app.services.public_source import SOURCE_KEY, fetch_feed, PublicSourceError
 from app.services.public_sync import sync_recent, reclassify, backfill_history
+from app.services.public_sync import aware, utcnow
+from app.models.public_announcements import PublicSourceState, PublicSyncRun
+
+
+def office_failure_needs_alert(database, source_key, *, now=None):
+    now = now or utcnow()
+    with database.transaction() as session:
+        state = session.get(PublicSourceState, source_key)
+        runs = list(session.scalars(
+            select(PublicSyncRun).where(
+                PublicSyncRun.source_key == source_key,
+                PublicSyncRun.mode == 'recent',
+                PublicSyncRun.finished_at.is_not(None),
+            ).order_by(PublicSyncRun.id.desc()).limit(3)
+        ))
+        if not runs:
+            return True
+        last_success = state.last_success_at if state and state.last_success_at else runs[-1].started_at
+        return (now - aware(last_success) >= timedelta(hours=3)
+                or len(runs) == 3 and all(run.failed > 0 for run in runs))
 
 
 def main(argv=None) -> int:
@@ -29,6 +50,8 @@ def main(argv=None) -> int:
     office.add_argument('--urls-file',required=True)
     refresh=subs.add_parser('office-refresh',help='只重讀已收錄公務公告，不發現新郵件')
     refresh.add_argument('--limit',type=int,choices=range(1,21),default=8)
+    health = subs.add_parser('office-failure-alert')
+    health.add_argument('stage', choices=('office_mail', 'discovery'))
     args = parser.parse_args(argv)
     database = None
     try:
@@ -38,6 +61,13 @@ def main(argv=None) -> int:
             revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
         if revision not in PUBLIC_MAINTENANCE_REVISIONS:
             raise PublicSourceError('PUBLIC_MIGRATION_REQUIRED')
+        if args.command == 'office-failure-alert':
+            from app.services.office_mail_source import OFFICE_SOURCE_KEY
+            from app.services.office_mail_discovery import KEY
+            source_key = KEY if args.stage == 'discovery' else OFFICE_SOURCE_KEY
+            alert = office_failure_needs_alert(database, source_key)
+            print(json.dumps({'alert': alert}))
+            return int(alert)
         if args.command in ('office-import','office-refresh'):
             from app.services.office_mail_sync import import_office_mail,refresh_office_mail
             if args.command=='office-import':

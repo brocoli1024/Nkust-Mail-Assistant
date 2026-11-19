@@ -103,3 +103,43 @@ def test_official_mail_identity_remains_exact():
     assert official_identity(URL)==URL
     assert official_identity(URL+'?token=secret') is None
     assert official_identity('https://officemail.nkust.edu.tw/Admin') is None
+
+def test_timeout_retries_only_failed_items_and_prioritizes_next_run(database, monkeypatch):
+    from app.services import office_mail_sync as sync
+    db, _ = database
+    second = URL.rsplit('/', 1)[0] + '/70000'
+    sync.import_office_mail(db, [URL, second], source=document, now=NOW)
+    calls, waits = [], []
+    monkeypatch.setattr(sync.time, 'sleep', waits.append)
+
+    def source(url):
+        calls.append(url)
+        if url == URL:
+            raise PublicSourceError('PUBLIC_SOURCE_TIMEOUT')
+        return document(url)
+
+    first = sync.refresh_office_mail(db, source=source, now=NOW + timedelta(hours=1))
+    assert calls == [URL, second, URL]
+    assert len(waits) == 1 and 29 <= waits[0] <= 30
+    assert (first.failed, first.unchanged) == (1, 1)
+    calls.clear()
+    result = sync.refresh_office_mail(db, limit=1, source=lambda url: calls.append(url) or document(url),
+                                      now=NOW + timedelta(hours=2))
+    assert calls == [URL] and result.status == 'success'
+
+def test_office_alert_uses_persisted_streak_and_freshness(database):
+    from app.models.public_announcements import PublicSyncRun
+    from app.public_cli import office_failure_needs_alert
+    db, _ = database
+    with db.transaction() as session:
+        session.add(S(source_key=OFFICE_SOURCE_KEY, last_success_at=NOW))
+        session.add(PublicSyncRun(source_key=OFFICE_SOURCE_KEY, mode='recent',
+                                  status='partial', started_at=NOW, finished_at=NOW, failed=1))
+    assert not office_failure_needs_alert(db, OFFICE_SOURCE_KEY, now=NOW + timedelta(hours=2))
+    assert office_failure_needs_alert(db, OFFICE_SOURCE_KEY, now=NOW + timedelta(hours=3))
+    with db.transaction() as session:
+        for offset in (15, 30):
+            stamp = NOW + timedelta(minutes=offset)
+            session.add(PublicSyncRun(source_key=OFFICE_SOURCE_KEY, mode='recent',
+                                      status='failed', started_at=stamp, finished_at=stamp, failed=1))
+    assert office_failure_needs_alert(db, OFFICE_SOURCE_KEY, now=NOW + timedelta(hours=1))

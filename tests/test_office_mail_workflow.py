@@ -79,3 +79,34 @@ def test_discovery_pending_is_warning_in_summary(monkeypatch,tmp_path):
  assert main(run=run)==0
  text=summary.read_text()
  assert '| discovery | warning (partial) |' in text and 'pending: 3' in text
+
+def test_deferred_office_errors_warn_but_authorization_and_unverified_state_fail(monkeypatch):
+    from scripts.refresh_public_sources import main
+    monkeypatch.setenv('NKUST_OFFICE_DISCOVERY_TRIGGER_SECRET', 'synthetic-' + 'x' * 32)
+    monkeypatch.delenv('GITHUB_STEP_SUMMARY', raising=False)
+
+    def simulate(*, auth_error=False, alert=False):
+        checks = []
+
+        def run(command, **kwargs):
+            data, code = {}, 0
+            if 'office-refresh' in command:
+                data = {'status': 'partial', 'failed': 1,
+                        'failures': [{'error_code': 'PUBLIC_SOURCE_TIMEOUT'}]}
+                code = 1
+            elif command[-1].endswith('trigger_office_discovery.py'):
+                data = {'status': 'partial', 'scanned': 1, 'discovered': 0, 'published': 0,
+                        'rejected': 0, 'pending': 1, 'error_code': 'OFFICE_DISCOVERY_SOURCE_UNAVAILABLE'}
+                if auth_error:
+                    data = {'status': 'failed', 'error_code': 'OFFICE_DISCOVERY_TRIGGER_AUTH'}
+                code = 1
+            elif 'office-failure-alert' in command:
+                checks.append(command[-1])
+                data, code = {'alert': alert}, int(alert)
+            return subprocess.CompletedProcess(command, code, stdout=json.dumps(data), stderr='')
+
+        return main(run=run), checks
+
+    assert simulate() == (0, ['office_mail', 'discovery'])
+    assert simulate(alert=True) == (1, ['office_mail', 'discovery'])
+    assert simulate(auth_error=True) == (1, ['office_mail'])
