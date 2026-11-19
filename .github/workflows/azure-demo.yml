@@ -53,7 +53,16 @@ jobs:
           p.write_text(json.dumps({'imageTag': {'value': os.environ['GITHUB_SHA']}, 'monitoringToken': {'value': os.environ['MONITORING_TOKEN']}}))
           p.chmod(0o600)
           PY
-          az deployment group create --resource-group "$RESOURCE_GROUP" --name nkust-demo-app --template-file infra/azure/app.bicep --parameters "@$RUNNER_TEMP/demo-parameters.json" --query properties.outputs.demoUrl.value -o tsv
+          demo_url=$(az deployment group create --resource-group "$RESOURCE_GROUP" --name nkust-demo-app --template-file infra/azure/app.bicep --parameters "@$RUNNER_TEMP/demo-parameters.json" --query properties.outputs.demoUrl.value -o tsv)
+          test -n "$demo_url"
+          echo "DEMO_URL=$demo_url" >> "$GITHUB_ENV"
+      - name: Verify Azure ingress, readiness and synthetic demo
+        run: |
+          base=${DEMO_URL%/demo}
+          curl --fail --silent --show-error --retry 8 --retry-all-errors --max-time 20 "$base/health/ready" | jq -e '.status == "ready"'
+          test "$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' "$DEMO_URL")" = 200
+          test "$(curl --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' "$base/auth/google")" = 403
+          echo "Azure demo verified: $DEMO_URL"
       - name: Remove temporary parameter file
         if: ${{ always() }}
         run: python -c "import os; from pathlib import Path; (Path(os.environ['RUNNER_TEMP']) / 'demo-parameters.json').unlink(missing_ok=True)"

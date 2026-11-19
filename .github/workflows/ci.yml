@@ -140,6 +140,20 @@ jobs:
           az bicep build --file infra/azure/app.bicep --outfile /tmp/app.json
       - name: Build container, disconnect database and restore synthetic backup
         run: python scripts/recovery_drill.py
+      - name: Verify the Azure demo image with ephemeral SQLite and no network
+        run: |
+          docker build -t nkust-azure-demo-ci .
+          container=$(docker run -d --network none -e DEMO_MODE=1 nkust-azure-demo-ci)
+          trap 'docker rm -f "$container" >/dev/null' EXIT
+          for attempt in {1..30}; do
+            if docker exec "$container" python -c "from urllib.request import urlopen; urlopen('http://localhost:8000/health/ready', timeout=2)"; then
+              docker exec "$container" python -c "from urllib.request import urlopen; assert urlopen('http://localhost:8000/demo', timeout=5).status == 200"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs "$container"
+          exit 1
 
   gate:
     name: CI gate

@@ -55,6 +55,8 @@ CI 的 Container recovery drill 工作會執行同一程序。成功時輸出 `r
 
 ## Azure 示範 IaC 與 OIDC
 
+CI 另以無外部網路的容器驗證 Azure 示範使用的 SQLite 啟動模式。Azure 手動部署完成後會檢查公開 HTTPS 入口、資料庫就緒、示範頁 200 與 Google 登入 403。GitHub 手動工作流程需在儲存庫預設分支可用，執行時再選擇 `codex/ci-pipeline`。
+
 `infra/azure/foundation.bicep` 建立 ACR Basic、Log Analytics、Container Apps Environment、拉取映像專用 Managed Identity／AcrPull。`app.bicep` 部署單副本合成 Web，使用 SQLite 暫存資料及獨立監控 secret。重啟可能清空示範資料；不得用於真實郵件或正式資料。這裡不建立付費 PostgreSQL；PostgreSQL 驗證留在 CI／Compose。
 
 先由擁有者建立專用 Azure resource group，確認區域、額度與預算。ACR 和日誌可能持續計費，即使 Web scale-to-zero 也不代表零成本。
