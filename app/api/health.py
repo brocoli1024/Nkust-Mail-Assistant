@@ -9,6 +9,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 
 from app.database.schema import REQUIRED_REVISION
+from app.observability import emit
 
 router = APIRouter()
 
@@ -29,9 +30,11 @@ def ready(request: Request):
     try:
         with request.app.state.health_engine.connect() as connection:
             revision = connection.scalar(text('SELECT version_num FROM alembic_version'))
-        if revision != REQUIRED_REVISION:
-            raise ValueError()
     except Exception:
+        emit('readiness_failed', error_type='database_unavailable')
+        return JSONResponse({'status': 'not_ready'}, status_code=503)
+    if revision != REQUIRED_REVISION:
+        emit('readiness_failed', error_type='schema_mismatch')
         return JSONResponse({'status': 'not_ready'}, status_code=503)
     return {'status': 'ready'}
 

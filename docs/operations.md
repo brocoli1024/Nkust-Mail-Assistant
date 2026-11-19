@@ -16,6 +16,8 @@
 
 ## 警示啟用
 
+健康探測仍會留下請求日誌，但不計入 HTTP 請求數、平均延遲或錯誤率。就緒探測失敗時，`readiness_failed` 事件會區分 `database_unavailable` 與 `schema_mismatch`，回應仍只提供 503 和 `not_ready`。
+
 1. 在服務環境與 GitHub Secret 設定相同的 `MONITORING_TOKEN`。
 2. GitHub Variables 設 `MONITOR_BASE_URL=https://你的網站`（不加路徑）、`MONITOR_ENABLED=true`。
 3. 手動執行 Service health monitor，確認正常／失敗狀態。排程每 15 分鐘執行，但 GitHub 排程只讀預設分支，因此僅推送功能分支不會啟動排程。

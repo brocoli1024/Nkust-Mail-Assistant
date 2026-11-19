@@ -10,10 +10,11 @@ from tests.test_auth import oauth
 from app.models.public_announcements import PublicSourceState, PublicSyncRun
 
 
-def test_health_disconnect_and_recovery(web, monkeypatch):
+def test_health_disconnect_and_recovery(web, monkeypatch, caplog):
     client, app, _, _ = web
     assert client.get('/health/live').status_code == 200
     assert client.get('/health/ready').status_code == 200
+    baseline = app.state.http_metrics.snapshot()
     with monkeypatch.context() as patch:
         def fail():
             raise OperationalError('PRIVATE-URL', {}, Exception('PRIVATE-PASSWORD'))
@@ -23,6 +24,11 @@ def test_health_disconnect_and_recovery(web, monkeypatch):
         assert 'PRIVATE' not in response.text
         assert client.get('/health/live').status_code == 200
     assert client.get('/health/ready').status_code == 200
+    assert app.state.http_metrics.snapshot() == baseline
+    failures = [json.loads(record.message) for record in caplog.records
+                if record.name == 'nkust.operations' and 'readiness_failed' in record.message]
+    assert [event['error_type'] for event in failures] == ['database_unavailable']
+    assert 'PRIVATE' not in json.dumps(failures)
 
 
 def test_metrics_are_private_and_aggregate(web, monkeypatch):
@@ -36,10 +42,11 @@ def test_metrics_are_private_and_aggregate(web, monkeypatch):
         session.add(PublicSourceState(source_key='nkust-latest', last_success_at=now))
         session.add(PublicSyncRun(source_key='nkust-latest', mode='recent', status='failed', started_at=now, finished_at=now))
     headers = {'Authorization': 'Bearer synthetic-monitoring-token-at-least-32'}
+    client.get('/demo')
     data = client.get('/health/status', headers=headers).json()
     assert data['sync']['runs']['failed'] == 1
     assert data['sync']['last_success_at']
-    assert data['http']['requests'] >= 1
+    assert data['http']['requests'] == 1
 
 
 def test_request_logs_never_include_untrusted_values(web, caplog):

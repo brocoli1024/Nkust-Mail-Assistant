@@ -249,7 +249,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
         )
         elapsed = (time.monotonic() - started) * 1000
         route = getattr(request.scope.get('route'), 'path', 'unmatched')
-        if hasattr(app.state, 'http_metrics'):
+        if hasattr(app.state, 'http_metrics') and route not in ('/health/live', '/health/ready', '/health/status'):
             app.state.http_metrics.record(response.status_code, elapsed)
         emit('http_request', route=route, status=response.status_code, duration_ms=round(elapsed, 3),
              error_type='server_error' if response.status_code >= 500 else None)
