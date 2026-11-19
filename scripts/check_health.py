@@ -3,7 +3,7 @@ import json
 import os
 import sys
 from urllib.parse import urlsplit
-from urllib.request import Request
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 def evaluate(data, max_age):
@@ -20,6 +20,25 @@ def evaluate(data, max_age):
     return alerts
 
 
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+def collect_alerts(base, token):
+    """Check the service without forwarding credentials across redirects."""
+    try:
+        opener = build_opener(NoRedirect)
+        with opener.open(base + '/health/ready', timeout=10) as response:
+            if response.status != 200:
+                return ['MONITOR_UNAVAILABLE']
+        request = Request(base + '/health/status', headers={'Authorization': 'Bearer ' + token})
+        with opener.open(request, timeout=10) as response:
+            return evaluate(json.load(response), 10800)
+    except Exception:
+        return ['MONITOR_UNAVAILABLE']
+
+
 def main():
     try:
         base = os.environ['MONITOR_BASE_URL'].rstrip('/')
@@ -29,19 +48,7 @@ def main():
         token = os.environ['MONITORING_TOKEN']
         if len(token) < 32:
             raise ValueError()
-        # Do not follow redirects with a monitoring credential.
-        from urllib.request import HTTPRedirectHandler, build_opener
-        class NoRedirect(HTTPRedirectHandler):
-            def redirect_request(self, *args, **kwargs):
-                return None
-        opener = build_opener(NoRedirect)
-        with opener.open(base + '/health/ready', timeout=10) as response:
-            if response.status != 200:
-                raise ValueError()
-        request = Request(base + '/health/status', headers={'Authorization': 'Bearer ' + token})
-        with opener.open(request, timeout=10) as response:
-            data = json.load(response)
-        alerts = evaluate(data, 10800)
+        alerts = collect_alerts(base, token)
     except Exception:
         alerts = ['MONITOR_UNAVAILABLE']
     print(json.dumps({'event': 'health_alert' if alerts else 'health_ok', 'alerts': alerts}))

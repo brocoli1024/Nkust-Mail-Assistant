@@ -47,6 +47,8 @@ CI 的 Container recovery drill 工作會執行同一程序。成功時輸出 `r
 
 ## 回復版本與 Migration 相容性
 
+演練使用正式監控程式的同一套探測邏輯，驗證正常時無告警、斷線時回報 `MONITOR_UNAVAILABLE`、恢復後告警清除。還原後比對 Alembic 版本和合成資料，`recovery_seconds` 只計到服務及監控恢復。實際通知送達仍需在設定通知的環境驗收。
+
 - 部署失敗：先記下失敗 commit／image tag；以既有平台回復上一個已驗證版本。Azure 使用 revision，Render 可指定上一個 commit；本文件不會自動操作正式服務。
 - 程式回復不等於資料庫回復。既有啟動程序會先升級 Migration，舊版程式也有嚴格 revision 檢查；新 revision 上線後舊映像可能拒絕啟動。因此只有確認同 revision 且相容時才能直接回復舊映像。
 - Schema 變更採 expand/contract：先新增可選欄位、部署能讀新舊格式的程式、回填與驗證後，再於後續版本移除舊欄位。需要跨 revision 回復時，先在隔離副本驗證舊版啟動；不可把 `alembic downgrade` 當成無損保證。
