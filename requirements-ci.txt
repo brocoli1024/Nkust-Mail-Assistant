@@ -1,0 +1,4 @@
+# Application dependencies are installed separately using requirements-dev.txt.
+ruff==0.17.5
+pip-audit==2.10.1
+pytest-socket==0.8.1

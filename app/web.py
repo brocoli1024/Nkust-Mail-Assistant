@@ -1,7 +1,9 @@
 """New web entry point. Never mounts any unauthenticated legacy routes."""
 from contextlib import asynccontextmanager
 import logging
+import os
 import re
+import time
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
@@ -26,6 +28,8 @@ from app.database.multi_user import MultiUserDatabase
 from app.database.schema import REQUIRED_REVISION
 from app.services.user_gmail_service import UserGmailFactory
 from app.services.user_sync_service import UserSyncService
+from app.api.health import router as health_router, probe_engine
+from app.observability import HttpMetrics, emit
 
 
 class RedactQuery(logging.Filter):
@@ -57,6 +61,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
                 raise RuntimeError('Run alembic upgrade head on the NEW database before starting app.web') from None
             app.state.oauth_settings = oauth
             app.state.database = database
+            app.state.health_engine = probe_engine(database.engine.url)
+            app.state.http_metrics = HttpMetrics()
             app.state.google = google_factory(oauth)
             app.state.tokens = TokenService(database, oauth.encryption_key, app.state.google)
             app.state.gmail_for_user = UserGmailFactory(config, app.state.tokens)
@@ -83,6 +89,8 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
                     secure=oauth.secure_cookie)
             yield
         finally:
+            if hasattr(app.state, 'health_engine'):
+                app.state.health_engine.dispose()
             database.close()
 
     app = FastAPI(title='NKUST Web OAuth', lifespan=lifespan, debug=False,
@@ -91,6 +99,7 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
     configured = oauth_settings or OAuthSettings.load()
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(configured.base_url).hostname or 'localhost'])
     app.include_router(router)
+    app.include_router(health_router)
     if session_enabled:
         from app.api.session import router as session_router
         from app.api.sync import router as sync_router
@@ -211,8 +220,16 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
 
     @app.middleware('http')
     async def safe_responses(request: Request, call_next):
+        started = time.monotonic()
         try:
-            response = await call_next(request)
+            path = request.url.path
+            demo_allowed = path in ('/demo', '/health/live', '/health/ready', '/health/status') or path.startswith(('/demo/announcements/', '/assets/'))
+            if os.environ.get('DEMO_MODE') == '1' and path == '/':
+                response = RedirectResponse('/demo', status_code=303)
+            elif os.environ.get('DEMO_MODE') == '1' and not demo_allowed:
+                response = JSONResponse({'error': 'DEMO_READ_ONLY'}, status_code=403)
+            else:
+                response = await call_next(request)
         except Exception:
             # Do not let the ASGI server log provider exceptions or SQL parameters.
             response = (public_error(request, 500) if is_public_page(request)
@@ -230,6 +247,12 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
             "manifest-src 'self'; img-src 'self'; style-src 'self'; font-src 'self'; "
             "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
         )
+        elapsed = (time.monotonic() - started) * 1000
+        route = getattr(request.scope.get('route'), 'path', 'unmatched')
+        if hasattr(app.state, 'http_metrics') and route not in ('/health/live', '/health/ready', '/health/status'):
+            app.state.http_metrics.record(response.status_code, elapsed)
+        emit('http_request', route=route, status=response.status_code, duration_ms=round(elapsed, 3),
+             error_type='server_error' if response.status_code >= 500 else None)
         return response
 
     access_logger = logging.getLogger('uvicorn.access')
@@ -238,4 +261,4 @@ def create_app(settings=None, oauth_settings=None, *, google_factory=GoogleOAuth
     return app
 
 
-app = create_app(session_enabled=True)
+app = create_app(session_enabled=True, demo_enabled=os.environ.get('DEMO_MODE') == '1')

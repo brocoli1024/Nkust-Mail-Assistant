@@ -1,0 +1,175 @@
+name: Code CI
+
+on:
+  push:
+    branches: [codex/web-deployment, codex/ci-pipeline]
+  pull_request:
+    branches: [codex/web-deployment]
+  workflow_dispatch:
+    inputs:
+      failure_drill:
+        description: 'Intentionally fail a synthetic test to verify the CI gate'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: code-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests and PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: nkust_ci
+          POSTGRES_PASSWORD: synthetic_ci_password
+          POSTGRES_DB: nkust_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nkust_ci -d nkust_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # Disposable runner-local database. Never use repository secrets here.
+      DATABASE_URL: postgresql+psycopg://nkust_ci:synthetic_ci_password@127.0.0.1:5432/nkust_ci
+      NKUST_TEST_POSTGRES_URL: postgresql+psycopg://nkust_ci:synthetic_ci_password@127.0.0.1:5432/nkust_ci
+      NKUST_TEST_PUBLIC_SYNC_URL: postgresql+psycopg://nkust_public_sync:synthetic_sync_password@127.0.0.1:5432/nkust_ci
+      GOOGLE_CLIENT_ID: synthetic-client
+      GOOGLE_CLIENT_SECRET: synthetic-secret
+      GOOGLE_REDIRECT_URI: http://localhost/auth/google/callback
+      APP_BASE_URL: http://localhost
+      SESSION_SECRET: synthetic-ci-session-secret-at-least-32-characters
+      GMAIL_CREDENTIALS_PATH: /tmp/nkust-ci-no-credentials.json
+      GMAIL_TOKEN_PATH: /tmp/nkust-ci-no-token.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install application and test dependencies
+        run: python -m pip install -r requirements-dev.txt -r requirements-web.txt -r requirements-ci.txt
+      - name: Generate disposable encryption key
+        run: python -c "import os; from cryptography.fernet import Fernet; open(os.environ['GITHUB_ENV'], 'a').write('TOKEN_ENCRYPTION_KEY=' + Fernet.generate_key().decode() + '\n')"
+      - name: Upgrade independent PostgreSQL schema
+        run: python -m alembic upgrade head
+      - name: Create restricted synthetic sync role
+        run: |
+          python - <<'PY'
+          import os
+          from sqlalchemy import create_engine
+          with create_engine(os.environ['DATABASE_URL']).begin() as connection:
+              connection.exec_driver_sql("CREATE ROLE nkust_public_sync LOGIN PASSWORD 'synthetic_sync_password'")
+          PY
+      - name: Prepare intentional failure drill
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.failure_drill }}
+        run: |
+          printf 'def test_ci_failure_drill():\n    assert False, "Intentional synthetic CI failure drill"\n' > tests/test_ci_failure_drill.py
+      - name: Run tests with external network blocked
+        run: python -m pytest -q --allow-hosts=127.0.0.1,localhost,::1 --allow-unix-socket --junitxml=ci-results.xml
+      - name: Require actual PostgreSQL coverage and no skipped tests
+        if: ${{ always() }}
+        run: python scripts/check_ci_report.py ci-results.xml
+      - name: Upload synthetic test report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-test-results
+          path: ci-results.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+  static:
+    name: Static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-ci.txt
+      - run: python -m ruff check app alembic scripts tests
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements-ci.txt
+      - name: Audit production dependencies including transitive packages
+        run: python -m pip_audit --timeout 60 -r requirements-web.txt
+      - name: Audit development and test dependencies
+        run: python -m pip_audit --timeout 60 -r requirements-dev.txt -r requirements-ci.txt
+
+  containers:
+    name: Container recovery drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate infrastructure templates
+        run: |
+          az bicep build --file infra/azure/foundation.bicep --outfile /tmp/foundation.json
+          az bicep build --file infra/azure/app.bicep --outfile /tmp/app.json
+      - name: Build container, disconnect database and restore synthetic backup
+        run: python scripts/recovery_drill.py
+      - name: Verify the Azure demo image with ephemeral SQLite and no network
+        run: |
+          docker build -t nkust-azure-demo-ci .
+          container=$(docker run -d --network none -e DEMO_MODE=1 nkust-azure-demo-ci)
+          trap 'docker rm -f "$container" >/dev/null' EXIT
+          for attempt in {1..30}; do
+            if docker exec "$container" python -c "from urllib.request import urlopen; urlopen('http://localhost:8000/health/ready', timeout=2)"; then
+              docker exec "$container" python -c "from urllib.request import urlopen; assert urlopen('http://localhost:8000/demo', timeout=5).status == 200"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs "$container"
+          exit 1
+
+  gate:
+    name: CI gate
+    if: ${{ always() }}
+    needs: [tests, static, audit, containers]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Reject any failed, cancelled, or skipped prerequisite
+        env:
+          TESTS_RESULT: ${{ needs.tests.result }}
+          STATIC_RESULT: ${{ needs.static.result }}
+          AUDIT_RESULT: ${{ needs.audit.result }}
+          CONTAINERS_RESULT: ${{ needs.containers.result }}
+        run: |
+          test "$TESTS_RESULT" = success
+          test "$STATIC_RESULT" = success
+          test "$AUDIT_RESULT" = success
+          test "$CONTAINERS_RESULT" = success

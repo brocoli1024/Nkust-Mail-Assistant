@@ -2,10 +2,11 @@ services:
   - type: web
     name: nkust-mail-assistant
     runtime: python
+    autoDeployTrigger: checksPass
     plan: free
     buildCommand: pip install -r requirements-web.txt
     startCommand: sh scripts/start-web.sh
-    healthCheckPath: /login
+    healthCheckPath: /health/ready
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.10

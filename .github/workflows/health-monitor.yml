@@ -1,0 +1,24 @@
+name: Service health monitor
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  monitor:
+    if: ${{ vars.MONITOR_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check readiness, freshness and error rate
+        env:
+          MONITOR_BASE_URL: ${{ vars.MONITOR_BASE_URL }}
+          MONITORING_TOKEN: ${{ secrets.MONITORING_TOKEN }}
+        run: python scripts/check_health.py
